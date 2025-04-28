@@ -91,29 +91,7 @@ export const authOptions = {
     async signIn({ user, account, profile, email, credentials }) {
       console.log("Sign-in callback triggered", { user, account, profile });
       
-      // If this is a Google sign-in, ensure we have a user record
-      if (account?.provider === "google") {
-        try {
-          let dbUser = await prisma.user.findUnique({
-            where: { email: user.email },
-          });
-          
-          if (!dbUser) {
-            // Create a new user record
-            await prisma.user.create({
-              data: {
-                email: user.email,
-                name: user.name,
-                image: user.image,
-                role: "PLAYER",
-              },
-            });
-          }
-        } catch (error) {
-          console.error("Error during user lookup/creation:", error);
-          return false;
-        }
-      }
+      // no manual upsert; let the PrismaAdapter handle user + account creation
       return true;
     },
     
