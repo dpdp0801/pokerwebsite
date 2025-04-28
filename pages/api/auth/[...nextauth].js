@@ -16,7 +16,7 @@ console.log('Loaded env', {
 const prisma = new PrismaClient();
 
 export const authOptions = {
-  allowDangerousEmailAccountLinking: true,   // auto-link same-email accounts
+  dangerousEmailAccountLinking: true,   // auto-link same-email accounts
   adapter: PrismaAdapter(prisma),
   debug: true,
   providers: [
