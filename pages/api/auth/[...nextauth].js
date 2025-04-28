@@ -4,6 +4,14 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 
+// Log environment variables at startup
+console.log('Loaded env', {
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set (starts with: ' + process.env.DATABASE_URL.substring(0, 15) + '...)' : 'Not set',
+  PRISMA_ACCELERATE_URL: process.env.PRISMA_ACCELERATE_URL ? 'Set (starts with: ' + process.env.PRISMA_ACCELERATE_URL.substring(0, 15) + '...)' : 'Not set',
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'Set (hidden)' : 'Not set'
+});
+
 // Initialize Prisma Client without the Accelerate extension for now
 const prisma = new PrismaClient();
 
@@ -49,13 +57,6 @@ export const authOptions = {
 
   pages: {
     error: '/',
-  },
-
-  baseUrl: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
-
-  url: {
-    baseUrl: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
-    origin: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
   },
 
   session: {
