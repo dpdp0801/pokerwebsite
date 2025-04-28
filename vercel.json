@@ -1,5 +1,13 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "cleanUrls": true,
+  "regions": ["iad1"],
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ]
 } 
