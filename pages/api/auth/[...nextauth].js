@@ -45,7 +45,27 @@ export const authOptions = {
     }),
   ],
 
+  pages: {
+    signIn: '/',
+    signOut: '/',
+    error: '/',
+  },
+
   session: { strategy: "jwt" },
+
+  useSecureCookies: true,
+
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true
+      }
+    }
+  },
 
   callbacks: {
     async signIn({ user, account, profile }) {
