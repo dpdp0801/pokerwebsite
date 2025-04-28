@@ -47,12 +47,20 @@ export const authOptions = {
   ],
 
   pages: {
-    signIn: '/',
-    signOut: '/',
     error: '/',
   },
 
-  session: { strategy: "jwt" },
+  baseUrl: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
+
+  url: {
+    baseUrl: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
+    origin: process.env.NEXTAUTH_URL || "https://catalinapoker.com",
+  },
+
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
 
   useSecureCookies: true,
 
@@ -61,15 +69,25 @@ export const authOptions = {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
         path: '/',
-        secure: process.env.NODE_ENV === "production"
+        secure: true
+      }
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        sameSite: 'none',
+        path: '/',
+        secure: true
       }
     }
   },
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account, profile, email, credentials }) {
+      console.log("Sign-in callback triggered", { user, account, profile });
+      
       // If this is a Google sign-in, ensure we have a user record
       if (account?.provider === "google") {
         try {
@@ -96,7 +114,16 @@ export const authOptions = {
       return true;
     },
     
+    async redirect({ url, baseUrl }) {
+      console.log("Redirect callback triggered", { url, baseUrl });
+      
+      // Always redirect to home page for simplicity during debugging
+      return baseUrl;
+    },
+    
     async jwt({ token, user }) {
+      console.log("JWT callback triggered", { token, user });
+      
       // Attach role once at login
       if (user?.role) token.role = user.role;
       else if (!token.role) token.role = "PLAYER";
@@ -124,12 +151,31 @@ export const authOptions = {
     },
     
     async session({ session, token }) {
+      console.log("Session callback triggered", { session, token });
+      
       // Add role and userId to the session
       session.role = token.role;
       session.user.id = token.userId;
       return session;
     },
   },
+  
+  events: {
+    async signIn(message) {
+      console.log("signIn event", message);
+    },
+    async signOut(message) {
+      console.log("signOut event", message);
+    },
+    async createUser(message) {
+      console.log("createUser event", message);
+    },
+    async error(message) {
+      console.error("NextAuth error event", message);
+    },
+  },
+  
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export default NextAuth(authOptions);
