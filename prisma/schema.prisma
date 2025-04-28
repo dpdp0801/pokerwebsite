@@ -13,12 +13,13 @@ generator client {
 //  USER & ROLE (yours)
 //////////////////////////////
 model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  image     String?
-  role      String   @default("PLAYER")
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  image         String?
+  emailVerified DateTime?
+  role          String    @default("PLAYER")
+  createdAt     DateTime  @default(now())
 
   // relations required by NextAuth
   accounts  Account[]
