@@ -1,8 +1,10 @@
 import { signIn, signOut, useSession } from "next-auth/react";
+
 export default function Home() {
   const { data: session } = useSession();
+
   return (
-    <main style={{textAlign:"center",marginTop:"20vh"}}>
+    <main style={{ textAlign: "center", marginTop: "20vh" }}>
       <h1>Catalina Poker</h1>
       {session ? (
         <>
@@ -10,7 +12,9 @@ export default function Home() {
           <button onClick={() => signOut()}>Sign out</button>
         </>
       ) : (
-        <button onClick={() => signIn("google")}>Sign in with Google</button>
+        <button onClick={() => signIn("google", { callbackUrl: "/profile" })}>
+          Sign in with Google
+        </button>
       )}
     </main>
   );
