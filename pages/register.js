@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,8 @@ import { CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Register() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
@@ -26,6 +28,19 @@ export default function Register() {
   };
 
   const [buyInAmount, setBuyInAmount] = useState(sessionData.type === 'mtt' ? sessionData.buyIn : sessionData.minBuyIn);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      toast({
+        title: "Authentication Required",
+        description: "You must be signed in to register",
+        variant: "destructive",
+      });
+      // Redirect to home page
+      router.push("/");
+    }
+  }, [status, router, toast]);
 
   const generatePaymentCode = (userId, sessionId) => {
     // Create a unique but readable code format
@@ -59,6 +74,46 @@ export default function Register() {
       setIsSubmitting(false);
     }, 1000);
   };
+
+  // Show loading state while checking authentication
+  if (status === "loading") {
+    return (
+      <div className="container py-12 max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>Registration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If not authenticated, user will be redirected via the useEffect
+  if (!session) {
+    return (
+      <div className="container py-12 max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>Authentication Required</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-muted-foreground mb-4">
+              You must be signed in to register for poker events.
+            </p>
+            <Button 
+              className="w-full" 
+              onClick={() => signIn('google')}
+            >
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!sessionData.exists) {
     return (
