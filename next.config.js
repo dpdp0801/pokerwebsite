@@ -1,0 +1,9 @@
+/** @type {import('next').NextConfig} */
+module.exports = {
+  reactStrictMode: true,
+  swcMinify: true,
+  output: 'standalone',
+  experimental: {
+    instrumentationHook: false
+  }
+} 

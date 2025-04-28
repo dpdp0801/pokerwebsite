@@ -1,13 +1,10 @@
 {
-  "buildCommand": "npx prisma generate && next build",
+  "buildCommand": "./prisma-fix.sh && next build",
   "installCommand": "npm install",
   "framework": "nextjs",
   "cleanUrls": true,
-  "regions": ["iad1"],
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node"
-    }
+  "outputDirectory": ".next",
+  "routes": [
+    { "src": "/(.*)", "dest": "/" }
   ]
 } 
