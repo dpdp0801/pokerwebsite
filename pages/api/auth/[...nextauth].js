@@ -7,36 +7,8 @@ import { PrismaClient } from "@prisma/client";
 // Initialize Prisma Client without the Accelerate extension for now
 const prisma = new PrismaClient();
 
-// Custom adapter to fix token serialization issues
-const customPrismaAdapter = {
-  ...PrismaAdapter(prisma),
-  // Override the createUser method to ensure it handles the data correctly
-  async createUser(data) {
-    return prisma.user.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        image: data.image,
-        role: "PLAYER",
-      },
-    });
-  },
-  // Override the linkAccount method to ensure token data is properly formatted
-  async linkAccount(account) {
-    // Ensure numeric values are properly handled
-    const formattedAccount = {
-      ...account,
-      expires_at: account.expires_at ? parseInt(account.expires_at) : null,
-    };
-    
-    return prisma.account.create({
-      data: formattedAccount,
-    });
-  }
-};
-
 export const authOptions = {
-  adapter: customPrismaAdapter,
+  adapter: PrismaAdapter(prisma),
   debug: true,
   providers: [
     GoogleProvider({
