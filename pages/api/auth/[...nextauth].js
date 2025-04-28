@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { kv } from '@vercel/kv';
 
 export default NextAuth({
   providers: [
@@ -12,42 +11,31 @@ export default NextAuth({
     Credentials({
       name: "Admin Password",
       credentials: { password: { label: "Password", type: "password" } },
-      async authorize(creds) {
-        if (creds.password === process.env.ADMIN_PASSWORD) {
-          // Store admin user in KV
-          const admin = {
+      async authorize(cred) {
+        if (cred?.password === process.env.ADMIN_PASSWORD) {
+          return {
             id: "admin",
             email: "admin@catalinapoker.com",
             name: "Admin",
-            role: "ADMIN"
+            role: "ADMIN",
           };
-          await kv.set(`user:${admin.email}`, admin);
-          return admin;
         }
         return null;
       },
     }),
   ],
+
   session: { strategy: "jwt" },
+
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-        // Store user in KV if it's a new Google sign-in
-        if (user.email && !user.id.startsWith('admin')) {
-          await kv.set(`user:${user.email}`, user);
-        }
-      }
+      // attach role once at login
+      if (user?.role) token.role = user.role;
+      else if (!token.role) token.role = "PLAYER";
       return token;
     },
     async session({ session, token }) {
-      if (token.email) {
-        // Get user data from KV
-        const user = await kv.get(`user:${token.email}`);
-        if (user) {
-          session.user = user;
-        }
-      }
+      session.role = token.role;
       return session;
     },
   },
