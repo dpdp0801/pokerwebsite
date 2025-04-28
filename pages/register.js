@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/hooks/use-toast";
+import { CheckCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Register() {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
+  const [paymentCode, setPaymentCode] = useState("");
   
   // This would come from an API in a real implementation
   const sessionData = {
@@ -22,6 +26,13 @@ export default function Register() {
   };
 
   const [buyInAmount, setBuyInAmount] = useState(sessionData.type === 'mtt' ? sessionData.buyIn : sessionData.minBuyIn);
+
+  const generatePaymentCode = (userId, sessionId) => {
+    // Create a unique but readable code format
+    const userIdPart = userId?.substring(0, 3).toUpperCase() || 'USR';
+    const timestamp = new Date().getTime().toString().substring(9, 13);
+    return `CP-${userIdPart}-${sessionId}-${timestamp}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,12 +49,13 @@ export default function Register() {
     
     setIsSubmitting(true);
     
+    // Generate a payment code for this registration
+    const code = generatePaymentCode(session.user.email || session.user.id, sessionData.type === 'mtt' ? 'MTT1' : 'CASH1');
+    setPaymentCode(code);
+    
     // This would be an API call in a real implementation
     setTimeout(() => {
-      toast({
-        title: "Registration Submitted",
-        description: "Your registration request has been received. Please complete payment to secure your spot.",
-      });
+      setRegistrationSubmitted(true);
       setIsSubmitting(false);
     }, 1000);
   };
@@ -142,6 +154,43 @@ export default function Register() {
               {isSubmitting ? 'Processing...' : 'Submit Registration'}
             </Button>
           </form>
+          
+          {registrationSubmitted && (
+            <div className="mt-8">
+              <Alert className="mb-6 bg-green-50 border-green-200">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <AlertTitle className="text-green-800">Registration Submitted!</AlertTitle>
+                <AlertDescription className="text-green-700">
+                  Your registration has been received. Please complete payment to secure your spot.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="space-y-6 border rounded-md p-4">
+                <div>
+                  <h3 className="font-medium text-lg mb-2">Payment Instructions</h3>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                    <li>Open your Venmo app or website</li>
+                    <li>Send ${sessionData.type === 'mtt' ? sessionData.buyIn : buyInAmount} to <span className="font-medium text-foreground">@catalina-poker</span></li>
+                    <li>In the payment note, you <span className="font-bold">MUST</span> include your unique payment code:</li>
+                  </ol>
+                </div>
+                
+                <div className="bg-muted/70 p-4 rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Your Payment Code:</p>
+                  <p className="font-mono text-lg font-semibold text-center">{paymentCode}</p>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  <p className="mb-1 font-medium">Important:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Payment must be received within 24 hours to secure your spot</li>
+                    <li>Your registration is not confirmed until payment is approved</li>
+                    <li>No refunds after payment confirmation</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

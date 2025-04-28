@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Hourglass, Clock, Users, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
 export default function Status() {
   // This would come from an API in a real implementation
@@ -19,6 +23,9 @@ export default function Status() {
     // Cash specific
     minBuyIn: 200,
   });
+
+  const { data: session } = useSession();
+  const isAdmin = session?.role === "ADMIN";
 
   // Simulate timer countdown
   useEffect(() => {
@@ -41,15 +48,36 @@ export default function Status() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatTimeRemaining = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   if (!sessionData.exists) {
     return (
       <div className="container py-12 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Current Status</CardTitle>
+            <CardTitle className="text-center flex items-center justify-center gap-2">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+              <span>Current Status</span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center py-8">
-            <p className="text-muted-foreground text-lg">No session is currently ongoing</p>
+            <p className="text-muted-foreground text-lg mb-6">
+              No session is currently ongoing
+            </p>
+            
+            {isAdmin && (
+              <div className="flex justify-center">
+                <Link href="/admin">
+                  <Button>
+                    Create Session
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -61,15 +89,34 @@ export default function Status() {
       <div className="container py-12 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Tournament Status</CardTitle>
+            <CardTitle className="text-center flex items-center justify-center gap-2">
+              <span>Tournament Status</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                sessionData.status === 'ongoing' ? 'bg-green-100 text-green-800' : 
+                sessionData.status === 'paused' ? 'bg-yellow-100 text-yellow-800' : 
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {sessionData.status === 'ongoing' ? 'Live' : 
+                 sessionData.status === 'paused' ? 'Paused' : 'Not Started'}
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 text-center">
-                <p className="text-2xl font-bold">
-                  {sessionData.status === 'ongoing' ? formatTime(sessionData.timer) : 'Paused'}
+                <div className="flex items-center justify-center gap-2">
+                  {sessionData.status === 'ongoing' ? (
+                    <Hourglass className="h-5 w-5 animate-pulse text-primary" />
+                  ) : (
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <p className="text-2xl font-bold">
+                    {sessionData.status === 'ongoing' ? formatTime(sessionData.timer) : 'Paused'}
+                  </p>
+                </div>
+                <p className="text-muted-foreground">
+                  {sessionData.status === 'ongoing' ? 'Time Remaining' : 'Tournament Paused'}
                 </p>
-                <p className="text-muted-foreground">Time Remaining</p>
               </div>
               
               <div>
@@ -93,7 +140,10 @@ export default function Status() {
               </div>
               
               <div>
-                <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
+                </div>
                 <p className="text-muted-foreground">Available Seats</p>
               </div>
               
@@ -109,6 +159,21 @@ export default function Status() {
             </div>
           </CardContent>
         </Card>
+        
+        {isAdmin && (
+          <div className="mt-6 border-t pt-4 flex flex-col items-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              Admin Controls
+            </p>
+            <div className="flex gap-2">
+              <Link href="/admin">
+                <Button variant="outline" size="sm">
+                  Manage Session
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -118,7 +183,15 @@ export default function Status() {
       <div className="container py-12 max-w-3xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Cash Game Status</CardTitle>
+            <CardTitle className="text-center flex items-center justify-center gap-2">
+              <span>Cash Game Status</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                sessionData.status === 'ongoing' ? 'bg-green-100 text-green-800' : 
+                'bg-blue-100 text-blue-800'
+              }`}>
+                {sessionData.status === 'ongoing' ? 'Live' : 'Not Started'}
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -133,7 +206,10 @@ export default function Status() {
               </div>
               
               <div>
-                <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
+                </div>
                 <p className="text-muted-foreground">Available Seats</p>
               </div>
               
@@ -144,6 +220,21 @@ export default function Status() {
             </div>
           </CardContent>
         </Card>
+        
+        {isAdmin && (
+          <div className="mt-6 border-t pt-4 flex flex-col items-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              Admin Controls
+            </p>
+            <div className="flex gap-2">
+              <Link href="/admin">
+                <Button variant="outline" size="sm">
+                  Manage Session
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
