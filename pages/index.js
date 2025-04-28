@@ -29,7 +29,7 @@ export default function Home() {
 
   return (
     <>
-      <section className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center px-4">
+      <section className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center px-4 -mt-16">
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight uppercase">
           NLH&nbsp;9-Max&nbsp;Tournament
         </h1>
