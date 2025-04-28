@@ -22,6 +22,70 @@ model User {
   // relations required by NextAuth
   accounts  Account[]
   sessions  Session[]
+  
+  // poker-related relations
+  registrations Registration[]
+  gameResults   GameResult[]
+}
+
+//////////////////////////////
+//  POKER GAME MODELS
+//////////////////////////////
+
+model PokerSession {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  type        String        // "TOURNAMENT" or "CASH_GAME"
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime?
+  location    String
+  buyIn       Int
+  minBuyIn    Int?          // Only for cash games
+  maxBuyIn    Int?          // Only for cash games
+  maxPlayers  Int?
+  status      String        @default("NOT_STARTED") // NOT_STARTED, ACTIVE, COMPLETED, CANCELLED
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // relations
+  registrations Registration[]
+  gameResults   GameResult[]
+}
+
+model Registration {
+  id            String       @id @default(cuid())
+  userId        String
+  sessionId     String
+  buyInAmount   Int
+  status        String       @default("PENDING") // PENDING, CONFIRMED, WAITLISTED, CANCELLED
+  paymentCode   String?      @unique
+  paymentStatus String       @default("UNPAID") // UNPAID, PAID, REFUNDED
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // relations
+  user    User         @relation(fields: [userId], references: [id])
+  session PokerSession @relation(fields: [sessionId], references: [id])
+}
+
+model GameResult {
+  id            String       @id @default(cuid())
+  userId        String
+  sessionId     String
+  position      Int?         // Tournament position (null for cash games)
+  buyIn         Int          // Actual buy-in amount
+  rebuys        Int          @default(0)
+  addOns        Int          @default(0)
+  winnings      Int          @default(0)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // relations
+  user    User         @relation(fields: [userId], references: [id])
+  session PokerSession @relation(fields: [sessionId], references: [id])
 }
 
 //////////////////////////////

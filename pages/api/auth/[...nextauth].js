@@ -1,8 +1,13 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaClient } from "@prisma/client";
 
-export default NextAuth({
+const prisma = new PrismaClient();
+
+export const authOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -13,10 +18,25 @@ export default NextAuth({
       credentials: { password: { label: "Password", type: "password" } },
       async authorize(cred) {
         if (cred?.password === process.env.ADMIN_PASSWORD) {
+          // Create or get admin user
+          let adminUser = await prisma.user.findFirst({
+            where: { email: "admin@catalinapoker.com" }
+          });
+          
+          if (!adminUser) {
+            adminUser = await prisma.user.create({
+              data: {
+                email: "admin@catalinapoker.com",
+                name: "Admin",
+                role: "ADMIN",
+              }
+            });
+          }
+          
           return {
-            id: "admin",
-            email: "admin@catalinapoker.com",
-            name: "Admin",
+            id: adminUser.id,
+            email: adminUser.email,
+            name: adminUser.name,
             role: "ADMIN",
           };
         }
@@ -28,15 +48,67 @@ export default NextAuth({
   session: { strategy: "jwt" },
 
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // If this is a Google sign-in, ensure we have a user record
+      if (account?.provider === "google") {
+        try {
+          let dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+          
+          if (!dbUser) {
+            // Create a new user record
+            await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name,
+                image: user.image,
+                role: "PLAYER",
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Error during user lookup/creation:", error);
+          return false;
+        }
+      }
+      return true;
+    },
+    
     async jwt({ token, user }) {
-      // attach role once at login
+      // Attach role once at login
       if (user?.role) token.role = user.role;
       else if (!token.role) token.role = "PLAYER";
+      
+      // If we have user data (during sign in), add the database ID to the token
+      if (user?.id) {
+        token.userId = user.id;
+      } else if (!token.userId) {
+        // If no userId in token yet, look it up from the database
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email },
+          });
+          
+          if (dbUser) {
+            token.userId = dbUser.id;
+            token.role = dbUser.role;
+          }
+        } catch (error) {
+          console.error("Error fetching user:", error);
+        }
+      }
+      
       return token;
     },
+    
     async session({ session, token }) {
+      // Add role and userId to the session
       session.role = token.role;
+      session.user.id = token.userId;
       return session;
     },
   },
-});
+};
+
+export default NextAuth(authOptions);

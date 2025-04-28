@@ -1,35 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 export default function Profile() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState("upcoming");
+  const [profileData, setProfileData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  // Mock data for user history
-  const upcomingGames = [
-    { id: 1, type: "Tournament", date: "Apr 28, 2023", time: "7:00 PM", status: "Registered" },
-    { id: 2, type: "Cash Game", date: "May 5, 2023", time: "6:30 PM", status: "Waitlisted" },
-  ];
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchProfileData();
+    } else if (status === "unauthenticated") {
+      setLoading(false);
+    }
+  }, [status]);
   
-  const gameHistory = [
-    { id: 1, type: "Tournament", date: "Apr 14, 2023", buyIn: 100, result: "3rd Place", winnings: 300 },
-    { id: 2, type: "Cash Game", date: "Apr 7, 2023", buyIn: 200, result: "Left Early", winnings: 150 },
-    { id: 3, type: "Tournament", date: "Mar 24, 2023", buyIn: 100, result: "Bubble", winnings: 0 },
-    { id: 4, type: "Tournament", date: "Mar 10, 2023", buyIn: 100, result: "1st Place", winnings: 700 },
-  ];
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/profile");
+      
+      if (!res.ok) {
+        throw new Error("Failed to fetch profile data");
+      }
+      
+      const data = await res.json();
+      setProfileData(data);
+    } catch (err) {
+      console.error("Error fetching profile:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  const stats = {
-    totalGames: 12,
-    tournaments: 8,
-    cashGames: 4,
-    totalBuyIns: 1200,
-    totalWinnings: 2100,
-    profit: 900,
-    avgFinish: "3.2",
-    firstPlace: 2
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+  
+  // Format time for display
+  const formatDisplayTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   if (!session) {
@@ -44,6 +72,44 @@ export default function Profile() {
       </div>
     );
   }
+  
+  if (loading) {
+    return (
+      <div className="container py-12 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+        <p className="mt-2 text-muted-foreground">Loading profile data...</p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container py-12">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <h2 className="text-2xl font-bold mb-2 text-red-600">Error</h2>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Use empty defaults if data isn't available yet
+  const stats = profileData?.stats || {
+    totalGames: 0,
+    tournaments: 0,
+    cashGames: 0,
+    totalBuyIns: 0,
+    totalWinnings: 0,
+    profit: 0,
+    avgFinish: "N/A",
+    firstPlace: 0
+  };
+  
+  const upcomingGames = profileData?.upcomingGames || [];
+  const currentBuyInRequests = profileData?.currentBuyInRequests || [];
+  const gameHistory = profileData?.gameHistory || [];
 
   return (
     <div className="container py-12 max-w-4xl">
@@ -96,10 +162,34 @@ export default function Profile() {
             <CardTitle>Current Buy-In Requests</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* This would be dynamic based on current buy-in requests */}
-            <p className="text-muted-foreground text-center py-6">
-              No pending buy-in requests
-            </p>
+            {currentBuyInRequests.length === 0 ? (
+              <p className="text-muted-foreground text-center py-6">
+                No pending buy-in requests
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {currentBuyInRequests.map((request) => (
+                  <div key={request.id} className="border p-3 rounded-md">
+                    <div className="flex justify-between mb-1">
+                      <h4 className="font-medium">{request.session.title}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        request.paymentStatus === "PAID" 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}>
+                        {request.paymentStatus}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Buy-in: ${request.buyInAmount}
+                    </p>
+                    {request.paymentStatus === "UNPAID" && request.paymentCode && (
+                      <p className="text-xs mt-2 font-mono">Code: {request.paymentCode}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -123,18 +213,30 @@ export default function Profile() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
+                      <TableHead>Title</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Time</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {upcomingGames.map((game) => (
-                      <TableRow key={game.id}>
-                        <TableCell>{game.type}</TableCell>
-                        <TableCell>{game.date}</TableCell>
-                        <TableCell>{game.time}</TableCell>
-                        <TableCell>{game.status}</TableCell>
+                    {upcomingGames.map((reg) => (
+                      <TableRow key={reg.id}>
+                        <TableCell>{reg.session.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}</TableCell>
+                        <TableCell>{reg.session.title}</TableCell>
+                        <TableCell>{formatDisplayDate(reg.session.date)}</TableCell>
+                        <TableCell>{formatDisplayTime(reg.session.startTime)}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            reg.status === "CONFIRMED" 
+                              ? "bg-green-100 text-green-800" 
+                              : reg.status === "WAITLISTED"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {reg.status}
+                          </span>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -150,6 +252,7 @@ export default function Profile() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
+                      <TableHead>Title</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Buy-In</TableHead>
                       <TableHead>Result</TableHead>
@@ -159,10 +262,17 @@ export default function Profile() {
                   <TableBody>
                     {gameHistory.map((game) => (
                       <TableRow key={game.id}>
-                        <TableCell>{game.type}</TableCell>
-                        <TableCell>{game.date}</TableCell>
+                        <TableCell>{game.session.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}</TableCell>
+                        <TableCell>{game.session.title}</TableCell>
+                        <TableCell>{formatDisplayDate(game.session.date)}</TableCell>
                         <TableCell>${game.buyIn}</TableCell>
-                        <TableCell>{game.result}</TableCell>
+                        <TableCell>
+                          {game.session.type === "TOURNAMENT" 
+                            ? game.position 
+                              ? `${game.position}${getOrdinalSuffix(game.position)} Place` 
+                              : "Unknown"
+                            : game.notes || "Cash Game"}
+                        </TableCell>
                         <TableCell className={game.winnings > game.buyIn ? 'text-green-600' : game.winnings === 0 ? 'text-red-600' : ''}>
                           ${game.winnings}
                         </TableCell>
@@ -177,4 +287,20 @@ export default function Profile() {
       </Card>
     </div>
   );
+}
+
+// Helper function to get ordinal suffix for numbers
+function getOrdinalSuffix(i) {
+  const j = i % 10,
+        k = i % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
 } 
