@@ -16,17 +16,12 @@ model User {
   name      String?
   email     String   @unique
   image     String?
-  role      Role     @default(PLAYER)
+  role      String   @default("PLAYER")
   createdAt DateTime @default(now())
 
   // relations required by NextAuth
   accounts  Account[]
   sessions  Session[]
-}
-
-enum Role {
-  PLAYER
-  ADMIN
 }
 
 //////////////////////////////
