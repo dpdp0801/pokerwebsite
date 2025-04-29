@@ -1,47 +1,40 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Hourglass, Clock, Users, AlertCircle } from "lucide-react";
+import { Hourglass, Clock, Users, AlertCircle, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Status() {
-  // This would come from an API in a real implementation
+  const [loading, setLoading] = useState(true);
   const [sessionData, setSessionData] = useState({
     exists: false,
-    type: null, // 'mtt' or 'cash'
-    status: 'not_started', // 'not_started', 'ongoing', 'paused', 'ended'
-    // MTT specific
-    blinds: '25/50',
-    ante: 0,
-    registrationStatus: 'open', // 'open', 'closed'
-    timer: 0, // seconds remaining in level
-    seats: { total: 18, open: 10 },
-    entries: 8,
-    waitlist: 2,
-    startingStack: 10000,
-    // Cash specific
-    minBuyIn: 200,
+    session: null
   });
 
   const { data: session } = useSession();
   const isAdmin = session?.role === "ADMIN";
   const router = useRouter();
 
-  // Simulate timer countdown
+  // Fetch real session data
   useEffect(() => {
-    let interval;
-    if (sessionData.exists && sessionData.status === 'ongoing' && sessionData.type === 'mtt') {
-      interval = setInterval(() => {
-        setSessionData(prev => ({
-          ...prev,
-          timer: prev.timer > 0 ? prev.timer - 1 : 0
-        }));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [sessionData.exists, sessionData.status, sessionData.type]);
+    const fetchSessionData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/session-status');
+        const data = await response.json();
+        setSessionData(data);
+      } catch (error) {
+        console.error('Error fetching session data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessionData();
+  }, []);
 
   // Format timer as MM:SS
   const formatTime = (seconds) => {
@@ -50,11 +43,87 @@ export default function Status() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatTimeRemaining = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
+
+  // Format time for display
+  const formatTimeOnly = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  // Get initials for avatar
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const PlayerList = ({ players, title, emptyMessage, colorClass }) => {
+    if (!players || players.length === 0) {
+      return (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium mb-2">{title}</h3>
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-4">
+        <h3 className="text-sm font-medium mb-2">{title}</h3>
+        <div className="border rounded-md overflow-hidden">
+          <ul className="divide-y">
+            {players.map((registration) => (
+              <li key={registration.id} className="p-3 flex items-center space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={registration.user.image} alt={registration.user.name} />
+                  <AvatarFallback className={colorClass}>
+                    {getInitials(registration.user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">{registration.user.name}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="container py-12 max-w-3xl">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-6 w-32 bg-muted rounded mb-4"></div>
+              <div className="h-4 w-48 bg-muted rounded"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!sessionData.exists) {
     return (
@@ -70,194 +139,114 @@ export default function Status() {
             <p className="text-muted-foreground text-lg mb-6">
               No session is currently ongoing
             </p>
-            
-            {isAdmin && (
-              <div className="flex justify-center">
-                <Button
-                  onClick={() => {
-                    // Use imperative navigation with prevent-cache parameter
-                    router.push({
-                      pathname: "/admin",
-                      query: { action: "create-session", t: Date.now() }
-                    });
-                  }}
-                >
-                  Create Session
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (sessionData.type === 'mtt') {
-    return (
-      <div className="container py-12 max-w-3xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center flex items-center justify-center gap-2">
-              <span>Tournament Status</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                sessionData.status === 'ongoing' ? 'bg-green-100 text-green-800' : 
-                sessionData.status === 'paused' ? 'bg-yellow-100 text-yellow-800' : 
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {sessionData.status === 'ongoing' ? 'Live' : 
-                 sessionData.status === 'paused' ? 'Paused' : 'Not Started'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  {sessionData.status === 'ongoing' ? (
-                    <Hourglass className="h-5 w-5 animate-pulse text-primary" />
-                  ) : (
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                  )}
-                  <p className="text-2xl font-bold">
-                    {sessionData.status === 'ongoing' ? formatTime(sessionData.timer) : 'Paused'}
-                  </p>
+  const currentSession = sessionData.session;
+  const registrations = currentSession.registrations || { confirmed: [], waitlisted: [] };
+
+  return (
+    <div className="container py-12 max-w-3xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center flex items-center justify-center gap-2">
+            <span>{currentSession.type === 'TOURNAMENT' ? 'Tournament' : 'Cash Game'} Status</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              currentSession.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 
+              'bg-blue-100 text-blue-800'
+            }`}>
+              {currentSession.status === 'ACTIVE' ? 'Live' : 'Not Started'}
+            </span>
+          </CardTitle>
+          <CardDescription className="text-center">
+            {formatDate(currentSession.date)} at {formatTimeOnly(currentSession.startTime)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-bold">{currentSession.title}</h2>
+            <p className="text-sm text-muted-foreground">{currentSession.location}</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {currentSession.type === 'TOURNAMENT' ? (
+              <>
+                <div>
+                  <p className="text-xl font-medium">${currentSession.buyIn}</p>
+                  <p className="text-muted-foreground">Buy-in</p>
                 </div>
-                <p className="text-muted-foreground">
-                  {sessionData.status === 'ongoing' ? 'Time Remaining' : 'Tournament Paused'}
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xl font-medium">${currentSession.smallBlind}/${currentSession.bigBlind}</p>
+                  <p className="text-muted-foreground">Blinds</p>
+                </div>
+                
+                <div>
+                  <p className="text-xl font-medium">${currentSession.minBuyIn}</p>
+                  <p className="text-muted-foreground">Min Buy-in</p>
+                </div>
+              </>
+            )}
+            
+            <div>
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xl font-medium">
+                  {currentSession.registeredPlayers}/{currentSession.maxPlayers}
                 </p>
               </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.blinds}</p>
-                <p className="text-muted-foreground">Current Blinds</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.ante > 0 ? sessionData.ante : 'None'}</p>
-                <p className="text-muted-foreground">Ante</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.registrationStatus}</p>
-                <p className="text-muted-foreground">Registration</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.startingStack.toLocaleString()}</p>
-                <p className="text-muted-foreground">Starting Stack</p>
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
-                </div>
-                <p className="text-muted-foreground">Available Seats</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.entries}</p>
-                <p className="text-muted-foreground">Total Entries</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.waitlist}</p>
-                <p className="text-muted-foreground">Waitlist</p>
-              </div>
+              <p className="text-muted-foreground">Registered Players</p>
             </div>
-          </CardContent>
-        </Card>
-        
-        {isAdmin && (
-          <div className="mt-6 border-t pt-4 flex flex-col items-center">
-            <p className="text-sm text-muted-foreground mb-2">
-              Admin Controls
-            </p>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  router.push({
-                    pathname: "/admin",
-                    query: { action: "create-session", t: Date.now() }
-                  });
-                }}
-              >
-                Manage Session
-              </Button>
+            
+            <div>
+              <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
+              <p className="text-muted-foreground">Waitlisted</p>
             </div>
           </div>
-        )}
-      </div>
-    );
-  }
-
-  if (sessionData.type === 'cash') {
-    return (
-      <div className="container py-12 max-w-3xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center flex items-center justify-center gap-2">
-              <span>Cash Game Status</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                sessionData.status === 'ongoing' ? 'bg-green-100 text-green-800' : 
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {sessionData.status === 'ongoing' ? 'Live' : 'Not Started'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xl font-medium">{sessionData.blinds}</p>
-                <p className="text-muted-foreground">Blinds</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">${sessionData.minBuyIn}</p>
-                <p className="text-muted-foreground">Min Buy-in</p>
-              </div>
-              
-              <div>
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xl font-medium">{sessionData.seats.open}/{sessionData.seats.total}</p>
-                </div>
-                <p className="text-muted-foreground">Available Seats</p>
-              </div>
-              
-              <div>
-                <p className="text-xl font-medium">{sessionData.waitlist}</p>
-                <p className="text-muted-foreground">Waitlist</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {isAdmin && (
-          <div className="mt-6 border-t pt-4 flex flex-col items-center">
-            <p className="text-sm text-muted-foreground mb-2">
-              Admin Controls
-            </p>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  router.push({
-                    pathname: "/admin",
-                    query: { action: "create-session", t: Date.now() }
-                  });
-                }}
-              >
-                Manage Session
-              </Button>
-            </div>
+          
+          <div className="border-t pt-4">
+            <h3 className="font-medium text-lg mb-3">Participants</h3>
+            
+            <PlayerList 
+              players={registrations.confirmed}
+              title="Registered Players"
+              emptyMessage="No players have registered yet"
+              colorClass="bg-green-100 text-green-800"
+            />
+            
+            <PlayerList 
+              players={registrations.waitlisted}
+              title="Waitlist"
+              emptyMessage="No players on the waitlist"
+              colorClass="bg-yellow-100 text-yellow-800"
+            />
           </div>
-        )}
-      </div>
-    );
-  }
+        </CardContent>
+      </Card>
+      
+      {isAdmin && (
+        <div className="mt-6 border-t pt-4 flex flex-col items-center">
+          <p className="text-sm text-muted-foreground mb-2">
+            Admin Controls
+          </p>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                router.push("/admin");
+              }}
+            >
+              Manage Session
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 } 

@@ -87,17 +87,36 @@ export default async function handler(req, res) {
       }
     }
 
-    // Also get current registrations count
-    const registrationsCount = await prisma.registration.count({
+    // Get registrations with user details
+    const registrations = await prisma.registration.findMany({
       where: {
-        sessionId: session.id,
-        status: {
-          in: ['CONFIRMED', 'PENDING']
+        sessionId: session.id
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true
+          }
         }
+      },
+      orderBy: {
+        createdAt: 'asc' // Order by registration time (first come, first served)
       }
     });
 
-    formattedSession.registeredPlayers = registrationsCount;
+    // Separate registrations into confirmed and waitlisted
+    const confirmedRegistrations = registrations.filter(reg => reg.status === 'CONFIRMED');
+    const waitlistedRegistrations = registrations.filter(reg => reg.status === 'WAITLISTED');
+
+    formattedSession.registeredPlayers = confirmedRegistrations.length;
+    formattedSession.waitlistedPlayers = waitlistedRegistrations.length;
+    formattedSession.registrations = {
+      confirmed: confirmedRegistrations,
+      waitlisted: waitlistedRegistrations
+    };
 
     return res.status(200).json({
       exists: true,
