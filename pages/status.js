@@ -557,7 +557,7 @@ export default function Status() {
                         <div className="text-center font-medium text-base text-muted-foreground mb-2">
                           Current Level
                         </div>
-                        <div className="flex justify-center items-center space-x-6 my-3">
+                        <div className="grid grid-cols-3 gap-4 items-center my-3">
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Small Blind</p>
                             <p className="text-2xl font-bold">{blindStructureData.currentLevel?.smallBlind || '—'}</p>
@@ -580,7 +580,7 @@ export default function Status() {
                             <ChevronDown className="h-4 w-4 mr-1" />
                             <span>Next Level</span>
                           </div>
-                          <div className="flex justify-center items-center space-x-6 my-2">
+                          <div className="grid grid-cols-3 gap-4 items-center my-2">
                             <div className="text-center">
                               <p className="text-xs text-muted-foreground">Small Blind</p>
                               <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>

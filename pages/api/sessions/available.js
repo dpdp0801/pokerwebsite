@@ -14,10 +14,12 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      // Get all NOT_STARTED sessions that are available for registration
+      // Get all NOT_STARTED and ACTIVE sessions that are available for registration
       const availableSessions = await prisma.pokerSession.findMany({
         where: {
-          status: "NOT_STARTED"
+          status: {
+            in: ["NOT_STARTED", "ACTIVE"]
+          }
         },
         orderBy: {
           date: "asc"

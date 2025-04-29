@@ -73,7 +73,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: "Session not found" });
       }
 
-      if (pokerSession.status !== "NOT_STARTED") {
+      // Allow registration for ACTIVE and NOT_STARTED sessions
+      if (pokerSession.status !== "NOT_STARTED" && pokerSession.status !== "ACTIVE") {
         return res.status(400).json({ error: "Session is not open for registration" });
       }
 
@@ -226,8 +227,8 @@ export default async function handler(req, res) {
       }
 
       // Check if the session is still open for cancellation
-      if (registration.session.status !== "NOT_STARTED" && session.role !== "ADMIN") {
-        return res.status(400).json({ error: "Session has already started and cannot be cancelled" });
+      if ((registration.session.status !== "NOT_STARTED" && registration.session.status !== "ACTIVE") && session.role !== "ADMIN") {
+        return res.status(400).json({ error: "Session has already been completed and cannot be cancelled" });
       }
 
       // Delete registration
