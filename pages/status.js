@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Hourglass, Clock, Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 export default function Status() {
   // This would come from an API in a real implementation
@@ -26,6 +27,7 @@ export default function Status() {
 
   const { data: session } = useSession();
   const isAdmin = session?.role === "ADMIN";
+  const router = useRouter();
 
   // Simulate timer countdown
   useEffect(() => {
@@ -71,11 +73,17 @@ export default function Status() {
             
             {isAdmin && (
               <div className="flex justify-center">
-                <Link href="/admin?action=create-session">
-                  <Button>
-                    Create Session
-                  </Button>
-                </Link>
+                <Button
+                  onClick={() => {
+                    // Use imperative navigation with prevent-cache parameter
+                    router.push({
+                      pathname: "/admin",
+                      query: { action: "create-session", t: Date.now() }
+                    });
+                  }}
+                >
+                  Create Session
+                </Button>
               </div>
             )}
           </CardContent>
@@ -166,11 +174,18 @@ export default function Status() {
               Admin Controls
             </p>
             <div className="flex gap-2">
-              <Link href="/admin?action=create-session">
-                <Button variant="outline" size="sm">
-                  Manage Session
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  router.push({
+                    pathname: "/admin",
+                    query: { action: "create-session", t: Date.now() }
+                  });
+                }}
+              >
+                Manage Session
+              </Button>
             </div>
           </div>
         )}
@@ -227,11 +242,18 @@ export default function Status() {
               Admin Controls
             </p>
             <div className="flex gap-2">
-              <Link href="/admin?action=create-session">
-                <Button variant="outline" size="sm">
-                  Manage Session
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  router.push({
+                    pathname: "/admin",
+                    query: { action: "create-session", t: Date.now() }
+                  });
+                }}
+              >
+                Manage Session
+              </Button>
             </div>
           </div>
         )}

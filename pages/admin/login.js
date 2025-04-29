@@ -8,19 +8,20 @@ export default function AdminLogin() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [redirected, setRedirected] = useState(false);
   
   // If user is already logged in as admin, redirect to admin dashboard
   useEffect(() => {
-    // Only run this effect if the session status is "authenticated"
-    if (status === "authenticated" && session && session.role === "ADMIN") {
+    // Only run this effect if the session status is "authenticated" and we haven't already redirected
+    if (status === "authenticated" && session?.role === "ADMIN" && !redirected) {
       console.log("Admin already authenticated, redirecting to admin dashboard");
       setMessage("Already signed in. Redirecting...");
+      setRedirected(true);
       
-      // Use window.location for a hard redirect instead of Next.js router
-      // This avoids potential circular redirects
-      window.location.href = "/admin";
+      // Use Next.js router instead of window.location for smoother transition
+      router.push("/admin");
     }
-  }, [session, status, router]);
+  }, [session, status, router, redirected]);
   
   const submit = async (e) => {
     e.preventDefault();
@@ -29,7 +30,7 @@ export default function AdminLogin() {
     try {
       const result = await signIn("credentials", { 
         password: pw, 
-        redirect: false, // Changed to false to handle redirection manually
+        redirect: false,
         callbackUrl: "/admin"
       });
       
@@ -37,8 +38,8 @@ export default function AdminLogin() {
         setMessage("Invalid password");
       } else if (result?.url) {
         setMessage("Success! Redirecting...");
-        // Use window.location for a hard redirect
-        window.location.href = result.url;
+        // Use Next.js router for redirection
+        router.push(result.url);
       }
     } catch (error) {
       setMessage("An error occurred. Please try again.");

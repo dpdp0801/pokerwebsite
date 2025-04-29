@@ -25,16 +25,28 @@ export async function middleware(req: NextRequest) {
 
     if (!token) {
       console.log("No session token found, redirecting to login");
-      return NextResponse.redirect(new URL("/admin/login", req.url));
+      const redirectResponse = NextResponse.redirect(new URL("/admin/login", req.url));
+      // Add no-cache header to prevent caching of redirect responses
+      redirectResponse.headers.set("Cache-Control", "no-store, max-age=0");
+      redirectResponse.headers.set("x-middleware-cache", "no-cache");
+      return redirectResponse;
     }
     
     if (token.role !== "ADMIN") {
       console.log("User is not an admin, redirecting to login");
-      return NextResponse.redirect(new URL("/admin/login", req.url));
+      const redirectResponse = NextResponse.redirect(new URL("/admin/login", req.url));
+      // Add no-cache header to prevent caching of redirect responses
+      redirectResponse.headers.set("Cache-Control", "no-store, max-age=0");
+      redirectResponse.headers.set("x-middleware-cache", "no-cache");
+      return redirectResponse;
     }
     
     // User is authenticated and has admin role
     console.log("Admin access granted");
+    const response = NextResponse.next();
+    // Also set no-cache for successful admin page loads to ensure fresh auth checks
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
   }
 
   return NextResponse.next();
