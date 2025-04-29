@@ -13,6 +13,49 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown, Search, Filter } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Component } from "react";
+
+// Error boundary class component to catch render errors
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    // Update state so the next render will show the fallback UI
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Log the error to console
+    console.error("Admin Dashboard Error:", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // Render fallback UI
+      return (
+        <div className="container py-12 max-w-6xl">
+          <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <h2 className="text-xl font-semibold text-red-500 mb-4">Something went wrong</h2>
+              <p className="mb-4">There was an error loading the admin dashboard.</p>
+              <pre className="bg-gray-100 p-4 rounded text-left overflow-auto max-h-48 mb-4">
+                {this.state.error?.toString()}
+              </pre>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -559,523 +602,525 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="container py-12 max-w-6xl">
-      <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="buyins">Buy-ins</TabsTrigger>
-        </TabsList>
+    <ErrorBoundary>
+      <div className="container py-12 max-w-6xl">
+        <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
         
-        {/* All Sessions Tab */}
-        <TabsContent value="sessions">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <CardTitle>All Sessions</CardTitle>
-                  <CardDescription>
-                    View and manage all poker sessions.
-                  </CardDescription>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="buyins">Buy-ins</TabsTrigger>
+          </TabsList>
+          
+          {/* All Sessions Tab */}
+          <TabsContent value="sessions">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>All Sessions</CardTitle>
+                    <CardDescription>
+                      View and manage all poker sessions.
+                    </CardDescription>
+                  </div>
+                  
+                  <Button onClick={() => setCreateSessionDialog(true)}>
+                    Create New Session
+                  </Button>
                 </div>
-                
-                <Button onClick={() => setCreateSessionDialog(true)}>
-                  Create New Session
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border mb-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allSessions.length === 0 ? (
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border mb-4">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">No sessions found</TableCell>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      allSessions.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell>
-                            <div>
-                              <div>{session.title}</div>
-                              <div className="text-xs text-muted-foreground">{session.description}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{session.type}</TableCell>
-                          <TableCell>
-                            {formatDate(session.date)} {formatTime(session.startTime)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={
-                              `${
-                                session.status === 'NOT_STARTED' ? 'bg-yellow-100 text-yellow-800' :
-                                session.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                                session.status === 'PAUSED' ? 'bg-blue-100 text-blue-800' :
-                                session.status === 'COMPLETED' ? 'bg-gray-100 text-gray-800' :
-                                'bg-red-100 text-red-800'
-                              }`
-                            }>
-                              {session.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {session.status === 'NOT_STARTED' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-8"
-                                  onClick={() => updateSessionStatus('ACTIVE', session.id)}
-                                >
-                                  Start
-                                </Button>
-                              )}
-                              
-                              {session.status === 'ACTIVE' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-8"
-                                  onClick={() => updateSessionStatus('COMPLETED', session.id)}
-                                >
-                                  End
-                                </Button>
-                              )}
-                              
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8"
-                                onClick={() => handleEditSessionOpen(session)}
-                              >
-                                Edit
-                              </Button>
-                              
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 text-red-600 hover:text-red-700"
-                                onClick={() => {
-                                  setSessionToDelete(session.id);
-                                  setDeleteConfirmDialog(true);
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </TableCell>
+                    </TableHeader>
+                    <TableBody>
+                      {allSessions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center h-24">No sessions found</TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Buy-ins Management Tab */}
-        <TabsContent value="buyins">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <CardTitle>Manage Buy-ins</CardTitle>
-                  <CardDescription>
-                    View and manage player buy-in requests for the current session.
-                  </CardDescription>
+                      ) : (
+                        allSessions.map((session) => (
+                          <TableRow key={session.id}>
+                            <TableCell>
+                              <div>
+                                <div>{session.title}</div>
+                                <div className="text-xs text-muted-foreground">{session.description}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{session.type}</TableCell>
+                            <TableCell>
+                              {formatDate(session.date)} {formatTime(session.startTime)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                `${
+                                  session.status === 'NOT_STARTED' ? 'bg-yellow-100 text-yellow-800' :
+                                  session.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                  session.status === 'PAUSED' ? 'bg-blue-100 text-blue-800' :
+                                  session.status === 'COMPLETED' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-red-100 text-red-800'
+                                }`
+                              }>
+                                {session.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {session.status === 'NOT_STARTED' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-8"
+                                    onClick={() => updateSessionStatus('ACTIVE', session.id)}
+                                  >
+                                    Start
+                                  </Button>
+                                )}
+                                
+                                {session.status === 'ACTIVE' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-8"
+                                    onClick={() => updateSessionStatus('COMPLETED', session.id)}
+                                  >
+                                    End
+                                  </Button>
+                                )}
+                                
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8"
+                                  onClick={() => handleEditSessionOpen(session)}
+                                >
+                                  Edit
+                                </Button>
+                                
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8 text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    setSessionToDelete(session.id);
+                                    setDeleteConfirmDialog(true);
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-                
-                {allSessions.length > 0 && (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search player..."
-                        className="pl-8 max-w-[200px]"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Buy-ins Management Tab */}
+          <TabsContent value="buyins">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <CardTitle>Manage Buy-ins</CardTitle>
+                    <CardDescription>
+                      View and manage player buy-in requests for the current session.
+                    </CardDescription>
+                  </div>
+                  
+                  {allSessions.length > 0 && (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search player..."
+                          className="pl-8 max-w-[200px]"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="gap-1">
+                            <Filter className="h-4 w-4" />
+                            <span>Status: {statusFilter === "all" ? "All" : statusFilter}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setStatusFilter("all")}>All</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setStatusFilter("pending")}>Pending</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setStatusFilter("approved")}>Approved</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setStatusFilter("cancelled")}>Cancelled</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-1">
-                          <Filter className="h-4 w-4" />
-                          <span>Status: {statusFilter === "all" ? "All" : statusFilter}</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setStatusFilter("all")}>All</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatusFilter("pending")}>Pending</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatusFilter("approved")}>Approved</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setStatusFilter("cancelled")}>Cancelled</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!allSessions.length ? (
+                  <p className="text-center py-6 text-muted-foreground">No active session.</p>
+                ) : (
+                  <div>
+                    <div className="rounded-md border mb-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <SortableTableHead field="playerName">Player</SortableTableHead>
+                            <SortableTableHead field="requestDate">Request Date</SortableTableHead>
+                            <SortableTableHead field="amount">Amount</SortableTableHead>
+                            <SortableTableHead field="status">Status</SortableTableHead>
+                            <TableHead>Payment Code</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {requestsWithPaymentCodes.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center h-24">No buy-in requests found</TableCell>
+                            </TableRow>
+                          ) : (
+                            requestsWithPaymentCodes.map((request) => (
+                              <TableRow key={request.id}>
+                                <TableCell>
+                                  <div>
+                                    <div>{request.playerName}</div>
+                                    <div className="text-xs text-muted-foreground">{request.playerId}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{request.requestDate}</TableCell>
+                                <TableCell>${request.amount}</TableCell>
+                                <TableCell>
+                                  <Badge className={
+                                    `${
+                                      request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`
+                                  }>
+                                    {request.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {request.paymentCode && (
+                                    <div className="font-mono text-xs bg-gray-100 p-1 rounded">
+                                      {request.paymentCode}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {request.status === 'pending' && (
+                                    <div className="flex gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="h-8"
+                                        onClick={() => handleUpdateBuyInStatus(request.id, 'approved')}
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="h-8"
+                                        onClick={() => handleUpdateBuyInStatus(request.id, 'cancelled')}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!allSessions.length ? (
-                <p className="text-center py-6 text-muted-foreground">No active session.</p>
-              ) : (
-                <div>
-                  <div className="rounded-md border mb-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <SortableTableHead field="playerName">Player</SortableTableHead>
-                          <SortableTableHead field="requestDate">Request Date</SortableTableHead>
-                          <SortableTableHead field="amount">Amount</SortableTableHead>
-                          <SortableTableHead field="status">Status</SortableTableHead>
-                          <TableHead>Payment Code</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {requestsWithPaymentCodes.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center h-24">No buy-in requests found</TableCell>
-                          </TableRow>
-                        ) : (
-                          requestsWithPaymentCodes.map((request) => (
-                            <TableRow key={request.id}>
-                              <TableCell>
-                                <div>
-                                  <div>{request.playerName}</div>
-                                  <div className="text-xs text-muted-foreground">{request.playerId}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>{request.requestDate}</TableCell>
-                              <TableCell>${request.amount}</TableCell>
-                              <TableCell>
-                                <Badge className={
-                                  `${
-                                    request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    request.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`
-                                }>
-                                  {request.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {request.paymentCode && (
-                                  <div className="font-mono text-xs bg-gray-100 p-1 rounded">
-                                    {request.paymentCode}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {request.status === 'pending' && (
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-8"
-                                      onClick={() => handleUpdateBuyInStatus(request.id, 'approved')}
-                                    >
-                                      Approve
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="h-8"
-                                      onClick={() => handleUpdateBuyInStatus(request.id, 'cancelled')}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      {/* Create Session Dialog */}
-      <Dialog open={createSessionDialog} onOpenChange={setCreateSessionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Session</DialogTitle>
-            <DialogDescription>
-              Set up a new poker tournament or cash game.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="sessionType">Session Type</Label>
-              <Select 
-                value={newSession.type} 
-                onValueChange={(value) => setNewSession({...newSession, type: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mtt">Tournament (MTT)</SelectItem>
-                  <SelectItem value="cash">Cash Game</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+        
+        {/* Create Session Dialog */}
+        <Dialog open={createSessionDialog} onOpenChange={setCreateSessionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Session</DialogTitle>
+              <DialogDescription>
+                Set up a new poker tournament or cash game.
+              </DialogDescription>
+            </DialogHeader>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input 
-                  id="date" 
-                  type="date" 
-                  value={newSession.date}
-                  onChange={(e) => setNewSession({...newSession, date: e.target.value})}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="time">Time</Label>
-                <Input 
-                  id="time" 
-                  type="time" 
-                  value={newSession.time}
-                  onChange={(e) => setNewSession({...newSession, time: e.target.value})}
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input 
-                id="location" 
-                type="text" 
-                value={newSession.location}
-                onChange={(e) => setNewSession({...newSession, location: e.target.value})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
-              <Input 
-                id="buyIn" 
-                type="number" 
-                min="1"
-                value={newSession.buyIn}
-                onChange={(e) => setNewSession({...newSession, buyIn: Number(e.target.value)})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="maxPlayers">Maximum Players</Label>
-              <Input 
-                id="maxPlayers" 
-                type="number" 
-                min="2"
-                value={newSession.maxPlayers}
-                onChange={(e) => setNewSession({...newSession, maxPlayers: Number(e.target.value)})}
-              />
-            </div>
-            
-            {newSession.type === "cash" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="bigBlind">Big Blind</Label>
-                  <Input 
-                    id="bigBlind" 
-                    type="number" 
-                    min="0"
-                    value={newSession.bigBlind}
-                    onChange={(e) => setNewSession({...newSession, bigBlind: Number(e.target.value)})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="smallBlind">Small Blind</Label>
-                  <Input 
-                    id="smallBlind" 
-                    type="number" 
-                    min="0"
-                    value={newSession.smallBlind}
-                    onChange={(e) => setNewSession({...newSession, smallBlind: Number(e.target.value)})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="minBuyIn">Minimum Buy-in</Label>
-                  <Input 
-                    id="minBuyIn" 
-                    type="number" 
-                    min="1"
-                    value={newSession.minBuyIn}
-                    onChange={(e) => setNewSession({...newSession, minBuyIn: Number(e.target.value)})}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setCreateSessionDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateSession}>
-              Create Session
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Edit Session Dialog */}
-      <Dialog open={editSessionDialog} onOpenChange={setEditSessionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Session</DialogTitle>
-            <DialogDescription>
-              Update the poker session details.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {editSessionData && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="editTitle">Title</Label>
-                <Input 
-                  id="editTitle" 
-                  type="text" 
-                  value={editSessionData.title}
-                  onChange={(e) => setEditSessionData({...editSessionData, title: e.target.value})}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="editDescription">Description</Label>
-                <Input 
-                  id="editDescription" 
-                  type="text" 
-                  value={editSessionData.description || ''}
-                  onChange={(e) => setEditSessionData({...editSessionData, description: e.target.value})}
-                />
+                <Label htmlFor="sessionType">Session Type</Label>
+                <Select 
+                  value={newSession.type} 
+                  onValueChange={(value) => setNewSession({...newSession, type: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mtt">Tournament (MTT)</SelectItem>
+                    <SelectItem value="cash">Cash Game</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editDate">Date</Label>
+                  <Label htmlFor="date">Date</Label>
                   <Input 
-                    id="editDate" 
+                    id="date" 
                     type="date" 
-                    value={editSessionData.date}
-                    onChange={(e) => setEditSessionData({...editSessionData, date: e.target.value})}
+                    value={newSession.date}
+                    onChange={(e) => setNewSession({...newSession, date: e.target.value})}
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="editTime">Time</Label>
+                  <Label htmlFor="time">Time</Label>
                   <Input 
-                    id="editTime" 
+                    id="time" 
                     type="time" 
-                    value={editSessionData.time}
-                    onChange={(e) => setEditSessionData({...editSessionData, time: e.target.value})}
+                    value={newSession.time}
+                    onChange={(e) => setNewSession({...newSession, time: e.target.value})}
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="editLocation">Location</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input 
-                  id="editLocation" 
+                  id="location" 
                   type="text" 
-                  value={editSessionData.location}
-                  onChange={(e) => setEditSessionData({...editSessionData, location: e.target.value})}
+                  value={newSession.location}
+                  onChange={(e) => setNewSession({...newSession, location: e.target.value})}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="editBuyIn">Buy-in Amount ($)</Label>
+                <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
                 <Input 
-                  id="editBuyIn" 
+                  id="buyIn" 
                   type="number" 
                   min="1"
-                  value={editSessionData.buyIn}
-                  onChange={(e) => setEditSessionData({...editSessionData, buyIn: Number(e.target.value)})}
+                  value={newSession.buyIn}
+                  onChange={(e) => setNewSession({...newSession, buyIn: Number(e.target.value)})}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="editMaxPlayers">Maximum Players</Label>
+                <Label htmlFor="maxPlayers">Maximum Players</Label>
                 <Input 
-                  id="editMaxPlayers" 
+                  id="maxPlayers" 
                   type="number" 
                   min="2"
-                  value={editSessionData.maxPlayers}
-                  onChange={(e) => setEditSessionData({...editSessionData, maxPlayers: Number(e.target.value)})}
+                  value={newSession.maxPlayers}
+                  onChange={(e) => setNewSession({...newSession, maxPlayers: Number(e.target.value)})}
                 />
               </div>
               
-              {editSessionData.type === "cash" && (
+              {newSession.type === "cash" && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="editMinBuyIn">Minimum Buy-in</Label>
+                    <Label htmlFor="bigBlind">Big Blind</Label>
                     <Input 
-                      id="editMinBuyIn" 
+                      id="bigBlind" 
+                      type="number" 
+                      min="0"
+                      value={newSession.bigBlind}
+                      onChange={(e) => setNewSession({...newSession, bigBlind: Number(e.target.value)})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="smallBlind">Small Blind</Label>
+                    <Input 
+                      id="smallBlind" 
+                      type="number" 
+                      min="0"
+                      value={newSession.smallBlind}
+                      onChange={(e) => setNewSession({...newSession, smallBlind: Number(e.target.value)})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="minBuyIn">Minimum Buy-in</Label>
+                    <Input 
+                      id="minBuyIn" 
                       type="number" 
                       min="1"
-                      value={editSessionData.minBuyIn}
-                      onChange={(e) => setEditSessionData({...editSessionData, minBuyIn: Number(e.target.value)})}
+                      value={newSession.minBuyIn}
+                      onChange={(e) => setNewSession({...newSession, minBuyIn: Number(e.target.value)})}
                     />
                   </div>
                 </>
               )}
             </div>
-          )}
-          
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setEditSessionDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateSession}>
-              Update Session
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Confirm Delete Dialog */}
-      <Dialog open={deleteConfirmDialog} onOpenChange={setDeleteConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this session? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setDeleteConfirmDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={() => handleDeleteSession(sessionToDelete)}>
-              Delete Session
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setCreateSessionDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateSession}>
+                Create Session
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Edit Session Dialog */}
+        <Dialog open={editSessionDialog} onOpenChange={setEditSessionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Session</DialogTitle>
+              <DialogDescription>
+                Update the poker session details.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editSessionData && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editTitle">Title</Label>
+                  <Input 
+                    id="editTitle" 
+                    type="text" 
+                    value={editSessionData.title}
+                    onChange={(e) => setEditSessionData({...editSessionData, title: e.target.value})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editDescription">Description</Label>
+                  <Input 
+                    id="editDescription" 
+                    type="text" 
+                    value={editSessionData.description || ''}
+                    onChange={(e) => setEditSessionData({...editSessionData, description: e.target.value})}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editDate">Date</Label>
+                    <Input 
+                      id="editDate" 
+                      type="date" 
+                      value={editSessionData.date}
+                      onChange={(e) => setEditSessionData({...editSessionData, date: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editTime">Time</Label>
+                    <Input 
+                      id="editTime" 
+                      type="time" 
+                      value={editSessionData.time}
+                      onChange={(e) => setEditSessionData({...editSessionData, time: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editLocation">Location</Label>
+                  <Input 
+                    id="editLocation" 
+                    type="text" 
+                    value={editSessionData.location}
+                    onChange={(e) => setEditSessionData({...editSessionData, location: e.target.value})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editBuyIn">Buy-in Amount ($)</Label>
+                  <Input 
+                    id="editBuyIn" 
+                    type="number" 
+                    min="1"
+                    value={editSessionData.buyIn}
+                    onChange={(e) => setEditSessionData({...editSessionData, buyIn: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editMaxPlayers">Maximum Players</Label>
+                  <Input 
+                    id="editMaxPlayers" 
+                    type="number" 
+                    min="2"
+                    value={editSessionData.maxPlayers}
+                    onChange={(e) => setEditSessionData({...editSessionData, maxPlayers: Number(e.target.value)})}
+                  />
+                </div>
+                
+                {editSessionData.type === "cash" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="editMinBuyIn">Minimum Buy-in</Label>
+                      <Input 
+                        id="editMinBuyIn" 
+                        type="number" 
+                        min="1"
+                        value={editSessionData.minBuyIn}
+                        onChange={(e) => setEditSessionData({...editSessionData, minBuyIn: Number(e.target.value)})}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setEditSessionDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateSession}>
+                Update Session
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Confirm Delete Dialog */}
+        <Dialog open={deleteConfirmDialog} onOpenChange={setDeleteConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this session? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setDeleteConfirmDialog(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => handleDeleteSession(sessionToDelete)}>
+                Delete Session
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ErrorBoundary>
   );
 }
