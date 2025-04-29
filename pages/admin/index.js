@@ -68,17 +68,6 @@ export default function AdminDashboard() {
     }
   }, [router.isReady, router.query, router]);
   
-  // This would come from an API in a real implementation
-  const [currentSession, setCurrentSession] = useState({
-    exists: false,
-    type: null,
-    status: null,
-    date: "",
-    time: "",
-    buyIn: 0,
-    maxPlayers: 0
-  });
-  
   // Buy-in requests (initially empty; populated via API)
   const [buyInRequests, setBuyInRequests] = useState([]);
   
@@ -176,19 +165,8 @@ export default function AdminDashboard() {
     .then(data => {
       console.log("API Response data:", data);
       if (data.success) {
-        setCurrentSession({
-          exists: true,
-          id: data.session.id,
-          type: data.session.type.toLowerCase(),
-          status: data.session.status.toLowerCase(),
-          date: formatDate(data.session.date),
-          time: formatTime(data.session.startTime),
-          buyIn: data.session.buyIn,
-          maxPlayers: data.session.maxPlayers,
-          smallBlind: data.session.smallBlind,
-          bigBlind: data.session.bigBlind,
-          minBuyIn: data.session.minBuyIn
-        });
+        // Add the new session to our list of sessions
+        setAllSessions(prevSessions => [data.session, ...prevSessions]);
         setCreateSessionDialog(false);
         
         toast({
@@ -212,22 +190,6 @@ export default function AdminDashboard() {
         variant: "destructive"
       });
     });
-  };
-  
-  const handleStartSession = () => {
-    updateSessionStatus('ACTIVE');
-  };
-  
-  const handlePauseSession = () => {
-    updateSessionStatus('PAUSED');
-  };
-  
-  const handleResumeSession = () => {
-    updateSessionStatus('ACTIVE');
-  };
-  
-  const handleEndSession = () => {
-    updateSessionStatus('COMPLETED');
   };
   
   const handleUpdateBuyInStatus = (id, newStatus) => {
@@ -309,68 +271,7 @@ export default function AdminDashboard() {
     </TableHead>
   );
 
-  // Update the fetchCurrentSession function
-  useEffect(() => {
-    // Fetch all sessions when component mounts
-    const fetchSessions = async () => {
-      try {
-        // First get all sessions
-        const allSessionsResponse = await fetch('/api/sessions/manage');
-        const allSessionsData = await allSessionsResponse.json();
-        
-        if (allSessionsData.success && allSessionsData.sessions) {
-          // Get the most recent active or not_started session
-          const activeSessions = allSessionsData.sessions.filter(
-            s => s.status === 'ACTIVE' || s.status === 'NOT_STARTED'
-          );
-          
-          if (activeSessions.length > 0) {
-            const mostRecentSession = activeSessions[0]; // Sessions are already ordered by createdAt desc
-            setCurrentSession({
-              exists: true,
-              id: mostRecentSession.id,
-              type: mostRecentSession.type.toLowerCase(),
-              status: mostRecentSession.status.toLowerCase(),
-              date: formatDate(mostRecentSession.date),
-              time: formatTime(mostRecentSession.startTime),
-              buyIn: mostRecentSession.buyIn,
-              maxPlayers: mostRecentSession.maxPlayers,
-              minBuyIn: mostRecentSession.minBuyIn,
-              registeredPlayers: 0 // We'll update this separately
-            });
-            
-            // Get registration count
-            try {
-              const countResponse = await fetch('/api/session-status');
-              const countData = await countResponse.json();
-              if (countData.exists && countData.session) {
-                setCurrentSession(prev => ({
-                  ...prev,
-                  registeredPlayers: countData.session.registeredPlayers || 0
-                }));
-              }
-            } catch (error) {
-              console.error("Error fetching registration count:", error);
-            }
-          }
-          
-          // Save all sessions to state for the sessions list tab
-          setAllSessions(allSessionsData.sessions);
-        }
-      } catch (error) {
-        console.error("Error fetching sessions:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch session data",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    fetchSessions();
-  }, [toast]);
-
-  // Add these helper functions near the top of the component
+  // Add these helper functions needed for UI
   const formatDate = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
@@ -387,21 +288,63 @@ export default function AdminDashboard() {
     });
   };
 
-  // Add a new function to handle session status updates
-  const updateSessionStatus = async (newStatus, sessionId = null) => {
-    const targetId = sessionId || currentSession.id;
+  // Fetch sessions on component mount
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const response = await fetch('/api/sessions/manage');
+        const data = await response.json();
+        
+        if (data.success && data.sessions) {
+          setAllSessions(data.sessions);
+        }
+      } catch (error) {
+        console.error('Error fetching sessions:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch sessions data',
+          variant: 'destructive'
+        });
+      }
+    };
     
-    if (!targetId) {
+    fetchSessions();
+  }, [toast]);
+  
+  // Fetch buy-in requests
+  useEffect(() => {
+    const fetchBuyInRequests = async () => {
+      try {
+        const response = await fetch('/api/buyins');
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.success) {
+          setBuyInRequests(data.buyInRequests || []);
+        }
+      } catch (error) {
+        console.error('Error fetching buy-in requests:', error);
+        // Don't show toast for this - it's normal to have no buy-ins initially
+      }
+    };
+    
+    fetchBuyInRequests();
+  }, []);
+  
+  // Update session status
+  const updateSessionStatus = async (newStatus, sessionId) => {
+    if (!sessionId) {
       toast({
         title: "Error",
-        description: "No active session found",
+        description: "No session ID provided",
         variant: "destructive"
       });
       return;
     }
     
     try {
-      const response = await fetch(`/api/sessions/manage?id=${targetId}`, {
+      const response = await fetch(`/api/sessions/manage?id=${sessionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -414,42 +357,23 @@ export default function AdminDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        // Update in allSessions
+        // Update the session in our state
         setAllSessions(prev => 
-          prev.map(s => s.id === targetId ? { ...s, status: newStatus } : s)
+          prev.map(s => s.id === sessionId ? { ...s, status: newStatus } : s)
         );
-        
-        // If we updated the current session, update it too
-        if (currentSession.id === targetId) {
-          setCurrentSession({
-            ...currentSession,
-            status: newStatus.toLowerCase()
-          });
-        }
         
         toast({
           title: "Status Updated",
           description: `Session status has been updated to ${newStatus.toLowerCase()}.`
         });
-        
-        // Special case: if we completed a session, refresh to update the home page
-        if (newStatus === 'COMPLETED') {
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        }
       } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to update session status",
-          variant: "destructive"
-        });
+        throw new Error(data.message || "Failed to update session status");
       }
     } catch (error) {
       console.error("Error updating session status:", error);
       toast({
         title: "Error",
-        description: "An error occurred while updating the session status",
+        description: error.message || "An error occurred while updating the session status",
         variant: "destructive"
       });
     }
@@ -467,19 +391,6 @@ export default function AdminDashboard() {
       if (data.success) {
         // Remove the session from our state
         setAllSessions(prevSessions => prevSessions.filter(s => s.id !== sessionId));
-        
-        // If we deleted the current session, clear it
-        if (currentSession.id === sessionId) {
-          setCurrentSession({
-            exists: false,
-            type: null,
-            status: null,
-            date: "",
-            time: "",
-            buyIn: 0,
-            maxPlayers: 0
-          });
-        }
         
         setDeleteConfirmDialog(false);
         setSessionToDelete(null);
@@ -569,22 +480,6 @@ export default function AdminDashboard() {
           prevSessions.map(s => s.id === editSessionData.id ? data.session : s)
         );
         
-        // If we updated the current session, update it
-        if (currentSession.id === editSessionData.id) {
-          setCurrentSession({
-            exists: true,
-            id: data.session.id,
-            type: data.session.type.toLowerCase(),
-            status: data.session.status.toLowerCase(),
-            date: formatDate(data.session.date),
-            time: formatTime(data.session.startTime),
-            buyIn: data.session.buyIn,
-            maxPlayers: data.session.maxPlayers,
-            minBuyIn: data.session.minBuyIn,
-            registeredPlayers: currentSession.registeredPlayers || 0
-          });
-        }
-        
         setEditSessionDialog(false);
         setEditSessionData(null);
         
@@ -615,8 +510,8 @@ export default function AdminDashboard() {
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="sessions">All Sessions</TabsTrigger>
-          <TabsTrigger value="buyins">Manage Buy-ins</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="buyins">Buy-ins</TabsTrigger>
         </TabsList>
         
         {/* All Sessions Tab */}
@@ -747,7 +642,7 @@ export default function AdminDashboard() {
                   </CardDescription>
                 </div>
                 
-                {currentSession.exists && (
+                {allSessions.length > 0 && (
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -778,7 +673,7 @@ export default function AdminDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {!currentSession.exists ? (
+              {!allSessions.length ? (
                 <p className="text-center py-6 text-muted-foreground">No active session.</p>
               ) : (
                 <div>
