@@ -14,6 +14,9 @@ export default function Header() {
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   
+  // Check if user is admin
+  const isAdmin = session?.role === "ADMIN";
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -77,21 +80,39 @@ export default function Header() {
                   className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md py-1 z-50"
                   onMouseLeave={() => setShowDropdown(false)}
                 >
-                  <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-gray-100">
-                    Account
-                  </Link>
-                  <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
-                    Settings
-                  </Link>
-                  <Link href="/record" className="block px-4 py-2 text-sm hover:bg-gray-100">
-                    Record
-                  </Link>
-                  <button 
-                    onClick={() => signOut()} 
-                    className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                  >
-                    Sign out
-                  </button>
+                  {isAdmin ? (
+                    // Admin-specific dropdown items
+                    <div>
+                      <Link href="/admin" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                        Admin Dashboard
+                      </Link>
+                      <button 
+                        onClick={() => signOut()} 
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  ) : (
+                    // Regular user dropdown items
+                    <div>
+                      <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                        Account
+                      </Link>
+                      <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                        Settings
+                      </Link>
+                      <Link href="/record" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                        Record
+                      </Link>
+                      <button 
+                        onClick={() => signOut()} 
+                        className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -71,7 +71,7 @@ export default function Status() {
             
             {isAdmin && (
               <div className="flex justify-center">
-                <Link href="/admin">
+                <Link href="/admin?action=create-session">
                   <Button>
                     Create Session
                   </Button>
@@ -166,7 +166,7 @@ export default function Status() {
               Admin Controls
             </p>
             <div className="flex gap-2">
-              <Link href="/admin">
+              <Link href="/admin?action=create-session">
                 <Button variant="outline" size="sm">
                   Manage Session
                 </Button>
@@ -227,7 +227,7 @@ export default function Status() {
               Admin Controls
             </p>
             <div className="flex gap-2">
-              <Link href="/admin">
+              <Link href="/admin?action=create-session">
                 <Button variant="outline" size="sm">
                   Manage Session
                 </Button>

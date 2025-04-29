@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,10 +16,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
+  const router = useRouter();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("session");
   const [createSessionDialog, setCreateSessionDialog] = useState(false);
   const [sessionType, setSessionType] = useState("mtt");
+  
+  // Check if query params indicate we should open create session dialog
+  useEffect(() => {
+    if (router.query.action === "create-session") {
+      setCreateSessionDialog(true);
+      // Clean up the URL
+      router.replace("/admin", undefined, { shallow: true });
+    }
+  }, [router]);
   
   // This would come from an API in a real implementation
   const [currentSession, setCurrentSession] = useState({
