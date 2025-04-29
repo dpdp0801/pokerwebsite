@@ -282,7 +282,7 @@ export default function AdminDashboard() {
   // Create a new session
   const handleCreateSession = () => {
     // Validate form
-    if (!newSession.title || !newSession.date || !newSession.time || !newSession.maxPlayers) {
+    if (!newSession.date || !newSession.time || !newSession.maxPlayers) {
       toast({
         title: "Validation Error",
         description: "Please fill out all required fields",
@@ -310,9 +310,18 @@ export default function AdminDashboard() {
       return;
     }
     
+    // Auto-generate session title based on type
+    let generatedTitle = '';
+    if (newSession.type === "TOURNAMENT") {
+      generatedTitle = `$${newSession.buyIn} buy-in NLH Tournament`;
+    } else {
+      generatedTitle = `$${newSession.smallBlind}/$${newSession.bigBlind} NLH Cash Game`;
+    }
+    
     // Create session data object
     const sessionData = {
       ...newSession,
+      title: generatedTitle,
       status: "NOT_STARTED"
     };
     
@@ -889,28 +898,6 @@ export default function AdminDashboard() {
               <DialogTitle>Create New Session</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Session Title</Label>
-                <Input 
-                  id="title" 
-                  name="title" 
-                  value={newSession.title}
-                  onChange={handleInputChange}
-                  placeholder="Weekly Tournament"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
-                <Input 
-                  id="description" 
-                  name="description" 
-                  value={newSession.description}
-                  onChange={handleInputChange}
-                  placeholder="Details about the session"
-                />
-              </div>
-              
               <div className="space-y-2">
                 <Label>Session Type</Label>
                 <RadioGroup 
