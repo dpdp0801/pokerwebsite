@@ -35,7 +35,8 @@ export default function Structure() {
         const payoutResponse = await fetch('/api/payout-structures');
         
         if (!payoutResponse.ok) {
-          throw new Error('Failed to fetch payout structures');
+          const errorData = await payoutResponse.json();
+          throw new Error(`Failed to fetch payout structures: ${errorData.error || errorData.message || 'Unknown error'}`);
         }
         
         const payoutData = await payoutResponse.json();

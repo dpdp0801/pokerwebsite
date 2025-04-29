@@ -23,13 +23,27 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       message: 'Payout structures fetched successfully',
-      structures
+      structures: structures || []
     });
   } catch (error) {
     console.error('Error fetching payout structures:', error);
+    
+    // Check for specific Prisma errors
+    const errorMessage = error.message || 'Error fetching payout structures';
+    const isPrismaError = error.code && error.code.startsWith('P');
+    
+    if (isPrismaError) {
+      if (error.code === 'P2021') {
+        return res.status(500).json({
+          message: 'Database table not found. You may need to run "npx prisma db push" to create the tables.',
+          error: errorMessage
+        });
+      }
+    }
+    
     return res.status(500).json({
       message: 'Error fetching payout structures',
-      error: error.message
+      error: errorMessage
     });
   }
 } 

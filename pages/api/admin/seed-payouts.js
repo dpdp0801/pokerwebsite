@@ -23,40 +23,21 @@ export default async function handler(req, res) {
     
     console.log('Deleted existing payout structures');
 
-    // Define payout structures
+    // Define payout structures based on user requirements
     const payoutStructures = [
       {
-        name: '3-6 Players',
-        minEntries: 3,
-        maxEntries: 6,
-        tiers: [
-          { position: 1, percentage: 70 },
-          { position: 2, percentage: 30 }
-        ]
-      },
-      {
-        name: '7-9 Players',
-        minEntries: 7,
-        maxEntries: 9,
+        name: '2-10 Players',
+        minEntries: 2,
+        maxEntries: 10,
         tiers: [
           { position: 1, percentage: 65 },
           { position: 2, percentage: 35 }
         ]
       },
       {
-        name: '10-14 Players',
-        minEntries: 10,
-        maxEntries: 14,
-        tiers: [
-          { position: 1, percentage: 60 },
-          { position: 2, percentage: 30 },
-          { position: 3, percentage: 10 }
-        ]
-      },
-      {
-        name: '15-19 Players',
-        minEntries: 15,
-        maxEntries: 19,
+        name: '11-20 Players',
+        minEntries: 11,
+        maxEntries: 20,
         tiers: [
           { position: 1, percentage: 50 },
           { position: 2, percentage: 30 },
@@ -64,45 +45,85 @@ export default async function handler(req, res) {
         ]
       },
       {
-        name: '20-29 Players',
-        minEntries: 20,
-        maxEntries: 29,
+        name: '21-30 Players',
+        minEntries: 21,
+        maxEntries: 30,
         tiers: [
-          { position: 1, percentage: 45 },
-          { position: 2, percentage: 25 },
-          { position: 3, percentage: 15 },
-          { position: 4, percentage: 10 },
-          { position: 5, percentage: 5 }
+          { position: 1, percentage: 40 },
+          { position: 2, percentage: 27 },
+          { position: 3, percentage: 18 },
+          { position: 4, percentage: 15 }
         ]
       },
       {
-        name: '30-39 Players',
-        minEntries: 30,
-        maxEntries: 39,
+        name: '31-40 Players',
+        minEntries: 31,
+        maxEntries: 40,
         tiers: [
-          { position: 1, percentage: 40 },
-          { position: 2, percentage: 23 },
+          { position: 1, percentage: 38 },
+          { position: 2, percentage: 24 },
+          { position: 3, percentage: 17 },
+          { position: 4, percentage: 12 },
+          { position: 5, percentage: 9 }
+        ]
+      },
+      {
+        name: '41-50 Players',
+        minEntries: 41,
+        maxEntries: 50,
+        tiers: [
+          { position: 1, percentage: 35 },
+          { position: 2, percentage: 22 },
+          { position: 3, percentage: 15 },
+          { position: 4, percentage: 11 },
+          { position: 5, percentage: 9 },
+          { position: 6, percentage: 8 }
+        ]
+      },
+      {
+        name: '51-60 Players',
+        minEntries: 51,
+        maxEntries: 60,
+        tiers: [
+          { position: 1, percentage: 32 },
+          { position: 2, percentage: 20 },
           { position: 3, percentage: 14 },
           { position: 4, percentage: 10 },
           { position: 5, percentage: 8 },
-          { position: 6, percentage: 5 }
+          { position: 6, percentage: 8 },
+          { position: 7, percentage: 8 }
         ]
       },
       {
-        name: '40+ Players',
-        minEntries: 40,
-        maxEntries: 999,
+        name: '61-75 Players',
+        minEntries: 61,
+        maxEntries: 75,
         tiers: [
-          { position: 1, percentage: 35 },
-          { position: 2, percentage: 20 },
-          { position: 3, percentage: 15 },
+          { position: 1, percentage: 30 },
+          { position: 2, percentage: 19 },
+          { position: 3, percentage: 13 },
           { position: 4, percentage: 10 },
+          { position: 5, percentage: 8 },
+          { position: 6, percentage: 7 },
+          { position: 7, percentage: 7 },
+          { position: 8, percentage: 6 }
+        ]
+      },
+      {
+        name: '76-100 Players',
+        minEntries: 76,
+        maxEntries: 100,
+        tiers: [
+          { position: 1, percentage: 28 },
+          { position: 2, percentage: 17 },
+          { position: 3, percentage: 12 },
+          { position: 4, percentage: 9 },
           { position: 5, percentage: 7 },
-          { position: 6, percentage: 5 },
-          { position: 7, percentage: 4 },
-          { position: 8, percentage: 2 },
-          { position: 9, percentage: 1 },
-          { position: 10, percentage: 1 }
+          { position: 6, percentage: 6 },
+          { position: 7, percentage: 6 },
+          { position: 8, percentage: 5 },
+          { position: 9, percentage: 5 },
+          { position: 10, percentage: 5 }
         ]
       }
     ];
