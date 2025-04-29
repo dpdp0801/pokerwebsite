@@ -95,8 +95,8 @@ export default async function handler(req, res) {
       // Prepare session data based on type
       const sessionData = {
         title: type.toUpperCase() === 'TOURNAMENT' 
-          ? `$${buyIn} buy-in NLH Tournament`
-          : `$${smallBlind}/$${bigBlind} NLH Cash Game`,
+          ? `$${buyIn} buy-in 9-max NLH Tournament`
+          : `$${smallBlind}/$${bigBlind} 9-max NLH Cash Game`,
         description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
         date: sessionDate,

@@ -18,6 +18,7 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
   const [paymentCode, setPaymentCode] = useState("");
+  const [registrationId, setRegistrationId] = useState("");
   const [loading, setLoading] = useState(true);
   const [availableSessions, setAvailableSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -95,6 +96,43 @@ export default function Register() {
     }
   }, [status, router, toast]);
 
+  const cancelWaitlistRegistration = async () => {
+    if (!registrationId) {
+      toast({
+        title: "Error",
+        description: "Registration ID not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (window.confirm("Are you sure you want to remove yourself from the waitlist?")) {
+      try {
+        const response = await fetch(`/api/registration?id=${registrationId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Waitlist Entry Cancelled",
+            description: "You have been removed from the waitlist successfully.",
+          });
+          // Redirect to home page or reload
+          router.push('/');
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to cancel waitlist registration");
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred while cancelling your registration",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -143,6 +181,7 @@ export default function Register() {
       if (response.ok) {
         setRegistrationSubmitted(true);
         setPaymentCode(data.paymentCode);
+        setRegistrationId(data.id);
         toast({
           title: "Registration Success",
           description: "Your registration has been submitted successfully",
@@ -488,6 +527,16 @@ export default function Register() {
                       <li>You'll have 24 hours to respond and complete payment when a spot opens</li>
                       <li>If you no longer wish to participate, please contact us to be removed from the waitlist</li>
                     </ul>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <Button 
+                      variant="destructive" 
+                      className="w-full" 
+                      onClick={cancelWaitlistRegistration}
+                    >
+                      Remove from Waitlist
+                    </Button>
                   </div>
                 </div>
               )}
