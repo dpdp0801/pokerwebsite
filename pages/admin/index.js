@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("session");
+  const [activeTab, setActiveTab] = useState("sessions");
   const [createSessionDialog, setCreateSessionDialog] = useState(false);
   const [sessionType, setSessionType] = useState("mtt");
   
@@ -79,12 +79,8 @@ export default function AdminDashboard() {
     maxPlayers: 0
   });
   
-  // Mock data for buy-in requests
-  const [buyInRequests, setBuyInRequests] = useState([
-    { id: 1, playerId: "user123", playerName: "John Doe", requestDate: "2023-04-27 14:30", amount: 100, status: "pending" },
-    { id: 2, playerId: "user456", playerName: "Jane Smith", requestDate: "2023-04-27 15:15", amount: 100, status: "approved" },
-    { id: 3, playerId: "user789", playerName: "Bob Johnson", requestDate: "2023-04-27 16:20", amount: 200, status: "cancelled" },
-  ]);
+  // Buy-in requests (initially empty; populated via API)
+  const [buyInRequests, setBuyInRequests] = useState([]);
   
   // Form state for creating a new session
   const [newSession, setNewSession] = useState({
@@ -618,92 +614,10 @@ export default function AdminDashboard() {
       <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="session">Active Session</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sessions">All Sessions</TabsTrigger>
           <TabsTrigger value="buyins">Manage Buy-ins</TabsTrigger>
         </TabsList>
-        
-        {/* Session Management Tab */}
-        <TabsContent value="session">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Session Management</CardTitle>
-              <CardDescription>
-                Manage the current active poker session.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {currentSession.exists ? (
-                <div className="space-y-6">
-                  <div className="bg-muted rounded-md p-4">
-                    <h3 className="font-medium text-lg mb-2">Current Session</h3>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Type:</span> {currentSession.type === 'mtt' || currentSession.type === 'tournament' ? 'Tournament' : 'Cash Game'}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Status:</span> {currentSession.status === 'not_started' ? 'Not Started' : currentSession.status === 'active' ? 'Active' : currentSession.status === 'paused' ? 'Paused' : 'Completed'}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Date:</span> {currentSession.date}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Time:</span> {currentSession.time}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Buy-in:</span> ${currentSession.buyIn}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Max Players:</span> {currentSession.maxPlayers}
-                      </div>
-                      {currentSession.type === 'cash' && (
-                        <>
-                          <div>
-                            <span className="text-muted-foreground">Min Buy-in:</span> ${currentSession.minBuyIn}
-                          </div>
-                        </>
-                      )}
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground">Registered Players:</span> {currentSession.registeredPlayers || 0} of {currentSession.maxPlayers}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {currentSession.status === 'not_started' && (
-                      <Button onClick={handleStartSession}>Start Session</Button>
-                    )}
-                    
-                    {currentSession.status === 'active' && currentSession.type === 'mtt' && (
-                      <Button onClick={handlePauseSession}>Pause Tournament</Button>
-                    )}
-                    
-                    {currentSession.status === 'paused' && currentSession.type === 'mtt' && (
-                      <Button onClick={handleResumeSession}>Resume Tournament</Button>
-                    )}
-                    
-                    <Button onClick={() => handleEditSessionOpen(allSessions.find(s => s.id === currentSession.id))}>
-                      Edit Session
-                    </Button>
-                    
-                    <Button variant="destructive" onClick={() => {
-                      setSessionToDelete(currentSession.id);
-                      setDeleteConfirmDialog(true);
-                    }}>
-                      Delete Session
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-6">No active session. Create a new poker session to get started.</p>
-                  <Button onClick={() => setCreateSessionDialog(true)}>Create New Session</Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
         
         {/* All Sessions Tab */}
         <TabsContent value="sessions">
