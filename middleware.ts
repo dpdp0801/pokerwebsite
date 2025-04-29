@@ -4,18 +4,31 @@ import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  
+  // Get the token regardless of route
+  const token = await getToken({ 
+    req, 
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production",
+  });
 
-  // Allow the login form itself to load
-  if (pathname === "/admin/login") return NextResponse.next();
+  // Special handling for the login page
+  if (pathname === "/admin/login") {
+    // If user is already authenticated as admin, redirect to admin page
+    if (token && token.role === "ADMIN") {
+      console.log("Authenticated admin attempting to access login page, redirecting to admin dashboard");
+      const redirectResponse = NextResponse.redirect(new URL("/admin", req.url));
+      redirectResponse.headers.set("Cache-Control", "no-store, max-age=0");
+      redirectResponse.headers.set("x-middleware-cache", "no-cache");
+      return redirectResponse;
+    }
+    
+    // Non-admin users can access the login page
+    return NextResponse.next();
+  }
 
   // Protect all other /admin routes
   if (pathname.startsWith("/admin")) {
-    const token = await getToken({ 
-      req, 
-      secret: process.env.NEXTAUTH_SECRET,
-      secureCookie: process.env.NODE_ENV === "production",
-    });
-    
     // Debug log (visible in server logs)
     console.log("Auth check for admin route:", { 
       path: pathname, 

@@ -8,20 +8,21 @@ export default function AdminLogin() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [redirected, setRedirected] = useState(false);
   
-  // If user is already logged in as admin, redirect to admin dashboard
+  // If user is already logged in as admin, redirect to admin dashboard immediately
   useEffect(() => {
-    // Only run this effect if the session status is "authenticated" and we haven't already redirected
-    if (status === "authenticated" && session?.role === "ADMIN" && !redirected) {
-      console.log("Admin already authenticated, redirecting to admin dashboard");
-      setMessage("Already signed in. Redirecting...");
-      setRedirected(true);
+    if (status === "authenticated" && session?.role === "ADMIN") {
+      // Navigate immediately to admin page
+      router.replace("/admin");
       
-      // Use Next.js router instead of window.location for smoother transition
-      router.push("/admin");
+      // Fallback: Use window.location as a last resort if router doesn't work
+      const timeout = setTimeout(() => {
+        window.location.href = "/admin";
+      }, 1000);
+      
+      return () => clearTimeout(timeout);
     }
-  }, [session, status, router, redirected]);
+  }, [session, status, router]);
   
   const submit = async (e) => {
     e.preventDefault();
@@ -37,9 +38,8 @@ export default function AdminLogin() {
       if (result?.error) {
         setMessage("Invalid password");
       } else if (result?.url) {
-        setMessage("Success! Redirecting...");
-        // Use Next.js router for redirection
-        router.push(result.url);
+        // Direct navigation after successful login
+        window.location.href = result.url;
       }
     } catch (error) {
       setMessage("An error occurred. Please try again.");
@@ -49,28 +49,29 @@ export default function AdminLogin() {
     }
   };
   
-  // If already logged in as admin, show loading
-  if (status === "authenticated" && session?.role === "ADMIN") {
+  // If loaded but not yet authenticated, show the login form
+  if (status === "unauthenticated" || (status === "authenticated" && session?.role !== "ADMIN")) {
     return (
-      <div style={{textAlign:"center", marginTop:"20vh"}}>
-        <p>{message || "Already signed in. Redirecting..."}</p>
-      </div>
+      <form onSubmit={submit} style={{textAlign:"center",marginTop:"20vh"}}>
+        <h2>Admin Login</h2>
+        {message && <p style={{color: message.includes("Success") ? "green" : "red"}}>{message}</p>}
+        <input 
+          type="password" 
+          value={pw} 
+          onChange={e=>setPw(e.target.value)} 
+          disabled={isLoading}
+        />
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Enter"}
+        </button>
+      </form>
     );
   }
   
+  // Show a minimal loading screen while the redirection happens
   return (
-    <form onSubmit={submit} style={{textAlign:"center",marginTop:"20vh"}}>
-      <h2>Admin Login</h2>
-      {message && <p style={{color: message.includes("Success") ? "green" : "red"}}>{message}</p>}
-      <input 
-        type="password" 
-        value={pw} 
-        onChange={e=>setPw(e.target.value)} 
-        disabled={isLoading}
-      />
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? "Signing in..." : "Enter"}
-      </button>
-    </form>
+    <div style={{textAlign:"center", marginTop:"20vh"}}>
+      <p>Redirecting to admin dashboard...</p>
+    </div>
   );
 }
