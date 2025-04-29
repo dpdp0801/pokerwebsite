@@ -56,6 +56,7 @@ export default function AdminDashboard() {
     time: "",
     buyIn: 100,
     maxPlayers: 9,
+    location: "385 S Catalina Ave", // Default location
     // Additional fields for cash games
     bigBlind: 0.5,
     smallBlind: 0.2,
@@ -68,8 +69,12 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   
   const handleCreateSession = () => {
+    console.log("Create Session button clicked");
+    console.log("Form data:", newSession);
+    
     // Validate form
     if (!newSession.date || !newSession.time || !newSession.maxPlayers) {
+      console.log("Validation failed: Missing required fields");
       toast({
         title: "Validation Error",
         description: "Please fill out all required fields",
@@ -80,6 +85,7 @@ export default function AdminDashboard() {
     
     // Type-specific validation
     if (newSession.type === "mtt" && !newSession.buyIn) {
+      console.log("Validation failed: Missing buy-in for tournament");
       toast({
         title: "Validation Error",
         description: "Please enter a buy-in amount for the tournament",
@@ -89,6 +95,7 @@ export default function AdminDashboard() {
     }
     
     if (newSession.type === "cash" && (!newSession.smallBlind || !newSession.bigBlind || !newSession.minBuyIn)) {
+      console.log("Validation failed: Missing cash game fields");
       toast({
         title: "Validation Error",
         description: "Please enter blinds and minimum buy-in for the cash game",
@@ -105,6 +112,8 @@ export default function AdminDashboard() {
       ...newSession
     };
     
+    console.log("Sending data to API:", sessionData);
+    
     // Send data to API
     fetch('/api/sessions/create', {
       method: 'POST',
@@ -113,10 +122,29 @@ export default function AdminDashboard() {
       },
       body: JSON.stringify(sessionData),
     })
-    .then(response => response.json())
+    .then(response => {
+      console.log("API Response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
+      console.log("API Response data:", data);
       if (data.success) {
-        setCurrentSession(sessionData);
+        setCurrentSession({
+          exists: true,
+          id: data.session.id,
+          type: data.session.type.toLowerCase(),
+          status: data.session.status.toLowerCase(),
+          date: formatDate(data.session.date),
+          time: formatTime(data.session.startTime),
+          buyIn: data.session.buyIn,
+          maxPlayers: data.session.maxPlayers,
+          smallBlind: data.session.smallBlind,
+          bigBlind: data.session.bigBlind,
+          minBuyIn: data.session.minBuyIn
+        });
         setCreateSessionDialog(false);
         
         toast({
@@ -124,6 +152,7 @@ export default function AdminDashboard() {
           description: `A new ${newSession.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
         });
       } else {
+        console.error("API error:", data.message);
         toast({
           title: "Error",
           description: data.message || "An error occurred while creating the session",
@@ -135,7 +164,7 @@ export default function AdminDashboard() {
       console.error("Error creating session:", error);
       toast({
         title: "Error",
-        description: "An error occurred while creating the session",
+        description: "An error occurred while creating the session. Check the console for details.",
         variant: "destructive"
       });
     });

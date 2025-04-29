@@ -5,14 +5,23 @@ import { authOptions } from '../auth/[...nextauth]';
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
+  console.log("API route /api/sessions/create called");
+  
   // Check request method
   if (req.method !== 'POST') {
+    console.log("Method not allowed:", req.method);
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
   // Check authentication and admin role
   const session = await getServerSession(req, res, authOptions);
+  console.log("User session:", session ? { 
+    user: session.user?.email, 
+    role: session.role 
+  } : "No session");
+  
   if (!session || session.role !== 'ADMIN') {
+    console.log("Not authorized. Session role:", session?.role);
     return res.status(403).json({ success: false, message: 'Not authorized' });
   }
 
@@ -27,6 +36,11 @@ export default async function handler(req, res) {
       bigBlind,
       minBuyIn
     } = req.body;
+
+    console.log("Received session data:", {
+      type, date, time, buyIn, maxPlayers,
+      smallBlind, bigBlind, minBuyIn
+    });
 
     // Convert date and time strings to Date objects
     const dateObj = new Date(date);
@@ -44,7 +58,7 @@ export default async function handler(req, res) {
       startTime: dateObj,
       location: '385 S Catalina Ave', // Default location
       status: 'NOT_STARTED',
-      maxPlayers,
+      maxPlayers: parseInt(maxPlayers, 10),
     };
 
     // Add type-specific fields
@@ -59,10 +73,14 @@ export default async function handler(req, res) {
       sessionData.bigBlind = parseFloat(bigBlind);
     }
 
+    console.log("Prepared session data for database:", sessionData);
+
     // Create the session in the database
     const createdSession = await prisma.pokerSession.create({
       data: sessionData,
     });
+
+    console.log("Session created successfully:", createdSession.id);
 
     return res.status(200).json({
       success: true,
@@ -73,7 +91,7 @@ export default async function handler(req, res) {
     console.error('Error creating session:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to create session',
+      message: 'Failed to create session: ' + error.message,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
