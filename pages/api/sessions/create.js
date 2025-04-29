@@ -78,14 +78,14 @@ export default async function handler(req, res) {
       }
 
       // Validate specific fields based on type
-      if (type.toLowerCase() === 'mtt' && !buyIn) {
+      if (type.toUpperCase() === 'TOURNAMENT' && !buyIn) {
         return res.status(400).json({ 
           success: false, 
           message: "buyIn is required for tournament sessions."
         });
       }
 
-      if (type.toLowerCase() === 'cash' && (!smallBlind || !bigBlind || !minBuyIn)) {
+      if (type.toUpperCase() === 'CASH_GAME' && (!smallBlind || !bigBlind || !minBuyIn)) {
         return res.status(400).json({ 
           success: false, 
           message: "smallBlind, bigBlind, and minBuyIn are required for cash game sessions."
@@ -94,10 +94,10 @@ export default async function handler(req, res) {
 
       // Prepare session data based on type
       const sessionData = {
-        title: type.toLowerCase() === 'mtt' 
-          ? `$${buyIn} NLH Tournament`
+        title: type.toUpperCase() === 'TOURNAMENT' 
+          ? `$${buyIn} buy-in NLH Tournament`
           : `$${smallBlind}/$${bigBlind} NLH Cash Game`,
-        description: `${maxPlayers}-max ${type.toLowerCase() === 'mtt' ? 'tournament' : 'cash game'}`,
+        description: `${maxPlayers}-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
         date: sessionDate,
         startTime: sessionDate,
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
       };
 
       // Add type-specific fields
-      if (type.toLowerCase() === 'mtt') {
+      if (type.toUpperCase() === 'TOURNAMENT') {
         sessionData.buyIn = parseInt(buyIn, 10);
       } else {
         // Cash game specific fields - now we can store them directly in DB columns
