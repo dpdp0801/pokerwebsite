@@ -87,7 +87,7 @@ export default function Home() {
       setShowDialog(true);
     } else {
       // If user is authenticated and session exists, proceed to registration page
-      window.location.href = "/register";
+      router.push("/register");
     }
   };
 

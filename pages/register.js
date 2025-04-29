@@ -36,7 +36,7 @@ export default function Register() {
   const fetchAvailableSessions = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/sessions/manage");
+      const res = await fetch("/api/sessions/available");
       
       if (!res.ok) {
         throw new Error("Failed to fetch available sessions");
@@ -44,10 +44,8 @@ export default function Register() {
       
       const data = await res.json();
       
-      // Filter only NOT_STARTED sessions
-      const openSessions = data.sessions?.filter(session => 
-        session.status === "NOT_STARTED"
-      ) || [];
+      // Get all available sessions
+      const openSessions = data.sessions || [];
       
       setAvailableSessions(openSessions);
       
@@ -308,7 +306,45 @@ export default function Register() {
                       <span className="text-muted-foreground">Location:</span>{' '}
                       {selectedSession.location}
                     </div>
+                    {selectedSession.maxPlayers && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Seats:</span>{' '}
+                        <span className={selectedSession.seatsAvailable <= 3 ? "text-orange-600 font-medium" : ""}>
+                          {selectedSession.seatsAvailable > 0 
+                            ? `${selectedSession.seatsAvailable} of ${selectedSession.maxPlayers} available`
+                            : "No seats available - waitlist only"}
+                        </span>
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Waitlist or seats information */}
+                  {selectedSession.wouldBeWaitlisted ? (
+                    <div className="mt-3 bg-yellow-50 p-2 rounded text-sm border border-yellow-200">
+                      <p className="font-medium text-yellow-800">Waitlist Notice</p>
+                      <p className="text-yellow-700 text-xs mt-1">
+                        This session is at capacity. Your registration will be placed on the waitlist, and you'll 
+                        be notified if a spot becomes available.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-3 bg-blue-50 p-2 rounded text-sm border border-blue-200">
+                      <p className="font-medium text-blue-800">Refund Policy</p>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Please note that there are no refunds after registration is confirmed. Make sure you can attend
+                        before proceeding.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedSession.alreadyRegistered && (
+                    <div className="mt-3 bg-red-50 p-2 rounded text-sm border border-red-200">
+                      <p className="font-medium text-red-800">Already Registered</p>
+                      <p className="text-red-700 text-xs mt-1">
+                        You are already registered for this session.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -350,8 +386,17 @@ export default function Register() {
               </div>
             </div>
             
-            <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
-              {isSubmitting ? 'Processing...' : 'Submit Registration'}
+            <Button 
+              type="submit" 
+              className="w-full mt-6" 
+              disabled={isSubmitting || (selectedSession?.alreadyRegistered)}
+            >
+              {isSubmitting 
+                ? 'Processing...' 
+                : selectedSession?.alreadyRegistered
+                  ? 'Already Registered'
+                  : 'Submit Registration'
+              }
             </Button>
           </form>
           
