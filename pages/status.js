@@ -549,72 +549,58 @@ export default function Status() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="border rounded-md overflow-hidden">
-                        <div className="bg-muted/20 px-4 py-2 font-semibold">Current Level</div>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-center">Small Blind</TableHead>
-                              <TableHead className="text-center">Big Blind</TableHead>
-                              <TableHead className="text-center">Ante</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell className="text-center font-medium">
-                                {blindStructureData.currentLevel?.smallBlind || '—'}
-                              </TableCell>
-                              <TableCell className="text-center font-medium">
-                                {blindStructureData.currentLevel?.bigBlind || '—'}
-                              </TableCell>
-                              <TableCell className="text-center font-medium">
-                                {blindStructureData.currentLevel?.ante || '—'}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
+                    <div className="space-y-6">
+                      {/* Current Level */}
+                      <div className="bg-background border rounded-md p-4">
+                        <div className="text-center font-medium text-base text-muted-foreground mb-2">
+                          Current Level
+                        </div>
+                        <div className="flex justify-center items-center space-x-6 my-3">
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Small Blind</p>
+                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.smallBlind || '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Big Blind</p>
+                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.bigBlind || '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Ante</p>
+                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.ante || '—'}</p>
+                          </div>
+                        </div>
                       </div>
 
-                      {nextLevel && !nextLevel.isBreak && (
-                        <div className="border rounded-md overflow-hidden">
-                          <div className="bg-muted/20 px-4 py-2 font-semibold flex items-center">
+                      {/* Next Level */}
+                      {nextLevel && !nextLevel.isBreak ? (
+                        <div className="bg-background border rounded-md p-4">
+                          <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
                             <ChevronDown className="h-4 w-4 mr-1" />
-                            Next Level
+                            <span>Next Level</span>
                           </div>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="text-center">Small Blind</TableHead>
-                                <TableHead className="text-center">Big Blind</TableHead>
-                                <TableHead className="text-center">Ante</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              <TableRow>
-                                <TableCell className="text-center">
-                                  {nextLevel?.smallBlind || '—'}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {nextLevel?.bigBlind || '—'}
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {nextLevel?.ante || '—'}
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-
-                      {nextLevel && nextLevel.isBreak && (
-                        <div className="border rounded-md overflow-hidden">
-                          <div className="bg-muted/20 px-4 py-2 font-semibold flex items-center">
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                            Next: {nextLevel.breakName} - {nextLevel.duration} min
+                          <div className="flex justify-center items-center space-x-6 my-2">
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Small Blind</p>
+                              <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Big Blind</p>
+                              <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-muted-foreground">Ante</p>
+                              <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
+                            </div>
                           </div>
                         </div>
-                      )}
+                      ) : nextLevel && nextLevel.isBreak ? (
+                        <div className="bg-background border rounded-md p-4">
+                          <div className="text-center font-medium text-muted-foreground flex items-center justify-center">
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            <span>Next: {nextLevel.breakName} - {nextLevel.duration} min</span>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   
