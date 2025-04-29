@@ -101,7 +101,7 @@ export default async function handler(req, res) {
         type: type.toUpperCase(),
         date: sessionDate,
         startTime: sessionDate,
-        location: location || '385 S Catalina Ave', // Use provided location or default
+        location: location || '385 S Catalina Ave, Apt 315', // Use provided location or default
         status: 'NOT_STARTED',
         maxPlayers: parseInt(maxPlayers, 10),
       };

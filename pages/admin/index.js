@@ -104,7 +104,7 @@ export default function AdminDashboard() {
     time: "19:00",
     buyIn: 100,
     maxPlayers: 9,
-    location: "385 S Catalina Ave",
+    location: "385 S Catalina Ave, Apt 315",
     // Additional fields for cash games
     bigBlind: 0.5,
     smallBlind: 0.2,
@@ -313,9 +313,9 @@ export default function AdminDashboard() {
     // Auto-generate session title based on type
     let generatedTitle = '';
     if (newSession.type === "TOURNAMENT") {
-      generatedTitle = `$${newSession.buyIn} buy-in NLH Tournament`;
+      generatedTitle = `$${newSession.buyIn} buy-in 9-max NLH Tournament`;
     } else {
-      generatedTitle = `$${newSession.smallBlind}/$${newSession.bigBlind} NLH Cash Game`;
+      generatedTitle = `$${newSession.smallBlind}/$${newSession.bigBlind} 9-max NLH Cash Game`;
     }
     
     // Convert string number values to actual numbers
@@ -364,7 +364,7 @@ export default function AdminDashboard() {
           time: "19:00",
           buyIn: 100,
           maxPlayers: 9,
-          location: "385 S Catalina Ave",
+          location: "385 S Catalina Ave, Apt 315",
           bigBlind: 0.5,
           smallBlind: 0.2,
           minBuyIn: 50
@@ -474,7 +474,7 @@ export default function AdminDashboard() {
       time: session.startTime ? format(new Date(session.startTime), "HH:mm") : "19:00",
       buyIn: session.buyIn || 100,
       maxPlayers: session.maxPlayers || 9,
-      location: session.location || "385 S Catalina Ave",
+      location: session.location || "385 S Catalina Ave, Apt 315",
       bigBlind: session.bigBlind || 0.5,
       smallBlind: session.smallBlind || 0.2,
       minBuyIn: session.minBuyIn || 50

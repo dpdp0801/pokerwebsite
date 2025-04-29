@@ -29,7 +29,7 @@ export default function Home() {
     time: "",
     buyIn: 100,
     maxPlayers: 9,
-    location: "385 S Catalina Ave",
+    location: "385 S Catalina Ave, Apt 315",
     bigBlind: 0.5,
     smallBlind: 0.2,
     minBuyIn: 50
@@ -96,12 +96,12 @@ export default function Home() {
     if (!sessionData) return '';
     
     if (sessionData.type === 'MTT' || sessionData.type === 'TOURNAMENT') {
-      return `$${sessionData.buyIn} NLH ${sessionData.maxPlayers}-Max Tournament`;
+      return `$${sessionData.buyIn} NLH 9-Max Tournament`;
     } else {
       // Cash game - use the smallBlind/bigBlind values that were extracted in the API
       const smallBlind = sessionData.smallBlind || 0.25;
       const bigBlind = sessionData.bigBlind || 0.5;
-      return `$${smallBlind}/$${bigBlind} NLH ${sessionData.maxPlayers}-Max Cash Game`;
+      return `$${smallBlind}/$${bigBlind} NLH 9-Max Cash Game`;
     }
   };
 
@@ -273,12 +273,6 @@ export default function Home() {
             >
               Register Now
             </Button>
-            
-            {sessionData.description && (
-              <p className="mt-6 text-sm text-muted-foreground max-w-lg">
-                {sessionData.description}
-              </p>
-            )}
           </>
         ) : (
           // Content when no session exists
