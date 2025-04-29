@@ -4,6 +4,13 @@ import { useSession, signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/router";
+
+// Import the session creation dialog components directly
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export default function Home() {
   const { data: session } = useSession();
@@ -11,6 +18,22 @@ export default function Home() {
   const [showSignInDialog, setShowSignInDialog] = useState(false);
   const [sessionExists, setSessionExists] = useState(false);
   const [sessionData, setSessionData] = useState(null);
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  // Added direct creation dialog state
+  const [createSessionDialog, setCreateSessionDialog] = useState(false);
+  const [newSession, setNewSession] = useState({
+    type: "mtt",
+    date: "",
+    time: "",
+    buyIn: 100,
+    maxPlayers: 9,
+    location: "385 S Catalina Ave",
+    bigBlind: 0.5,
+    smallBlind: 0.2,
+    minBuyIn: 50
+  });
   
   useEffect(() => {
     // Make the API call to check session status
@@ -100,6 +123,99 @@ export default function Home() {
     
     return <Badge className={color}>{label}</Badge>;
   };
+  
+  // Add handleCreateSession function
+  const handleCreateSession = () => {
+    console.log("Create Session button clicked");
+    console.log("Form data:", newSession);
+    
+    // Validate form
+    if (!newSession.date || !newSession.time || !newSession.maxPlayers) {
+      console.log("Validation failed: Missing required fields");
+      toast({
+        title: "Validation Error",
+        description: "Please fill out all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Type-specific validation
+    if (newSession.type === "mtt" && !newSession.buyIn) {
+      console.log("Validation failed: Missing buy-in for tournament");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a buy-in amount for the tournament",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (newSession.type === "cash" && (!newSession.smallBlind || !newSession.bigBlind || !newSession.minBuyIn)) {
+      console.log("Validation failed: Missing cash game fields");
+      toast({
+        title: "Validation Error",
+        description: "Please enter blinds and minimum buy-in for the cash game",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // This would be an API call in a real implementation
+    const sessionData = {
+      exists: true,
+      type: newSession.type,
+      status: "not_started",
+      ...newSession
+    };
+    
+    console.log("Sending data to API:", sessionData);
+    
+    // Send data to API
+    fetch('/api/sessions/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sessionData),
+    })
+    .then(response => {
+      console.log("API Response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("API Response data:", data);
+      if (data.success) {
+        setCreateSessionDialog(false);
+        
+        toast({
+          title: "Session Created",
+          description: `A new ${newSession.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
+        });
+        
+        // Refresh the page to show the new session
+        window.location.reload();
+      } else {
+        console.error("API error:", data.message);
+        toast({
+          title: "Error",
+          description: data.message || "An error occurred while creating the session",
+          variant: "destructive"
+        });
+      }
+    })
+    .catch(error => {
+      console.error("Error creating session:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while creating the session. Check the console for details.",
+        variant: "destructive"
+      });
+    });
+  };
 
   return (
     <>
@@ -160,7 +276,7 @@ export default function Home() {
             
             {session?.role === "ADMIN" && (
               <Button 
-                onClick={() => window.location.href = "/admin"} 
+                onClick={() => setCreateSessionDialog(true)} 
                 className="mt-10"
               >
                 Create Session
@@ -204,6 +320,126 @@ export default function Home() {
               Sign In
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Create Session Dialog */}
+      <Dialog open={createSessionDialog} onOpenChange={setCreateSessionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Session</DialogTitle>
+            <DialogDescription>
+              Set up a new poker tournament or cash game.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="sessionType">Session Type</Label>
+              <Select 
+                value={newSession.type} 
+                onValueChange={(value) => setNewSession({...newSession, type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mtt">Tournament (MTT)</SelectItem>
+                  <SelectItem value="cash">Cash Game</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date</Label>
+                <Input 
+                  id="date" 
+                  type="date" 
+                  value={newSession.date}
+                  onChange={(e) => setNewSession({...newSession, date: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="time">Time</Label>
+                <Input 
+                  id="time" 
+                  type="time" 
+                  value={newSession.time}
+                  onChange={(e) => setNewSession({...newSession, time: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
+              <Input 
+                id="buyIn" 
+                type="number" 
+                min="1"
+                value={newSession.buyIn}
+                onChange={(e) => setNewSession({...newSession, buyIn: Number(e.target.value)})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="maxPlayers">Maximum Players</Label>
+              <Input 
+                id="maxPlayers" 
+                type="number" 
+                min="2"
+                value={newSession.maxPlayers}
+                onChange={(e) => setNewSession({...newSession, maxPlayers: Number(e.target.value)})}
+              />
+            </div>
+            
+            {newSession.type === "cash" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bigBlind">Big Blind</Label>
+                  <Input 
+                    id="bigBlind" 
+                    type="number" 
+                    min="0"
+                    value={newSession.bigBlind}
+                    onChange={(e) => setNewSession({...newSession, bigBlind: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="smallBlind">Small Blind</Label>
+                  <Input 
+                    id="smallBlind" 
+                    type="number" 
+                    min="0"
+                    value={newSession.smallBlind}
+                    onChange={(e) => setNewSession({...newSession, smallBlind: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="minBuyIn">Minimum Buy-in</Label>
+                  <Input 
+                    id="minBuyIn" 
+                    type="number" 
+                    min="1"
+                    value={newSession.minBuyIn}
+                    onChange={(e) => setNewSession({...newSession, minBuyIn: Number(e.target.value)})}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setCreateSessionDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSession}>
+              Create Session
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
