@@ -127,10 +127,16 @@ export default function Home() {
   // Add handleCreateSession function
   const handleCreateSession = () => {
     console.log("Create Session button clicked");
-    console.log("Form data:", newSession);
+    
+    // First, validate the form is filled out properly
+    // Prepare a copy of the form data for validation
+    const formData = { ...newSession };
+    
+    // Log full form data for debugging
+    console.log("Form data:", formData);
     
     // Validate form
-    if (!newSession.date || !newSession.time || !newSession.maxPlayers) {
+    if (!formData.date || !formData.time || !formData.maxPlayers) {
       console.log("Validation failed: Missing required fields");
       toast({
         title: "Validation Error",
@@ -141,7 +147,7 @@ export default function Home() {
     }
     
     // Type-specific validation
-    if (newSession.type === "mtt" && !newSession.buyIn) {
+    if (formData.type === "mtt" && !formData.buyIn) {
       console.log("Validation failed: Missing buy-in for tournament");
       toast({
         title: "Validation Error",
@@ -151,7 +157,7 @@ export default function Home() {
       return;
     }
     
-    if (newSession.type === "cash" && (!newSession.smallBlind || !newSession.bigBlind || !newSession.minBuyIn)) {
+    if (formData.type === "cash" && (!formData.smallBlind || !formData.bigBlind || !formData.minBuyIn)) {
       console.log("Validation failed: Missing cash game fields");
       toast({
         title: "Validation Error",
@@ -161,15 +167,21 @@ export default function Home() {
       return;
     }
     
-    // This would be an API call in a real implementation
-    const sessionData = {
-      exists: true,
-      type: newSession.type,
-      status: "not_started",
-      ...newSession
+    // Prepare data for API
+    // Make sure all numeric values are actually numbers not strings
+    const apiData = {
+      type: formData.type,
+      date: formData.date,
+      time: formData.time,
+      maxPlayers: Number(formData.maxPlayers),
+      location: formData.location,
+      buyIn: formData.type === "mtt" ? Number(formData.buyIn) : undefined,
+      smallBlind: formData.type === "cash" ? Number(formData.smallBlind) : undefined,
+      bigBlind: formData.type === "cash" ? Number(formData.bigBlind) : undefined,
+      minBuyIn: formData.type === "cash" ? Number(formData.minBuyIn) : undefined
     };
     
-    console.log("Sending data to API:", sessionData);
+    console.log("Sending data to API:", apiData);
     
     // Send data to API
     fetch('/api/sessions/create', {
@@ -177,12 +189,14 @@ export default function Home() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(sessionData),
+      body: JSON.stringify(apiData),
     })
     .then(response => {
       console.log("API Response status:", response.status);
       if (!response.ok) {
-        throw new Error(`Server responded with status ${response.status}`);
+        return response.json().then(errData => {
+          throw new Error(errData.message || `Server responded with status ${response.status}`);
+        });
       }
       return response.json();
     })
@@ -193,7 +207,7 @@ export default function Home() {
         
         toast({
           title: "Session Created",
-          description: `A new ${newSession.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
+          description: `A new ${formData.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
         });
         
         // Refresh the page to show the new session
@@ -211,7 +225,7 @@ export default function Home() {
       console.error("Error creating session:", error);
       toast({
         title: "Error",
-        description: "An error occurred while creating the session. Check the console for details.",
+        description: error.message || "An error occurred while creating the session. Check the console for details.",
         variant: "destructive"
       });
     });
