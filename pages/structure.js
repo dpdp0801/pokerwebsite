@@ -2,40 +2,101 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export default function Structure() {
   const [loading, setLoading] = useState(true);
+  const [seedingPayouts, setSeedingPayouts] = useState(false);
   const [blindStructure, setBlindStructure] = useState(null);
+  const [payoutStructures, setPayoutStructures] = useState([]);
+  const [activePayoutTab, setActivePayoutTab] = useState('default');
   const [error, setError] = useState(null);
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const isAdmin = session?.role === "ADMIN";
 
   useEffect(() => {
-    async function fetchBlindStructure() {
+    async function fetchData() {
       try {
-        const response = await fetch('/api/blinds/structure');
+        // Fetch blind structure
+        const blindResponse = await fetch('/api/blinds/structure');
         
-        if (!response.ok) {
+        if (!blindResponse.ok) {
           throw new Error('Failed to fetch blind structure');
         }
         
-        const data = await response.json();
-        setBlindStructure(data.structure);
+        const blindData = await blindResponse.json();
+        setBlindStructure(blindData.structure);
+        
+        // Fetch all payout structures
+        const payoutResponse = await fetch('/api/payout-structures');
+        
+        if (!payoutResponse.ok) {
+          throw new Error('Failed to fetch payout structures');
+        }
+        
+        const payoutData = await payoutResponse.json();
+        setPayoutStructures(payoutData.structures);
+        
+        // Set the default active tab to the first structure
+        if (payoutData.structures.length > 0) {
+          setActivePayoutTab(payoutData.structures[0].id.toString());
+        }
       } catch (err) {
-        console.error('Error fetching blind structure:', err);
+        console.error('Error fetching tournament structure:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchBlindStructure();
+    fetchData();
   }, []);
 
-  // Mock data for payout structure
-  const payoutStructure = [
-    { position: 1, percentage: "50%" },
-    { position: 2, percentage: "30%" },
-    { position: 3, percentage: "20%" },
-  ];
+  // Handle seeding payout structures
+  const handleSeedPayoutStructures = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setSeedingPayouts(true);
+      const response = await fetch('/api/admin/seed-payouts', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to seed payout structures');
+      }
+      
+      const data = await response.json();
+      
+      // Refresh the payout structures
+      const refreshResponse = await fetch('/api/payout-structures');
+      const refreshData = await refreshResponse.json();
+      setPayoutStructures(refreshData.structures);
+      
+      if (refreshData.structures.length > 0) {
+        setActivePayoutTab(refreshData.structures[0].id.toString());
+      }
+      
+      toast({
+        title: "Success",
+        description: "Payout structures seeded successfully",
+      });
+    } catch (err) {
+      console.error('Error seeding payout structures:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to seed payout structures",
+        variant: "destructive"
+      });
+    } finally {
+      setSeedingPayouts(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,7 +145,7 @@ export default function Structure() {
             </div>
             <div>
               <h3 className="font-medium">In the Money</h3>
-              <p className="text-muted-foreground">Top 3 places (for 9+ players)</p>
+              <p className="text-muted-foreground">Varies based on number of entries</p>
             </div>
             <div className="md:col-span-2">
               <h3 className="font-medium">Re-entry Policy</h3>
@@ -133,26 +194,77 @@ export default function Structure() {
 
         {/* Payout Structure */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Payout Structure</CardTitle>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeedPayoutStructures}
+                disabled={seedingPayouts}
+              >
+                {seedingPayouts ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Seeding...
+                  </>
+                ) : (
+                  "Seed Payout Structures"
+                )}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Percentage of Prize Pool</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payoutStructure.map((position) => (
-                  <TableRow key={position.position}>
-                    <TableCell>{position.position}</TableCell>
-                    <TableCell>{position.percentage}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {payoutStructures.length > 0 ? (
+              <>
+                <Tabs defaultValue={activePayoutTab} value={activePayoutTab} onValueChange={setActivePayoutTab} className="mb-4">
+                  <TabsList className="mb-2">
+                    {payoutStructures.map((structure) => (
+                      <TabsTrigger key={structure.id} value={structure.id.toString()}>
+                        {structure.name} ({structure.minEntries}-{structure.maxEntries} players)
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {payoutStructures.map((structure) => (
+                    <TabsContent key={structure.id} value={structure.id.toString()}>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Position</TableHead>
+                            <TableHead>Percentage of Prize Pool</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {structure.tiers?.map((tier) => (
+                            <TableRow key={tier.id}>
+                              <TableCell>{tier.position}</TableCell>
+                              <TableCell>{tier.percentage}%</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </>
+            ) : (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-4">No payout structures available.</p>
+                {isAdmin && (
+                  <Button onClick={handleSeedPayoutStructures} disabled={seedingPayouts}>
+                    {seedingPayouts ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Payout Structures...
+                      </>
+                    ) : (
+                      "Create Payout Structures"
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

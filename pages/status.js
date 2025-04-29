@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,8 @@ export default function Status() {
   });
   const [blindStructureData, setBlindStructureData] = useState(null);
   const [blindsLoading, setBlindsLoading] = useState(false);
+  const [payoutStructure, setPayoutStructure] = useState(null);
+  const [payoutLoading, setPayoutLoading] = useState(false);
 
   const { data: session } = useSession();
   const isAdmin = session?.role === "ADMIN";
@@ -32,9 +34,10 @@ export default function Status() {
         const data = await response.json();
         setSessionData(data);
         
-        // If active tournament, fetch blind structure
+        // If active tournament, fetch blind structure and payout structure
         if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
           fetchBlindStructure(data.session.id);
+          fetchPayoutStructure(data.session.registeredPlayers);
         }
       } catch (error) {
         console.error('Error fetching session data:', error);
@@ -62,6 +65,25 @@ export default function Status() {
       console.error('Error fetching blind structure:', error);
     } finally {
       setBlindsLoading(false);
+    }
+  };
+
+  // Fetch payout structure based on player count
+  const fetchPayoutStructure = async (playerCount) => {
+    try {
+      setPayoutLoading(true);
+      const response = await fetch(`/api/payout-structures/get-by-entries?entries=${playerCount}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch payout structure');
+      }
+      
+      const data = await response.json();
+      setPayoutStructure(data);
+    } catch (error) {
+      console.error('Error fetching payout structure:', error);
+    } finally {
+      setPayoutLoading(false);
     }
   };
 
@@ -133,6 +155,12 @@ export default function Status() {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  // Calculate payout amount
+  const calculatePayout = (percentage, buyIn, playerCount) => {
+    const totalPrizePool = buyIn * playerCount;
+    return (totalPrizePool * (percentage / 100)).toFixed(2);
   };
 
   // Remove player from registration or waitlist
@@ -405,6 +433,53 @@ export default function Status() {
                 </>
               ) : (
                 <p className="text-center text-muted-foreground">No blind structure information available</p>
+              )}
+            </div>
+          )}
+          
+          {/* Show payout structure for active tournaments */}
+          {isTournament && isActive && (
+            <div className="border-t pt-4 mt-4">
+              <h3 className="font-medium text-lg mb-3 text-center flex items-center justify-center">
+                <Award className="h-5 w-5 mr-1 text-amber-500" />
+                Payout Structure
+              </h3>
+              
+              {payoutLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <Clock className="h-5 w-5 animate-spin mr-2" />
+                  <p>Loading payout structure...</p>
+                </div>
+              ) : payoutStructure ? (
+                <>
+                  <div className="mb-2 text-center text-sm text-muted-foreground">
+                    Based on {currentSession.registeredPlayers} players - Total Prize Pool: ${currentSession.buyIn * currentSession.registeredPlayers}
+                  </div>
+                  <div className="border rounded-md overflow-hidden mb-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Position</TableHead>
+                          <TableHead>Percentage</TableHead>
+                          <TableHead>Payout</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {payoutStructure.tiers?.map((tier) => (
+                          <TableRow key={tier.id}>
+                            <TableCell className="font-medium">{tier.position}</TableCell>
+                            <TableCell>{tier.percentage}%</TableCell>
+                            <TableCell className="font-medium">
+                              ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.registeredPlayers)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground">No payout structure information available</p>
               )}
             </div>
           )}

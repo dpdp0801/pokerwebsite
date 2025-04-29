@@ -129,6 +129,32 @@ model BlindStructure {
 }
 
 //////////////////////////////
+//  PAYOUT STRUCTURE
+//////////////////////////////
+
+model PayoutStructure {
+  id        String   @id @default(uuid())
+  name      String
+  minEntries Int
+  maxEntries Int
+  tiers     PayoutTier[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PayoutTier {
+  id               String         @id @default(uuid())
+  position         Int
+  percentage       Float
+  payoutStructure  PayoutStructure @relation(fields: [payoutStructureId], references: [id], onDelete: Cascade)
+  payoutStructureId String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([payoutStructureId, position])
+}
+
+//////////////////////////////
 //  NEXTAUTH TABLES
 //////////////////////////////
 

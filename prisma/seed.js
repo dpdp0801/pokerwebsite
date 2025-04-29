@@ -2,81 +2,105 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  // First check if we already have a default blind structure
-  const existingStructure = await prisma.blindStructure.findFirst({
-    where: {
-      isDefault: true
+  // Delete existing data
+  await prisma.payoutTier.deleteMany();
+  await prisma.payoutStructure.deleteMany();
+
+  // Create payout structures
+  const structures = [
+    {
+      name: '3-6 Players',
+      minEntries: 3,
+      maxEntries: 6,
+      tiers: [
+        { position: 1, percentage: 65 },
+        { position: 2, percentage: 35 }
+      ]
+    },
+    {
+      name: '7-9 Players',
+      minEntries: 7,
+      maxEntries: 9,
+      tiers: [
+        { position: 1, percentage: 50 },
+        { position: 2, percentage: 30 },
+        { position: 3, percentage: 20 }
+      ]
+    },
+    {
+      name: '10-19 Players',
+      minEntries: 10,
+      maxEntries: 19,
+      tiers: [
+        { position: 1, percentage: 45 },
+        { position: 2, percentage: 27 },
+        { position: 3, percentage: 18 },
+        { position: 4, percentage: 10 }
+      ]
+    },
+    {
+      name: '20-29 Players',
+      minEntries: 20,
+      maxEntries: 29,
+      tiers: [
+        { position: 1, percentage: 42 },
+        { position: 2, percentage: 25 },
+        { position: 3, percentage: 16 },
+        { position: 4, percentage: 10 },
+        { position: 5, percentage: 7 }
+      ]
+    },
+    {
+      name: '30-39 Players',
+      minEntries: 30,
+      maxEntries: 39,
+      tiers: [
+        { position: 1, percentage: 40 },
+        { position: 2, percentage: 23 },
+        { position: 3, percentage: 15 },
+        { position: 4, percentage: 10 },
+        { position: 5, percentage: 7 },
+        { position: 6, percentage: 5 }
+      ]
+    },
+    {
+      name: '40+ Players',
+      minEntries: 40,
+      maxEntries: 100,
+      tiers: [
+        { position: 1, percentage: 35 },
+        { position: 2, percentage: 20 },
+        { position: 3, percentage: 14 },
+        { position: 4, percentage: 10 },
+        { position: 5, percentage: 8 },
+        { position: 6, percentage: 6 },
+        { position: 7, percentage: 4 },
+        { position: 8, percentage: 3 }
+      ]
     }
-  });
-
-  if (existingStructure) {
-    console.log('Default blind structure already exists, skipping seed.');
-    return;
-  }
-
-  // Create the default blind structure
-  const defaultStructure = await prisma.blindStructure.create({
-    data: {
-      name: 'Default Structure',
-      description: 'Standard blind structure for our tournaments',
-      startingStack: 300, // 300 chips as per requirements
-      isDefault: true,
-    }
-  });
-
-  console.log('Created default blind structure:', defaultStructure.id);
-
-  // Create the blind levels
-  const blindLevels = [
-    // Regular levels
-    { level: 1, duration: 20, smallBlind: 1, bigBlind: 2, ante: 2, isBreak: false },
-    { level: 2, duration: 20, smallBlind: 1, bigBlind: 3, ante: 3, isBreak: false },
-    { level: 3, duration: 20, smallBlind: 2, bigBlind: 4, ante: 4, isBreak: false },
-    { level: 4, duration: 20, smallBlind: 3, bigBlind: 6, ante: 6, isBreak: false },
-    
-    // First break (B1) - will chip up 1s
-    { level: 5, duration: 10, smallBlind: null, bigBlind: null, ante: null, isBreak: true, breakName: 'B1', specialAction: 'CHIP_UP_1S' },
-    
-    // Continue with regular levels
-    { level: 6, duration: 20, smallBlind: 5, bigBlind: 10, ante: 10, isBreak: false },
-    { level: 7, duration: 20, smallBlind: 10, bigBlind: 15, ante: 15, isBreak: false },
-    { level: 8, duration: 20, smallBlind: 10, bigBlind: 20, ante: 20, isBreak: false },
-    { level: 9, duration: 20, smallBlind: 15, bigBlind: 30, ante: 30, isBreak: false },
-    
-    // Second break (B2) - registration closes
-    { level: 10, duration: 10, smallBlind: null, bigBlind: null, ante: null, isBreak: true, breakName: 'B2', specialAction: 'REG_CLOSE' },
-    
-    // Continue with regular levels
-    { level: 11, duration: 20, smallBlind: 25, bigBlind: 50, ante: 50, isBreak: false },
-    { level: 12, duration: 20, smallBlind: 25, bigBlind: 75, ante: 75, isBreak: false },
-    { level: 13, duration: 20, smallBlind: 50, bigBlind: 100, ante: 100, isBreak: false },
-    { level: 14, duration: 20, smallBlind: 75, bigBlind: 150, ante: 150, isBreak: false },
-    
-    // Third break (B3)
-    { level: 15, duration: 10, smallBlind: null, bigBlind: null, ante: null, isBreak: true, breakName: 'B3' },
-    
-    // Continue with regular levels
-    { level: 16, duration: 20, smallBlind: 100, bigBlind: 200, ante: 200, isBreak: false },
-    { level: 17, duration: 20, smallBlind: 150, bigBlind: 300, ante: 300, isBreak: false },
-    { level: 18, duration: 20, smallBlind: 200, bigBlind: 400, ante: 400, isBreak: false },
-    { level: 19, duration: 20, smallBlind: 300, bigBlind: 600, ante: 600, isBreak: false },
   ];
 
-  // Create all blind levels
-  for (const level of blindLevels) {
-    await prisma.blindLevel.create({
+  // Create each structure with its tiers
+  for (const structure of structures) {
+    const { tiers, ...structureData } = structure;
+    
+    const createdStructure = await prisma.payoutStructure.create({
       data: {
-        ...level,
-        structureId: defaultStructure.id
+        ...structureData,
+        tiers: {
+          create: tiers
+        }
       }
     });
+    
+    console.log(`Created payout structure: ${createdStructure.name}`);
   }
 
-  console.log(`Created ${blindLevels.length} blind levels`);
+  console.log('Seeding completed');
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })
