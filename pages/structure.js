@@ -36,7 +36,7 @@ export default function Structure() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="font-medium">Rake</h3>
-              <p className="text-muted-foreground">No rake (100% of buy-ins go to prize pool)</p>
+              <p className="text-muted-foreground">No rake</p>
             </div>
             <div>
               <h3 className="font-medium">Starting Stack</h3>
@@ -44,7 +44,7 @@ export default function Structure() {
             </div>
             <div>
               <h3 className="font-medium">Target Duration</h3>
-              <p className="text-muted-foreground">~4 hours</p>
+              <p className="text-muted-foreground">~4-5 hours</p>
             </div>
             <div>
               <h3 className="font-medium">In the Money</h3>

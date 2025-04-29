@@ -271,25 +271,6 @@ export default function Status() {
           )}
         </CardContent>
       </Card>
-      
-      {isAdmin && (
-        <div className="mt-6 border-t pt-4 flex flex-col items-center">
-          <p className="text-sm text-muted-foreground mb-2">
-            Admin Controls
-          </p>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                router.push("/admin");
-              }}
-            >
-              Manage Session
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 
