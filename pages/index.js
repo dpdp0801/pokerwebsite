@@ -159,9 +159,12 @@ export default function Home() {
             </p>
             
             {session?.role === "ADMIN" && (
-              <Link href="/admin?action=create-session" className="mt-10">
-                <Button>Create Session</Button>
-              </Link>
+              <Button 
+                onClick={() => window.location.href = "/admin"} 
+                className="mt-10"
+              >
+                Create Session
+              </Button>
             )}
           </>
         )}

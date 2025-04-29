@@ -24,12 +24,23 @@ export default function AdminDashboard() {
   
   // Check if query params indicate we should open create session dialog
   useEffect(() => {
-    if (router.query.action === "create-session") {
-      setCreateSessionDialog(true);
-      // Clean up the URL
-      router.replace("/admin", undefined, { shallow: true });
+    // Use a more robust approach to check if we should show the dialog
+    const handleQueryAction = () => {
+      console.log("Checking query params", router.query);
+      if (router.query.action === "create-session") {
+        console.log("Opening session dialog from query param");
+        setCreateSessionDialog(true);
+        // Clean up the URL without triggering a navigation
+        router.replace("/admin", undefined, { shallow: true })
+          .catch(error => console.error("Error updating URL:", error));
+      }
+    };
+    
+    // Only run after router is ready
+    if (router.isReady) {
+      handleQueryAction();
     }
-  }, [router]);
+  }, [router.isReady, router.query, router]);
   
   // This would come from an API in a real implementation
   const [currentSession, setCurrentSession] = useState({

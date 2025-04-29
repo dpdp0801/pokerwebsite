@@ -7,13 +7,21 @@ export default function AdminLogin() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
   
   // If user is already logged in as admin, redirect to admin dashboard
   useEffect(() => {
     if (session && session.role === "ADMIN") {
-      // If there was a callbackUrl, use it, otherwise go to admin dashboard
-      const callbackUrl = router.query.callbackUrl || "/admin";
-      router.replace(callbackUrl);
+      setMessage("Already signed in. Redirecting...");
+      
+      // Small delay to avoid immediate redirect which can cause issues
+      const timer = setTimeout(() => {
+        // If there was a callbackUrl, use it, otherwise go to admin dashboard
+        const callbackUrl = router.query.callbackUrl || "/admin";
+        router.push(callbackUrl);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
   }, [session, router]);
   
@@ -22,11 +30,21 @@ export default function AdminLogin() {
     setIsLoading(true);
     
     try {
-      await signIn("credentials", { 
+      const result = await signIn("credentials", { 
         password: pw, 
-        redirect: true,
+        redirect: false, // Changed to false to handle redirection manually
         callbackUrl: router.query.callbackUrl || "/admin"
       });
+      
+      if (result?.error) {
+        setMessage("Invalid password");
+      } else if (result?.url) {
+        setMessage("Success! Redirecting...");
+        router.push(result.url);
+      }
+    } catch (error) {
+      setMessage("An error occurred. Please try again.");
+      console.error("Sign in error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -36,7 +54,7 @@ export default function AdminLogin() {
   if (session && session.role === "ADMIN") {
     return (
       <div style={{textAlign:"center", marginTop:"20vh"}}>
-        <p>Already signed in. Redirecting...</p>
+        <p>{message || "Already signed in. Redirecting..."}</p>
       </div>
     );
   }
@@ -44,6 +62,7 @@ export default function AdminLogin() {
   return (
     <form onSubmit={submit} style={{textAlign:"center",marginTop:"20vh"}}>
       <h2>Admin Login</h2>
+      {message && <p style={{color: message.includes("Success") ? "green" : "red"}}>{message}</p>}
       <input 
         type="password" 
         value={pw} 
