@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { authOptions } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -75,7 +75,8 @@ export default async function handler(req, res) {
       // Only allow updating certain fields
       const allowedFields = [
         'title', 'description', 'date', 'startTime', 'endTime', 
-        'location', 'buyIn', 'minBuyIn', 'maxBuyIn', 'maxPlayers', 'status'
+        'location', 'buyIn', 'minBuyIn', 'maxBuyIn', 'maxPlayers', 'status', 'type',
+        'smallBlind', 'bigBlind'
       ];
       
       const filteredData = Object.keys(updateData)
