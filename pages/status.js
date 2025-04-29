@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Hourglass, Clock, Users, AlertCircle, User } from "lucide-react";
+import { Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// Avatar component removed - we're no longer showing individual participants
 
 export default function Status() {
   const [loading, setLoading] = useState(true);
@@ -36,13 +36,6 @@ export default function Status() {
     fetchSessionData();
   }, []);
 
-  // Format timer as MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -63,51 +56,6 @@ export default function Status() {
       minute: '2-digit',
       hour12: true 
     });
-  };
-
-  // Get initials for avatar
-  const getInitials = (name) => {
-    if (!name) return "?";
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const PlayerList = ({ players, title, emptyMessage, colorClass }) => {
-    if (!players || players.length === 0) {
-      return (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium mb-2">{title}</h3>
-          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="mt-4">
-        <h3 className="text-sm font-medium mb-2">{title}</h3>
-        <div className="border rounded-md overflow-hidden">
-          <ul className="divide-y">
-            {players.map((registration) => (
-              <li key={registration.id} className="p-3 flex items-center space-x-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={registration.user.image} alt={registration.user.name} />
-                  <AvatarFallback className={colorClass}>
-                    {getInitials(registration.user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{registration.user.name}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    );
   };
 
   if (loading) {
@@ -146,7 +94,6 @@ export default function Status() {
   }
 
   const currentSession = sessionData.session;
-  const registrations = currentSession.registrations || { confirmed: [], waitlisted: [] };
 
   return (
     <div className="container py-12 max-w-3xl">
@@ -207,24 +154,6 @@ export default function Status() {
               <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
               <p className="text-muted-foreground">Waitlisted</p>
             </div>
-          </div>
-          
-          <div className="border-t pt-4">
-            <h3 className="font-medium text-lg mb-3">Participants</h3>
-            
-            <PlayerList 
-              players={registrations.confirmed}
-              title="Registered Players"
-              emptyMessage="No players have registered yet"
-              colorClass="bg-green-100 text-green-800"
-            />
-            
-            <PlayerList 
-              players={registrations.waitlisted}
-              title="Waitlist"
-              emptyMessage="No players on the waitlist"
-              colorClass="bg-yellow-100 text-yellow-800"
-            />
           </div>
         </CardContent>
       </Card>
