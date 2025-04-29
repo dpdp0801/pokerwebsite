@@ -38,14 +38,16 @@ export default async function handler(req, res) {
       location: session.location,
       title: session.title,
       description: session.description,
-      status: session.status
+      status: session.status,
+      currentBlindLevel: session.currentBlindLevel
     };
     
     // Add type-specific fields
     if (session.type === 'TOURNAMENT' || session.type === 'MTT') {
       formattedSession = {
         ...formattedSession,
-        buyIn: session.buyIn
+        buyIn: session.buyIn,
+        entries: session.entries || 0  // Include entries for tournaments
       };
     } else if (session.type === 'CASH_GAME' || session.type === 'CASH') {
       formattedSession = {

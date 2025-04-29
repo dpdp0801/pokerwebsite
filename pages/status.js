@@ -37,7 +37,8 @@ export default function Status() {
         // If active tournament, fetch blind structure and payout structure
         if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
           fetchBlindStructure(data.session.id);
-          fetchPayoutStructure(data.session.registeredPlayers);
+          // Use entries if available, otherwise use registered players
+          fetchPayoutStructure(data.session.entries || data.session.registeredPlayers);
         }
       } catch (error) {
         console.error('Error fetching session data:', error);
@@ -342,6 +343,13 @@ export default function Status() {
               <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
               <p className="text-muted-foreground">Waitlisted</p>
             </div>
+
+            {isTournament && (
+              <div className="col-span-2">
+                <p className="text-xl font-medium">{currentSession.entries || 0}</p>
+                <p className="text-muted-foreground">Total Entries</p>
+              </div>
+            )}
           </div>
           
           {/* Show blind structure for active tournaments */}
@@ -450,36 +458,53 @@ export default function Status() {
                   <Clock className="h-5 w-5 animate-spin mr-2" />
                   <p>Loading payout structure...</p>
                 </div>
-              ) : payoutStructure ? (
-                <>
-                  <div className="mb-2 text-center text-sm text-muted-foreground">
-                    Based on {currentSession.registeredPlayers} players - Total Prize Pool: ${currentSession.buyIn * currentSession.registeredPlayers}
-                  </div>
-                  <div className="border rounded-md overflow-hidden mb-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Position</TableHead>
-                          <TableHead>Percentage</TableHead>
-                          <TableHead>Payout</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {payoutStructure.tiers?.map((tier) => (
-                          <TableRow key={tier.id}>
-                            <TableCell className="font-medium">{tier.position}</TableCell>
-                            <TableCell>{tier.percentage}%</TableCell>
-                            <TableCell className="font-medium">
-                              ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.registeredPlayers)}
-                            </TableCell>
+              ) : blindStructureData?.currentLevel?.specialAction === 'REG_CLOSE' || 
+                  (currentSession.currentBlindLevel && 
+                  blindStructureData?.levels?.findIndex(l => l.specialAction === 'REG_CLOSE') < currentSession.currentBlindLevel) ? (
+                // Registration is closed, show payout structure
+                payoutStructure ? (
+                  <>
+                    <div className="mb-2 text-center text-sm text-muted-foreground">
+                      Based on {currentSession.entries || currentSession.registeredPlayers} entries - Total Prize Pool: ${(currentSession.buyIn * (currentSession.entries || currentSession.registeredPlayers)).toLocaleString()}
+                    </div>
+                    <div className="border rounded-md overflow-hidden mb-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Position</TableHead>
+                            <TableHead>Percentage</TableHead>
+                            <TableHead>Payout</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
+                        </TableHeader>
+                        <TableBody>
+                          {payoutStructure.tiers?.map((tier) => (
+                            <TableRow key={tier.id}>
+                              <TableCell className="font-medium">{tier.position}</TableCell>
+                              <TableCell>{tier.percentage}%</TableCell>
+                              <TableCell className="font-medium">
+                                ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.entries || currentSession.registeredPlayers)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground">No payout structure information available</p>
+                )
               ) : (
-                <p className="text-center text-muted-foreground">No payout structure information available</p>
+                // Registration is still open
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">Payouts will be posted after registration closes.</p>
+                  {isAdmin && (
+                    <div className="mt-2">
+                      <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
+                        <span>View Payout Structure Table</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
