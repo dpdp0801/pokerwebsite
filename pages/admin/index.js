@@ -55,7 +55,11 @@ export default function AdminDashboard() {
     date: "",
     time: "",
     buyIn: 100,
-    maxPlayers: 9
+    maxPlayers: 9,
+    // Additional fields for cash games
+    bigBlind: 0.5,
+    smallBlind: 0.2,
+    minBuyIn: 50
   });
   
   const [statusFilter, setStatusFilter] = useState("all");
@@ -65,82 +69,92 @@ export default function AdminDashboard() {
   
   const handleCreateSession = () => {
     // Validate form
-    if (!newSession.date || !newSession.time || !newSession.buyIn || !newSession.maxPlayers) {
+    if (!newSession.date || !newSession.time || !newSession.maxPlayers) {
       toast({
         title: "Validation Error",
-        description: "Please fill out all fields",
+        description: "Please fill out all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Type-specific validation
+    if (newSession.type === "mtt" && !newSession.buyIn) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a buy-in amount for the tournament",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (newSession.type === "cash" && (!newSession.smallBlind || !newSession.bigBlind || !newSession.minBuyIn)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter blinds and minimum buy-in for the cash game",
         variant: "destructive"
       });
       return;
     }
     
     // This would be an API call in a real implementation
-    setCurrentSession({
+    const sessionData = {
       exists: true,
       type: newSession.type,
       status: "not_started",
       ...newSession
-    });
+    };
     
-    setCreateSessionDialog(false);
-    
-    toast({
-      title: "Session Created",
-      description: `A new ${newSession.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
+    // Send data to API
+    fetch('/api/sessions/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sessionData),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        setCurrentSession(sessionData);
+        setCreateSessionDialog(false);
+        
+        toast({
+          title: "Session Created",
+          description: `A new ${newSession.type === 'mtt' ? 'tournament' : 'cash game'} has been created.`
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "An error occurred while creating the session",
+          variant: "destructive"
+        });
+      }
+    })
+    .catch(error => {
+      console.error("Error creating session:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while creating the session",
+        variant: "destructive"
+      });
     });
   };
   
   const handleStartSession = () => {
-    setCurrentSession({
-      ...currentSession,
-      status: "ongoing"
-    });
-    
-    toast({
-      title: "Session Started",
-      description: `The ${currentSession.type === 'mtt' ? 'tournament' : 'cash game'} has been started.`
-    });
+    updateSessionStatus('ACTIVE');
   };
   
   const handlePauseSession = () => {
-    setCurrentSession({
-      ...currentSession,
-      status: "paused"
-    });
-    
-    toast({
-      title: "Session Paused",
-      description: "The tournament has been paused."
-    });
+    updateSessionStatus('PAUSED');
   };
   
   const handleResumeSession = () => {
-    setCurrentSession({
-      ...currentSession,
-      status: "ongoing"
-    });
-    
-    toast({
-      title: "Session Resumed",
-      description: "The tournament has been resumed."
-    });
+    updateSessionStatus('ACTIVE');
   };
   
   const handleEndSession = () => {
-    setCurrentSession({
-      exists: false,
-      type: null,
-      status: null,
-      date: "",
-      time: "",
-      buyIn: 0,
-      maxPlayers: 0
-    });
-    
-    toast({
-      title: "Session Ended",
-      description: "The session has been ended."
-    });
+    updateSessionStatus('COMPLETED');
   };
   
   const handleUpdateBuyInStatus = (id, newStatus) => {
@@ -222,6 +236,112 @@ export default function AdminDashboard() {
     </TableHead>
   );
 
+  // Update the fetchCurrentSession function
+  useEffect(() => {
+    // Fetch current session when component mounts
+    const fetchCurrentSession = async () => {
+      try {
+        const response = await fetch('/api/session-status');
+        const data = await response.json();
+        
+        if (data.exists && data.session) {
+          setCurrentSession({
+            exists: true,
+            id: data.session.id,
+            type: data.session.type.toLowerCase(),
+            status: data.session.status.toLowerCase(),
+            date: formatDate(data.session.date),
+            time: formatTime(data.session.startTime),
+            buyIn: data.session.buyIn,
+            maxPlayers: data.session.maxPlayers,
+            smallBlind: data.session.smallBlind,
+            bigBlind: data.session.bigBlind,
+            minBuyIn: data.session.minBuyIn,
+            registeredPlayers: data.session.registeredPlayers || 0
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching current session:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch current session data",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchCurrentSession();
+  }, [toast]);
+
+  // Add these helper functions near the top of the component
+  const formatDate = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+  };
+
+  const formatTime = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+
+  // Add a new function to handle session status updates
+  const updateSessionStatus = async (newStatus) => {
+    if (!currentSession.id) {
+      toast({
+        title: "Error",
+        description: "No active session found",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/sessions/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: currentSession.id,
+          status: newStatus
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setCurrentSession({
+          ...currentSession,
+          status: newStatus.toLowerCase()
+        });
+        
+        toast({
+          title: "Status Updated",
+          description: `Session status has been updated to ${newStatus.toLowerCase()}.`
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update session status",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating session status:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while updating the session status",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (!session || session.role !== "ADMIN") {
     return (
       <div className="container py-12">
@@ -261,10 +381,10 @@ export default function AdminDashboard() {
                     <h3 className="font-medium text-lg mb-2">Current Session</h3>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Type:</span> {currentSession.type === 'mtt' ? 'Tournament' : 'Cash Game'}
+                        <span className="text-muted-foreground">Type:</span> {currentSession.type === 'mtt' || currentSession.type === 'tournament' ? 'Tournament' : 'Cash Game'}
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Status:</span> {currentSession.status === 'not_started' ? 'Not Started' : currentSession.status === 'ongoing' ? 'Ongoing' : 'Paused'}
+                        <span className="text-muted-foreground">Status:</span> {currentSession.status === 'not_started' ? 'Not Started' : currentSession.status === 'active' ? 'Active' : currentSession.status === 'paused' ? 'Paused' : 'Completed'}
                       </div>
                       <div>
                         <span className="text-muted-foreground">Date:</span> {currentSession.date}
@@ -278,6 +398,22 @@ export default function AdminDashboard() {
                       <div>
                         <span className="text-muted-foreground">Max Players:</span> {currentSession.maxPlayers}
                       </div>
+                      {currentSession.type === 'cash' && (
+                        <>
+                          <div>
+                            <span className="text-muted-foreground">Small Blind:</span> ${currentSession.smallBlind}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Big Blind:</span> ${currentSession.bigBlind}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Min Buy-in:</span> ${currentSession.minBuyIn}
+                          </div>
+                        </>
+                      )}
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Registered Players:</span> {currentSession.registeredPlayers || 0} of {currentSession.maxPlayers}
+                      </div>
                     </div>
                   </div>
                   
@@ -286,7 +422,7 @@ export default function AdminDashboard() {
                       <Button onClick={handleStartSession}>Start Session</Button>
                     )}
                     
-                    {currentSession.status === 'ongoing' && currentSession.type === 'mtt' && (
+                    {currentSession.status === 'active' && currentSession.type === 'mtt' && (
                       <Button onClick={handlePauseSession}>Pause Tournament</Button>
                     )}
                     
@@ -505,6 +641,43 @@ export default function AdminDashboard() {
                 onChange={(e) => setNewSession({...newSession, maxPlayers: Number(e.target.value)})}
               />
             </div>
+            
+            {newSession.type === "cash" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bigBlind">Big Blind</Label>
+                  <Input 
+                    id="bigBlind" 
+                    type="number" 
+                    min="0"
+                    value={newSession.bigBlind}
+                    onChange={(e) => setNewSession({...newSession, bigBlind: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="smallBlind">Small Blind</Label>
+                  <Input 
+                    id="smallBlind" 
+                    type="number" 
+                    min="0"
+                    value={newSession.smallBlind}
+                    onChange={(e) => setNewSession({...newSession, smallBlind: Number(e.target.value)})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="minBuyIn">Minimum Buy-in</Label>
+                  <Input 
+                    id="minBuyIn" 
+                    type="number" 
+                    min="1"
+                    value={newSession.minBuyIn}
+                    onChange={(e) => setNewSession({...newSession, minBuyIn: Number(e.target.value)})}
+                  />
+                </div>
+              </>
+            )}
           </div>
           
           <div className="flex justify-end space-x-2">
