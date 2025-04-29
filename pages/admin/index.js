@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,32 @@ import { ChevronUp, ChevronDown, Search, Filter } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function AdminDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("session");
   const [createSessionDialog, setCreateSessionDialog] = useState(false);
   const [sessionType, setSessionType] = useState("mtt");
+  
+  // Early redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      console.log("User not authenticated, redirecting to login");
+      // Redirect to login page
+      window.location.href = "/admin/login";
+    }
+  }, [status]);
+  
+  // Don't render anything until we know the authentication status
+  if (status === "loading") {
+    return (
+      <div className="container py-12 flex justify-center items-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   // Check if query params indicate we should open create session dialog
   useEffect(() => {
@@ -593,7 +613,8 @@ export default function AdminDashboard() {
         <Card>
           <CardContent className="py-10 text-center">
             <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground">You don't have permission to access this page.</p>
+            <p className="text-muted-foreground mb-4">You don't have permission to access this page.</p>
+            <Button onClick={() => signIn('google')}>Sign in with different account</Button>
           </CardContent>
         </Card>
       </div>

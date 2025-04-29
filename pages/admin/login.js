@@ -4,26 +4,23 @@ import { useRouter } from "next/router";
 
 export default function AdminLogin() {
   const [pw, setPw] = useState("");
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   
   // If user is already logged in as admin, redirect to admin dashboard
   useEffect(() => {
-    if (session && session.role === "ADMIN") {
+    // Only run this effect if the session status is "authenticated"
+    if (status === "authenticated" && session && session.role === "ADMIN") {
+      console.log("Admin already authenticated, redirecting to admin dashboard");
       setMessage("Already signed in. Redirecting...");
       
-      // Small delay to avoid immediate redirect which can cause issues
-      const timer = setTimeout(() => {
-        // If there was a callbackUrl, use it, otherwise go to admin dashboard
-        const callbackUrl = router.query.callbackUrl || "/admin";
-        router.push(callbackUrl);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+      // Use window.location for a hard redirect instead of Next.js router
+      // This avoids potential circular redirects
+      window.location.href = "/admin";
     }
-  }, [session, router]);
+  }, [session, status, router]);
   
   const submit = async (e) => {
     e.preventDefault();
@@ -33,14 +30,15 @@ export default function AdminLogin() {
       const result = await signIn("credentials", { 
         password: pw, 
         redirect: false, // Changed to false to handle redirection manually
-        callbackUrl: router.query.callbackUrl || "/admin"
+        callbackUrl: "/admin"
       });
       
       if (result?.error) {
         setMessage("Invalid password");
       } else if (result?.url) {
         setMessage("Success! Redirecting...");
-        router.push(result.url);
+        // Use window.location for a hard redirect
+        window.location.href = result.url;
       }
     } catch (error) {
       setMessage("An error occurred. Please try again.");
@@ -51,7 +49,7 @@ export default function AdminLogin() {
   };
   
   // If already logged in as admin, show loading
-  if (session && session.role === "ADMIN") {
+  if (status === "authenticated" && session?.role === "ADMIN") {
     return (
       <div style={{textAlign:"center", marginTop:"20vh"}}>
         <p>{message || "Already signed in. Redirecting..."}</p>
