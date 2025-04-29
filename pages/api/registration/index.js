@@ -103,9 +103,8 @@ export default async function handler(req, res) {
       });
 
       // Check if session is full
-      const status = pokerSession.maxPlayers && registrationCount >= pokerSession.maxPlayers 
-        ? "WAITLISTED" 
-        : "CONFIRMED";
+      const isWaitlisted = pokerSession.maxPlayers && registrationCount >= pokerSession.maxPlayers;
+      const status = isWaitlisted ? "WAITLISTED" : "CONFIRMED";
 
       // Create registration
       const registration = await prisma.registration.create({
@@ -115,11 +114,14 @@ export default async function handler(req, res) {
           buyInAmount: buyInAmount,
           status: status,
           paymentCode: paymentCode,
-          paymentStatus: "UNPAID",
+          paymentStatus: isWaitlisted ? "NOT_REQUIRED_YET" : "UNPAID",
         },
       });
 
-      return res.status(201).json(registration);
+      return res.status(201).json({
+        ...registration,
+        wouldBeWaitlisted: isWaitlisted
+      });
     } catch (error) {
       console.error("Error creating registration:", error);
       return res.status(500).json({ error: "Failed to create registration" });

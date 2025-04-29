@@ -97,7 +97,7 @@ export default async function handler(req, res) {
         title: type.toUpperCase() === 'TOURNAMENT' 
           ? `$${buyIn} buy-in NLH Tournament`
           : `$${smallBlind}/$${bigBlind} NLH Cash Game`,
-        description: `${maxPlayers}-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
+        description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
         date: sessionDate,
         startTime: sessionDate,
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
         sessionData.bigBlind = parseFloat(bigBlind);
         
         // Still include blinds in description for backward compatibility
-        sessionData.description = `$${smallBlind}/$${bigBlind} blinds, ${maxPlayers}-max cash game`;
+        sessionData.description = `$${smallBlind}/$${bigBlind} blinds, 9-max cash game`;
       }
 
       console.log("Prepared session data for database:", sessionData);

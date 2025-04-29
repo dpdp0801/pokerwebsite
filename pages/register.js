@@ -353,8 +353,10 @@ export default function Register() {
                 </div>
               )}
               
-              {/* Buy-In Amount (only for tournaments) */}
-              {selectedSession && selectedSession.type === "TOURNAMENT" && (
+              {/* Buy-In Amount (only for tournaments and not on waitlist) */}
+              {selectedSession && 
+               selectedSession.type === "TOURNAMENT" && 
+               !selectedSession.wouldBeWaitlisted && (
                 <div>
                   <Label htmlFor="buyIn">Buy-In Amount ($)</Label>
                   <Input 
@@ -367,7 +369,7 @@ export default function Register() {
               )}
               
               {/* Cash Game Policy */}
-              {selectedSession && selectedSession.type === "CASH_GAME" && (
+              {selectedSession && selectedSession.type === "CASH_GAME" && !selectedSession.wouldBeWaitlisted && (
                 <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
                   <p className="text-sm font-medium text-blue-800 mb-1">Cash Game Rules</p>
                   <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
@@ -379,12 +381,24 @@ export default function Register() {
                 </div>
               )}
               
-              {/* Tournament Policy */}
-              {selectedSession && selectedSession.type === "TOURNAMENT" && (
+              {/* Tournament Policy (not for waitlist) */}
+              {selectedSession && 
+               selectedSession.type === "TOURNAMENT" && 
+               !selectedSession.wouldBeWaitlisted && (
                 <div className="border rounded-md p-3 bg-muted/30">
                   <p className="text-sm">
                     By registering, you agree to our <Link href="/policy" className="text-primary hover:underline">policies</Link>. 
                     Payment is required to secure your spot. After submission, you'll receive payment instructions.
+                  </p>
+                </div>
+              )}
+
+              {/* Waitlist Policy (both tournament and cash game) */}
+              {selectedSession && selectedSession.wouldBeWaitlisted && (
+                <div className="border rounded-md p-3 bg-muted/30">
+                  <p className="text-sm">
+                    By joining the waitlist, you agree to our <Link href="/policy" className="text-primary hover:underline">policies</Link>.
+                    No payment is required until a spot becomes available.
                   </p>
                 </div>
               )}
@@ -410,48 +424,73 @@ export default function Register() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <AlertTitle className="text-green-800">Registration Submitted!</AlertTitle>
                 <AlertDescription className="text-green-700">
-                  Your registration has been received. Please complete payment to secure your spot.
+                  {selectedSession?.wouldBeWaitlisted 
+                    ? "Your registration has been added to the waitlist. We'll contact you if a spot becomes available."
+                    : "Your registration has been received. Please complete payment to secure your spot."}
                 </AlertDescription>
               </Alert>
               
-              <div className="space-y-6 border rounded-md p-4">
-                <div>
-                  <h3 className="font-medium text-lg mb-2">Payment Instructions</h3>
-                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                    <li>Open your Venmo app or website</li>
-                    <li>Send ${selectedSession?.type === "TOURNAMENT" ? 
-                      selectedSession?.buyIn : 
-                      selectedSession?.minBuyIn} to <span className="font-medium text-foreground">@catalina-poker</span></li>
-                    <li>In the payment note, you <span className="font-bold">MUST</span> include your unique payment code:</li>
-                  </ol>
+              {!selectedSession?.wouldBeWaitlisted && (
+                <div className="space-y-6 border rounded-md p-4">
+                  <div>
+                    <h3 className="font-medium text-lg mb-2">Payment Instructions</h3>
+                    <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                      <li>Open your Venmo app or website</li>
+                      <li>Send ${selectedSession?.type === "TOURNAMENT" ? 
+                        selectedSession?.buyIn : 
+                        selectedSession?.minBuyIn} to <span className="font-medium text-foreground">@catalina-poker</span></li>
+                      <li>In the payment note, you <span className="font-bold">MUST</span> include your unique payment code:</li>
+                    </ol>
+                  </div>
+                  
+                  <div className="bg-muted/70 p-4 rounded-md">
+                    <p className="text-xs text-muted-foreground mb-1">Your Payment Code:</p>
+                    <p className="font-mono text-lg font-semibold text-center">{paymentCode}</p>
+                  </div>
+                  
+                  {selectedSession?.type === "TOURNAMENT" ? (
+                    <div className="text-sm text-muted-foreground">
+                      <p className="mb-1 font-medium">Important:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Payment must be received within 24 hours to secure your spot</li>
+                        <li>Your registration is not confirmed until payment is approved</li>
+                        <li>No refunds after payment confirmation</li>
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      <p className="mb-1 font-medium">Important for Cash Games:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Payment confirms your reservation</li>
+                        <li>Please arrive within 30 minutes of the start time</li>
+                        <li>Late arrivals may lose their spot to waitlisted players</li>
+                        <li>You can buy in for more than the minimum at the table</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="bg-muted/70 p-4 rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Your Payment Code:</p>
-                  <p className="font-mono text-lg font-semibold text-center">{paymentCode}</p>
-                </div>
-                
-                {selectedSession?.type === "TOURNAMENT" ? (
+              )}
+              
+              {selectedSession?.wouldBeWaitlisted && (
+                <div className="space-y-6 border rounded-md p-4">
+                  <div>
+                    <h3 className="font-medium text-lg mb-2">Waitlist Information</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your position on the waitlist will be determined by the order of registration. If a spot becomes 
+                      available, we'll contact you via email with payment instructions.
+                    </p>
+                  </div>
+                  
                   <div className="text-sm text-muted-foreground">
-                    <p className="mb-1 font-medium">Important:</p>
+                    <p className="mb-1 font-medium">Important Waitlist Information:</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Payment must be received within 24 hours to secure your spot</li>
-                      <li>Your registration is not confirmed until payment is approved</li>
-                      <li>No refunds after payment confirmation</li>
+                      <li>Check your email regularly for spot availability notifications</li>
+                      <li>You'll have 24 hours to respond and complete payment when a spot opens</li>
+                      <li>If you no longer wish to participate, please contact us to be removed from the waitlist</li>
                     </ul>
                   </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    <p className="mb-1 font-medium">Important for Cash Games:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Payment confirms your reservation</li>
-                      <li>Please arrive within 30 minutes of the start time</li>
-                      <li>Late arrivals may lose their spot to waitlisted players</li>
-                      <li>You can buy in for more than the minimum at the table</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
