@@ -173,7 +173,7 @@ export default function Structure() {
                   <TableBody>
                     {payoutStructures.map((structure) => (
                       <TableRow key={structure.id}>
-                        <TableCell className="font-medium">{structure.name}</TableCell>
+                        <TableCell className="font-medium">{structure.name.replace("Players", "Entries")}</TableCell>
                         {allPositions.map(position => {
                           const tier = structure.tiers?.find(t => t.position === position);
                           return (

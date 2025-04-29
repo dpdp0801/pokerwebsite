@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight, Award } from "lucide-react";
+import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight, Award, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,8 @@ export default function Status() {
   const [blindsLoading, setBlindsLoading] = useState(false);
   const [payoutStructure, setPayoutStructure] = useState(null);
   const [payoutLoading, setPayoutLoading] = useState(false);
+  const [timer, setTimer] = useState({ minutes: 0, seconds: 0 });
+  const [timerInterval, setTimerInterval] = useState(null);
 
   const { data: session } = useSession();
   const isAdmin = session?.role === "ADMIN";
@@ -49,6 +51,55 @@ export default function Status() {
 
     fetchSessionData();
   }, []);
+
+  // Start timer for blind levels
+  useEffect(() => {
+    if (blindStructureData?.currentLevel && sessionData.exists && sessionData.session.status === 'ACTIVE') {
+      // Clear any existing interval
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+
+      // Set initial timer value
+      const levelDuration = blindStructureData.currentLevel.duration;
+      const now = new Date();
+      
+      // Calculate elapsed time in minutes based on current blind level
+      let elapsedMinutes = 0;
+      
+      // Start a new interval
+      const interval = setInterval(() => {
+        const now = new Date();
+        // For demo, use the actual elapsed time since page load
+        const elapsedSec = Math.floor((now - new Date(now.getTime() - now.getSeconds() * 1000)) / 1000) + elapsedMinutes * 60;
+        const remainingSec = levelDuration * 60 - elapsedSec;
+        
+        if (remainingSec <= 0) {
+          // Time's up, could auto-advance to next level here
+          setTimer({ minutes: 0, seconds: 0 });
+        } else {
+          const min = Math.floor(remainingSec / 60);
+          const sec = remainingSec % 60;
+          setTimer({ minutes: min, seconds: sec });
+        }
+      }, 1000);
+      
+      setTimerInterval(interval);
+      
+      // Cleanup interval on unmount
+      return () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+      };
+    }
+  }, [blindStructureData, sessionData]);
+  
+  // Format timer for display
+  const formatTimer = () => {
+    const { minutes, seconds } = timer;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
 
   // Fetch blind structure for active tournament
   const fetchBlindStructure = async (sessionId) => {
@@ -198,6 +249,20 @@ export default function Status() {
     }
   };
 
+  // Get next blind level
+  const getNextLevel = () => {
+    if (!blindStructureData || !sessionData.session.currentBlindLevel) {
+      return null;
+    }
+    
+    const currentLevelIndex = sessionData.session.currentBlindLevel;
+    if (currentLevelIndex < blindStructureData.levels.length - 1) {
+      return blindStructureData.levels[currentLevelIndex + 1];
+    }
+    
+    return null;
+  };
+
   const PlayerList = ({ players, title, emptyMessage, colorClass }) => {
     if (!players || players.length === 0) {
       return (
@@ -283,6 +348,7 @@ export default function Status() {
   const registrations = currentSession.registrations || { confirmed: [], waitlisted: [] };
   const isTournament = currentSession.type === 'TOURNAMENT';
   const isActive = currentSession.status === 'ACTIVE';
+  const nextLevel = getNextLevel();
 
   return (
     <div className="container py-12 max-w-3xl">
@@ -339,44 +405,55 @@ export default function Status() {
               <p className="text-muted-foreground">Registered Players</p>
             </div>
             
-            <div>
-              <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
-              <p className="text-muted-foreground">Waitlisted</p>
-            </div>
-
-            {isTournament && (
-              <div className="col-span-2">
-                <p className="text-xl font-medium">{currentSession.entries || 0}</p>
-                <p className="text-muted-foreground">Total Entries</p>
+            {isTournament ? (
+              <>
+                <div>
+                  <p className="text-xl font-medium">{currentSession.entries || 0}</p>
+                  <p className="text-muted-foreground">Total Entries</p>
+                </div>
+                
+                <div>
+                  <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
+                  <p className="text-muted-foreground">Waitlisted</p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
+                <p className="text-muted-foreground">Waitlisted</p>
               </div>
             )}
           </div>
           
-          {/* Show blind structure for active tournaments */}
+          {/* Show timer and blind info for active tournaments */}
           {isTournament && isActive && (
             <div className="border-t pt-4 mt-4">
-              <h3 className="font-medium text-lg mb-3 text-center">Blind Structure</h3>
+              <h3 className="font-medium text-lg mb-3 text-center">Timer</h3>
               
               {blindsLoading ? (
                 <div className="flex justify-center items-center py-4">
                   <Clock className="h-5 w-5 animate-spin mr-2" />
-                  <p>Loading blind structure...</p>
+                  <p>Loading tournament information...</p>
                 </div>
               ) : blindStructureData ? (
                 <>
+                  {/* Timer Display */}
+                  <div className="text-center mb-6">
+                    <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Level {blindStructureData.currentLevel?.level || 1}
+                    </div>
+                  </div>
+                  
                   <div className="text-center mb-4">
                     <div className="flex items-center justify-center space-x-3">
-                      <div className="text-sm text-muted-foreground">
-                        Level {blindStructureData.currentLevel?.level || 1} / {blindStructureData.totalLevels || 'Unknown'}
-                      </div>
-                      
                       {isAdmin && (
                         <div className="flex items-center space-x-1">
                           <Button 
                             variant="outline" 
                             size="icon"
                             onClick={() => updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1))}
-                            disabled={!currentSession.currentBlindLevel}
+                            disabled={currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel === 0}
                           >
                             <ArrowLeft className="h-4 w-4" />
                           </Button>
@@ -384,6 +461,7 @@ export default function Status() {
                             variant="outline" 
                             size="icon"
                             onClick={() => updateBlindLevel((currentSession.currentBlindLevel || 0) + 1)}
+                            disabled={currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel >= (blindStructureData.totalLevels - 1)}
                           >
                             <ArrowRight className="h-4 w-4" />
                           </Button>
@@ -405,34 +483,77 @@ export default function Status() {
                       )}
                     </div>
                   ) : (
-                    <div className="border rounded-md overflow-hidden mb-4">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-center">Small Blind</TableHead>
-                            <TableHead className="text-center">Big Blind</TableHead>
-                            <TableHead className="text-center">Ante</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell className="text-center font-medium">
-                              {blindStructureData.currentLevel?.smallBlind || '—'}
-                            </TableCell>
-                            <TableCell className="text-center font-medium">
-                              {blindStructureData.currentLevel?.bigBlind || '—'}
-                            </TableCell>
-                            <TableCell className="text-center font-medium">
-                              {blindStructureData.currentLevel?.ante || '—'}
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
+                    <div className="space-y-4">
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="bg-muted/20 px-4 py-2 font-semibold">Current Level</div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-center">Small Blind</TableHead>
+                              <TableHead className="text-center">Big Blind</TableHead>
+                              <TableHead className="text-center">Ante</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell className="text-center font-medium">
+                                {blindStructureData.currentLevel?.smallBlind || '—'}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">
+                                {blindStructureData.currentLevel?.bigBlind || '—'}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">
+                                {blindStructureData.currentLevel?.ante || '—'}
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {nextLevel && !nextLevel.isBreak && (
+                        <div className="border rounded-md overflow-hidden">
+                          <div className="bg-muted/20 px-4 py-2 font-semibold flex items-center">
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            Next Level
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-center">Small Blind</TableHead>
+                                <TableHead className="text-center">Big Blind</TableHead>
+                                <TableHead className="text-center">Ante</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="text-center">
+                                  {nextLevel?.smallBlind || '—'}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {nextLevel?.bigBlind || '—'}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {nextLevel?.ante || '—'}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+
+                      {nextLevel && nextLevel.isBreak && (
+                        <div className="border rounded-md overflow-hidden">
+                          <div className="bg-muted/20 px-4 py-2 font-semibold flex items-center">
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                            Next: {nextLevel.breakName} - {nextLevel.duration} min
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   
                   {isAdmin && (
-                    <div className="text-center mb-2">
+                    <div className="text-center mt-4">
                       <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
                         <span>View Full Structure</span>
                       </Link>
@@ -440,7 +561,7 @@ export default function Status() {
                   )}
                 </>
               ) : (
-                <p className="text-center text-muted-foreground">No blind structure information available</p>
+                <p className="text-center text-muted-foreground">No timer information available</p>
               )}
             </div>
           )}
