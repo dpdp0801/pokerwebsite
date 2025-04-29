@@ -318,11 +318,16 @@ export default function AdminDashboard() {
       generatedTitle = `$${newSession.smallBlind}/$${newSession.bigBlind} NLH Cash Game`;
     }
     
-    // Create session data object
-    const sessionData = {
+    // Convert string number values to actual numbers
+    const processedData = {
       ...newSession,
       title: generatedTitle,
-      status: "NOT_STARTED"
+      status: "NOT_STARTED",
+      maxPlayers: parseInt(newSession.maxPlayers, 10),
+      buyIn: parseFloat(newSession.buyIn),
+      smallBlind: newSession.smallBlind ? parseFloat(newSession.smallBlind) : undefined,
+      bigBlind: newSession.bigBlind ? parseFloat(newSession.bigBlind) : undefined,
+      minBuyIn: newSession.minBuyIn ? parseFloat(newSession.minBuyIn) : undefined
     };
     
     // Send data to API
@@ -331,7 +336,7 @@ export default function AdminDashboard() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(sessionData),
+      body: JSON.stringify(processedData),
     })
     .then(response => {
       if (!response.ok) {
@@ -500,12 +505,22 @@ export default function AdminDashboard() {
     }
     
     try {
+      // Convert string number values to actual numbers
+      const processedData = {
+        ...editSessionData,
+        maxPlayers: editSessionData.maxPlayers ? parseInt(editSessionData.maxPlayers, 10) : undefined,
+        buyIn: editSessionData.buyIn ? parseFloat(editSessionData.buyIn) : undefined,
+        smallBlind: editSessionData.smallBlind ? parseFloat(editSessionData.smallBlind) : undefined,
+        bigBlind: editSessionData.bigBlind ? parseFloat(editSessionData.bigBlind) : undefined,
+        minBuyIn: editSessionData.minBuyIn ? parseFloat(editSessionData.minBuyIn) : undefined
+      };
+      
       const response = await fetch(`/api/sessions/manage?id=${editSessionData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editSessionData),
+        body: JSON.stringify(processedData),
       });
       
       const data = await response.json();
@@ -738,16 +753,6 @@ export default function AdminDashboard() {
                                 >
                                   Edit
                                 </Button>
-                                <Button 
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => {
-                                    setSessionToDelete(session.id);
-                                    setDeleteConfirmDialog(true);
-                                  }}
-                                >
-                                  Delete
-                                </Button>
                               </>
                             )}
                             
@@ -768,6 +773,18 @@ export default function AdminDashboard() {
                                 </Button>
                               </>
                             )}
+                            
+                            {/* Add delete button for any session status */}
+                            <Button 
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSessionToDelete(session.id);
+                                setDeleteConfirmDialog(true);
+                              }}
+                            >
+                              Delete
+                            </Button>
                           </div>
                         </div>
                         {session.description && (
