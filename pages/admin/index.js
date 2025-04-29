@@ -21,6 +21,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("sessions");
   const [createSessionDialog, setCreateSessionDialog] = useState(false);
   const [sessionType, setSessionType] = useState("mtt");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // NOTE: We no longer redirect here. Middleware already protects this page.
   // If the user somehow reaches this page unauthenticated, we'll show a minimal
@@ -52,13 +54,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     // Use a more robust approach to check if we should show the dialog
     const handleQueryAction = () => {
-      console.log("Checking query params", router.query);
-      if (router.query.action === "create-session") {
-        console.log("Opening session dialog from query param");
-        setCreateSessionDialog(true);
-        // Clean up the URL without triggering a navigation
-        router.replace("/admin", undefined, { shallow: true })
-          .catch(error => console.error("Error updating URL:", error));
+      try {
+        console.log("Checking query params", router.query);
+        if (router.query.action === "create-session") {
+          console.log("Opening session dialog from query param");
+          setCreateSessionDialog(true);
+          // Clean up the URL without triggering a navigation
+          router.replace("/admin", undefined, { shallow: true })
+            .catch(error => console.error("Error updating URL:", error));
+        }
+      } catch (err) {
+        console.error("Error in handleQueryAction:", err);
       }
     };
     
@@ -291,15 +297,25 @@ export default function AdminDashboard() {
   // Fetch sessions on component mount
   useEffect(() => {
     const fetchSessions = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
+        console.log("Fetching sessions from API...");
         const response = await fetch('/api/sessions/manage');
         const data = await response.json();
         
         if (data.success && data.sessions) {
+          console.log("Sessions fetched successfully:", data.sessions.length);
           setAllSessions(data.sessions);
+        } else {
+          console.warn("No sessions data in API response");
+          setAllSessions([]);
         }
+        setIsLoading(false);
       } catch (error) {
         console.error('Error fetching sessions:', error);
+        setError("Failed to load sessions. Please try again later.");
+        setIsLoading(false);
         toast({
           title: 'Error',
           description: 'Failed to fetch sessions data',
@@ -315,16 +331,23 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchBuyInRequests = async () => {
       try {
+        console.log("Fetching buy-in requests from API...");
         const response = await fetch('/api/buyins');
         if (!response.ok) {
           throw new Error(`Server responded with status ${response.status}`);
         }
         const data = await response.json();
         if (data.success) {
+          console.log("Buy-in requests fetched successfully:", data.buyInRequests?.length || 0);
           setBuyInRequests(data.buyInRequests || []);
+        } else {
+          console.warn("No buy-in requests data in API response");
+          setBuyInRequests([]);
         }
       } catch (error) {
         console.error('Error fetching buy-in requests:', error);
+        // Still set empty array so UI doesn't break
+        setBuyInRequests([]);
         // Don't show toast for this - it's normal to have no buy-ins initially
       }
     };
@@ -344,6 +367,7 @@ export default function AdminDashboard() {
     }
     
     try {
+      console.log(`Updating session ${sessionId} status to ${newStatus}...`);
       const response = await fetch(`/api/sessions/manage?id=${sessionId}`, {
         method: 'PUT',
         headers: {
@@ -382,6 +406,7 @@ export default function AdminDashboard() {
   // Add handler for deleting a session
   const handleDeleteSession = async (sessionId) => {
     try {
+      console.log(`Deleting session ${sessionId}...`);
       const response = await fetch(`/api/sessions/manage?id=${sessionId}`, {
         method: 'DELETE'
       });
@@ -503,6 +528,35 @@ export default function AdminDashboard() {
       });
     }
   };
+
+  // If we're still loading the initial data, show a loading state
+  if (isLoading) {
+    return (
+      <div className="container py-12 max-w-6xl">
+        <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mb-2">Loading dashboard data...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // If there was an error loading the data, show an error state
+  if (error) {
+    return (
+      <div className="container py-12 max-w-6xl">
+        <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-red-500 mb-2">{error}</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-12 max-w-6xl">
