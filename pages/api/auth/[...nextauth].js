@@ -98,7 +98,11 @@ export const authOptions = {
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback triggered", { url, baseUrl });
       
-      // Always redirect to home page for simplicity during debugging
+      // Honor the intended URL instead of always redirecting to home
+      // This is important for maintaining admin session state
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
       return baseUrl;
     },
     

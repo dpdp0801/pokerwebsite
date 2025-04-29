@@ -10,10 +10,31 @@ export async function middleware(req: NextRequest) {
 
   // Protect all other /admin routes
   if (pathname.startsWith("/admin")) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || token.role !== "ADMIN") {
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === "production",
+    });
+    
+    // Debug log (visible in server logs)
+    console.log("Auth check for admin route:", { 
+      path: pathname, 
+      hasToken: !!token,
+      role: token?.role || "none" 
+    });
+
+    if (!token) {
+      console.log("No session token found, redirecting to login");
       return NextResponse.redirect(new URL("/admin/login", req.url));
     }
+    
+    if (token.role !== "ADMIN") {
+      console.log("User is not an admin, redirecting to login");
+      return NextResponse.redirect(new URL("/admin/login", req.url));
+    }
+    
+    // User is authenticated and has admin role
+    console.log("Admin access granted");
   }
 
   return NextResponse.next();
