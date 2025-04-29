@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, Trash2 } from "lucide-react";
+import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/lib/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Status() {
   const [loading, setLoading] = useState(true);
@@ -14,6 +15,8 @@ export default function Status() {
     exists: false,
     session: null
   });
+  const [blindStructureData, setBlindStructureData] = useState(null);
+  const [blindsLoading, setBlindsLoading] = useState(false);
 
   const { data: session } = useSession();
   const isAdmin = session?.role === "ADMIN";
@@ -28,6 +31,11 @@ export default function Status() {
         const response = await fetch('/api/session-status');
         const data = await response.json();
         setSessionData(data);
+        
+        // If active tournament, fetch blind structure
+        if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
+          fetchBlindStructure(data.session.id);
+        }
       } catch (error) {
         console.error('Error fetching session data:', error);
       } finally {
@@ -37,6 +45,62 @@ export default function Status() {
 
     fetchSessionData();
   }, []);
+
+  // Fetch blind structure for active tournament
+  const fetchBlindStructure = async (sessionId) => {
+    try {
+      setBlindsLoading(true);
+      const response = await fetch(`/api/blinds/current?sessionId=${sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch blind structure');
+      }
+      
+      const data = await response.json();
+      setBlindStructureData(data);
+    } catch (error) {
+      console.error('Error fetching blind structure:', error);
+    } finally {
+      setBlindsLoading(false);
+    }
+  };
+
+  // Update blind level (admin only)
+  const updateBlindLevel = async (levelIndex) => {
+    if (!isAdmin || !sessionData.exists) return;
+    
+    try {
+      const response = await fetch('/api/blinds/update-level', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: sessionData.session.id,
+          levelIndex
+        }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update blind level');
+      }
+      
+      // Refresh blind structure data
+      fetchBlindStructure(sessionData.session.id);
+      
+      toast({
+        title: "Blind Level Updated",
+        description: "The current blind level has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred while updating the blind level",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -188,18 +252,20 @@ export default function Status() {
 
   const currentSession = sessionData.session;
   const registrations = currentSession.registrations || { confirmed: [], waitlisted: [] };
+  const isTournament = currentSession.type === 'TOURNAMENT';
+  const isActive = currentSession.status === 'ACTIVE';
 
   return (
     <div className="container py-12 max-w-3xl">
       <Card>
         <CardHeader>
           <CardTitle className="text-center flex items-center justify-center gap-2">
-            <span>{currentSession.type === 'TOURNAMENT' ? 'Tournament' : 'Cash Game'} Status</span>
+            <span>{isTournament ? 'Tournament' : 'Cash Game'} Status</span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${
-              currentSession.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 
+              isActive ? 'bg-green-100 text-green-800' : 
               'bg-blue-100 text-blue-800'
             }`}>
-              {currentSession.status === 'ACTIVE' ? 'Live' : 'Not Started'}
+              {isActive ? 'Live' : 'Not Started'}
             </span>
           </CardTitle>
           <CardDescription className="text-center">
@@ -213,7 +279,7 @@ export default function Status() {
           </div>
           
           <div className="grid grid-cols-2 gap-4 mb-6 text-center">
-            {currentSession.type === 'TOURNAMENT' ? (
+            {isTournament ? (
               <>
                 <div>
                   <p className="text-xl font-medium">${currentSession.buyIn}</p>
@@ -250,6 +316,100 @@ export default function Status() {
             </div>
           </div>
           
+          {/* Show blind structure for active tournaments */}
+          {isTournament && isActive && (
+            <div className="border-t pt-4 mt-4">
+              <h3 className="font-medium text-lg mb-3 text-center">Blind Structure</h3>
+              
+              {blindsLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <Clock className="h-5 w-5 animate-spin mr-2" />
+                  <p>Loading blind structure...</p>
+                </div>
+              ) : blindStructureData ? (
+                <>
+                  <div className="text-center mb-4">
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="text-sm text-muted-foreground">
+                        Level {blindStructureData.currentLevel?.level || 1} / {blindStructureData.totalLevels || 'Unknown'}
+                      </div>
+                      
+                      {isAdmin && (
+                        <div className="flex items-center space-x-1">
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1))}
+                            disabled={!currentSession.currentBlindLevel}
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => updateBlindLevel((currentSession.currentBlindLevel || 0) + 1)}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {blindStructureData.currentLevel?.isBreak ? (
+                    <div className="bg-blue-50 p-4 rounded-md text-center mb-4">
+                      <h4 className="font-medium text-blue-800">
+                        {blindStructureData.currentLevel.breakName || 'Break'} - {blindStructureData.currentLevel.duration} minutes
+                      </h4>
+                      {blindStructureData.currentLevel.specialAction && (
+                        <p className="text-sm text-blue-700 mt-1">
+                          {blindStructureData.currentLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
+                          {blindStructureData.currentLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border rounded-md overflow-hidden mb-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-center">Small Blind</TableHead>
+                            <TableHead className="text-center">Big Blind</TableHead>
+                            <TableHead className="text-center">Ante</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="text-center font-medium">
+                              {blindStructureData.currentLevel?.smallBlind || '—'}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {blindStructureData.currentLevel?.bigBlind || '—'}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {blindStructureData.currentLevel?.ante || '—'}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  
+                  {isAdmin && (
+                    <div className="text-center mb-2">
+                      <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
+                        <span>View Full Structure</span>
+                      </Link>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground">No blind structure information available</p>
+              )}
+            </div>
+          )}
+          
+          {/* Only show participants list to admins */}
           {isAdmin && (
             <div className="border-t pt-4">
               <h3 className="font-medium text-lg mb-3">Participants</h3>

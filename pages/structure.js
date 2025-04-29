@@ -1,20 +1,34 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
 
 export default function Structure() {
-  // Mock data for blinds structure
-  const blindsStructure = [
-    { level: 1, smallBlind: 25, bigBlind: 50, ante: 0, duration: 20 },
-    { level: 2, smallBlind: 50, bigBlind: 100, ante: 0, duration: 20 },
-    { level: 3, smallBlind: 75, bigBlind: 150, ante: 0, duration: 20 },
-    { level: 4, smallBlind: 100, bigBlind: 200, ante: 25, duration: 20 },
-    { level: 5, smallBlind: 150, bigBlind: 300, ante: 25, duration: 20 },
-    { level: 6, smallBlind: 200, bigBlind: 400, ante: 50, duration: 20 },
-    { level: 7, smallBlind: 300, bigBlind: 600, ante: 75, duration: 20 },
-    { level: 8, smallBlind: 400, bigBlind: 800, ante: 100, duration: 20 },
-    { level: 9, smallBlind: 500, bigBlind: 1000, ante: 100, duration: 20 },
-    { level: 10, smallBlind: 700, bigBlind: 1400, ante: 200, duration: 20 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [blindStructure, setBlindStructure] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchBlindStructure() {
+      try {
+        const response = await fetch('/api/blinds/structure');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch blind structure');
+        }
+        
+        const data = await response.json();
+        setBlindStructure(data.structure);
+      } catch (err) {
+        console.error('Error fetching blind structure:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchBlindStructure();
+  }, []);
 
   // Mock data for payout structure
   const payoutStructure = [
@@ -22,6 +36,28 @@ export default function Structure() {
     { position: 2, percentage: "30%" },
     { position: 3, percentage: "20%" },
   ];
+
+  if (loading) {
+    return (
+      <div className="container py-12 max-w-4xl">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-2">Loading tournament structure...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-12 max-w-4xl">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-12 max-w-4xl">
@@ -40,7 +76,7 @@ export default function Structure() {
             </div>
             <div>
               <h3 className="font-medium">Starting Stack</h3>
-              <p className="text-muted-foreground">10,000 chips</p>
+              <p className="text-muted-foreground">{blindStructure?.startingStack.toLocaleString()} chips</p>
             </div>
             <div>
               <h3 className="font-medium">Target Duration</h3>
@@ -67,20 +103,27 @@ export default function Structure() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Level</TableHead>
+                  <TableHead>Duration</TableHead>
                   <TableHead>Small Blind</TableHead>
                   <TableHead>Big Blind</TableHead>
                   <TableHead>Ante</TableHead>
-                  <TableHead>Duration (minutes)</TableHead>
+                  <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {blindsStructure.map((level) => (
-                  <TableRow key={level.level}>
-                    <TableCell>{level.level}</TableCell>
-                    <TableCell>{level.smallBlind}</TableCell>
-                    <TableCell>{level.bigBlind}</TableCell>
-                    <TableCell>{level.ante}</TableCell>
-                    <TableCell>{level.duration}</TableCell>
+                {blindStructure?.levels.map((level) => (
+                  <TableRow key={level.id} className={level.isBreak ? "bg-muted/30" : ""}>
+                    <TableCell>
+                      {level.isBreak ? level.breakName : level.level}
+                    </TableCell>
+                    <TableCell>{level.duration} min</TableCell>
+                    <TableCell>{level.isBreak ? '—' : level.smallBlind}</TableCell>
+                    <TableCell>{level.isBreak ? '—' : level.bigBlind}</TableCell>
+                    <TableCell>{level.isBreak ? '—' : level.ante}</TableCell>
+                    <TableCell>
+                      {level.specialAction === 'REG_CLOSE' && 'Registration Closes'}
+                      {level.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

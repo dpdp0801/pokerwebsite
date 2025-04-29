@@ -52,6 +52,7 @@ model PokerSession {
   status      String        @default("NOT_STARTED") // NOT_STARTED, ACTIVE, COMPLETED, CANCELLED
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  currentBlindLevel Int?    // Current blind level index for tournaments
   
   // relations
   registrations Registration[]
@@ -90,6 +91,41 @@ model GameResult {
   // relations
   user    User         @relation(fields: [userId], references: [id])
   session PokerSession @relation(fields: [sessionId], references: [id])
+}
+
+//////////////////////////////
+//  TOURNAMENT STRUCTURE
+//////////////////////////////
+
+model BlindLevel {
+  id            String      @id @default(cuid())
+  level         Int         // Level number
+  duration      Int         // Duration in minutes
+  smallBlind    Int?        // Small blind (null for breaks)
+  bigBlind      Int?        // Big blind (null for breaks)
+  ante          Int?        // Ante (null if no ante or break)
+  isBreak       Boolean     @default(false)
+  breakName     String?     // Name of break (B1, B2, B3, etc.)
+  specialAction String?     // Special action to take at this level (e.g., REG_CLOSE, CHIP_UP)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relation to store a default structure and structure variations
+  structureId   String
+  structure     BlindStructure @relation(fields: [structureId], references: [id])
+}
+
+model BlindStructure {
+  id            String      @id @default(cuid())
+  name          String      // Name of the structure (e.g., "Default", "Turbo", "Deep Stack")
+  description   String?     // Description of the structure
+  startingStack Int         // Starting stack size
+  isDefault     Boolean     @default(false) // Whether this is the default structure
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // relations
+  levels        BlindLevel[]
 }
 
 //////////////////////////////
