@@ -46,6 +46,8 @@ model PokerSession {
   buyIn       Int
   minBuyIn    Int?          // Only for cash games
   maxBuyIn    Int?          // Only for cash games
+  smallBlind  Float?        // Only for cash games
+  bigBlind    Float?        // Only for cash games
   maxPlayers  Int?
   status      String        @default("NOT_STARTED") // NOT_STARTED, ACTIVE, COMPLETED, CANCELLED
   createdAt   DateTime      @default(now())

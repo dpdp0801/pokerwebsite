@@ -55,30 +55,35 @@ export default async function handler(req, res) {
         buyIn: session.buyIn
       };
       
-      // Extract blinds from title or description since they don't exist in the schema
-      // Parse from title pattern like "$0.2/$0.5 NLH Cash Game"
-      try {
-        // First try to extract from title
-        const titleMatch = session.title.match(/\$([0-9.]+)\/\$([0-9.]+)/);
-        if (titleMatch && titleMatch.length === 3) {
-          formattedSession.smallBlind = parseFloat(titleMatch[1]);
-          formattedSession.bigBlind = parseFloat(titleMatch[2]);
-        } else {
-          // Try to extract from description if title parsing failed
-          const descMatch = session.description.match(/\$([0-9.]+)\/\$([0-9.]+)/);
-          if (descMatch && descMatch.length === 3) {
-            formattedSession.smallBlind = parseFloat(descMatch[1]);
-            formattedSession.bigBlind = parseFloat(descMatch[2]);
+      // Use smallBlind/bigBlind from DB if available, otherwise try to extract from title/description
+      if (session.smallBlind !== null && session.bigBlind !== null) {
+        formattedSession.smallBlind = session.smallBlind;
+        formattedSession.bigBlind = session.bigBlind;
+      } else {
+        // Fallback to parsing from title/description for backwards compatibility
+        try {
+          // First try to extract from title
+          const titleMatch = session.title.match(/\$([0-9.]+)\/\$([0-9.]+)/);
+          if (titleMatch && titleMatch.length === 3) {
+            formattedSession.smallBlind = parseFloat(titleMatch[1]);
+            formattedSession.bigBlind = parseFloat(titleMatch[2]);
           } else {
-            // Default values if we can't extract
-            formattedSession.smallBlind = 0.25;
-            formattedSession.bigBlind = 0.5;
+            // Try to extract from description if title parsing failed
+            const descMatch = session.description.match(/\$([0-9.]+)\/\$([0-9.]+)/);
+            if (descMatch && descMatch.length === 3) {
+              formattedSession.smallBlind = parseFloat(descMatch[1]);
+              formattedSession.bigBlind = parseFloat(descMatch[2]);
+            } else {
+              // Default values if we can't extract
+              formattedSession.smallBlind = 0.25;
+              formattedSession.bigBlind = 0.5;
+            }
           }
+        } catch (err) {
+          console.error("Error parsing blinds from title/description:", err);
+          formattedSession.smallBlind = 0.25;
+          formattedSession.bigBlind = 0.5;
         }
-      } catch (err) {
-        console.error("Error parsing blinds from title/description:", err);
-        formattedSession.smallBlind = 0.25;
-        formattedSession.bigBlind = 0.5;
       }
     }
 

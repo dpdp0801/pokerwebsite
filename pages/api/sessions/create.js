@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { authOptions } from '@/lib/auth-utils';
 
 // Initialize Prisma client outside of the handler function to reuse connections
 const prisma = new PrismaClient();
@@ -110,12 +110,14 @@ export default async function handler(req, res) {
       if (type.toLowerCase() === 'mtt') {
         sessionData.buyIn = parseInt(buyIn, 10);
       } else {
-        // Cash game specific fields - store values in the title/description only since the schema doesn't have smallBlind/bigBlind fields
+        // Cash game specific fields - now we can store them directly in DB columns
         sessionData.buyIn = parseInt(minBuyIn, 10);
         sessionData.minBuyIn = parseInt(minBuyIn, 10);
         sessionData.maxBuyIn = parseInt(minBuyIn, 10) * 2; // Default max buy-in to 2x min
+        sessionData.smallBlind = parseFloat(smallBlind);
+        sessionData.bigBlind = parseFloat(bigBlind);
         
-        // Store blind information in the description instead
+        // Still include blinds in description for backward compatibility
         sessionData.description = `$${smallBlind}/$${bigBlind} blinds, ${maxPlayers}-max cash game`;
       }
 
