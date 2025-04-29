@@ -133,8 +133,10 @@ export default function Status() {
       
       const data = await response.json();
       setBlindStructureData(data);
+      return data; // Return the data for promise chaining
     } catch (error) {
       console.error('Error fetching blind structure:', error);
+      throw error; // Rethrow to allow error handling in caller
     } finally {
       setBlindsLoading(false);
     }
@@ -187,20 +189,20 @@ export default function Status() {
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update blind level');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update blind level');
       }
       
-      const data = await response.json();
-      console.log("API response:", data);
+      const responseData = await response.json();
+      console.log("API response:", responseData);
       
       // Refresh the session data and blind structure data
-      const sessionResponse = await fetch('/api/session-status');
-      const sessionData = await sessionResponse.json();
-      setSessionData(sessionData);
+      const updatedSessionResponse = await fetch('/api/session-status');
+      const updatedSessionData = await updatedSessionResponse.json();
+      setSessionData(updatedSessionData);
       
       // Refresh blind structure data
-      fetchBlindStructure(sessionData.session.id);
+      await fetchBlindStructure(sessionData.session.id);
       
       toast({
         title: "Blind Level Updated",
@@ -499,8 +501,8 @@ export default function Status() {
                             onClick={async () => {
                               // Only allow the click if not currently processing
                               if (!blindsLoading) {
-                                setBlindsLoading(true);
                                 try {
+                                  setBlindsLoading(true);
                                   await updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1));
                                 } finally {
                                   setBlindsLoading(false);
@@ -518,8 +520,8 @@ export default function Status() {
                             onClick={async () => {
                               // Only allow the click if not currently processing
                               if (!blindsLoading) {
-                                setBlindsLoading(true);
                                 try {
+                                  setBlindsLoading(true);
                                   await updateBlindLevel((currentSession.currentBlindLevel || 0) + 1);
                                 } finally {
                                   setBlindsLoading(false);

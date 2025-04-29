@@ -17,9 +17,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log("Received update-level request:", req.body);
+    // Log the incoming request for debugging
+    console.log("Received update-level request:", JSON.stringify(req.body));
+    
+    // Destructure body parameters
     const { sessionId, levelIndex } = req.body;
 
+    // Validate required parameters
     if (!sessionId || typeof levelIndex !== 'number') {
       return res.status(400).json({ 
         success: false, 
@@ -27,13 +31,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get the session
+    // Get the session first
     const pokerSession = await prisma.pokerSession.findUnique({
       where: {
         id: sessionId
       }
     });
 
+    // Validate session exists
     if (!pokerSession) {
       return res.status(404).json({ 
         success: false, 
@@ -41,6 +46,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // Validate session is a tournament
     if (pokerSession.type !== 'TOURNAMENT') {
       return res.status(400).json({ 
         success: false, 
@@ -61,16 +67,19 @@ export default async function handler(req, res) {
 
     // Set the current time as the level start time
     const now = new Date();
+    
+    // Prepare update data
+    const updateData = {
+      currentBlindLevel: levelIndex,
+      levelStartTime: now
+    };
 
     // Update the current blind level and level start time
     const updatedSession = await prisma.pokerSession.update({
       where: {
         id: sessionId
       },
-      data: {
-        currentBlindLevel: levelIndex,
-        levelStartTime: now
-      }
+      data: updateData
     });
 
     console.log("Updated session:", {
@@ -79,13 +88,17 @@ export default async function handler(req, res) {
       startTime: updatedSession.levelStartTime
     });
 
+    // Return successful response
     return res.status(200).json({
       success: true,
       message: 'Current blind level updated successfully',
       session: updatedSession
     });
   } catch (error) {
+    // Log error for debugging
     console.error('Error updating blind level:', error);
+    
+    // Return error response
     return res.status(500).json({ 
       success: false, 
       message: 'Failed to update blind level', 
