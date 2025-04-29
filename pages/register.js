@@ -121,6 +121,11 @@ export default function Register() {
     setIsSubmitting(true);
     
     try {
+      // Set the buy-in amount based on session type
+      const finalBuyInAmount = selectedSession.type === "TOURNAMENT" 
+        ? selectedSession.buyIn 
+        : selectedSession.minBuyIn;
+        
       // Submit registration to API
       const response = await fetch('/api/registration', {
         method: 'POST',
@@ -129,7 +134,7 @@ export default function Register() {
         },
         body: JSON.stringify({
           sessionId: selectedSessionId,
-          buyInAmount: Number(buyInAmount)
+          buyInAmount: Number(finalBuyInAmount)
         }),
       });
       
@@ -348,42 +353,41 @@ export default function Register() {
                 </div>
               )}
               
-              {/* Buy-In Amount (only adjustable for cash games) */}
-              {selectedSession && (
+              {/* Buy-In Amount (only for tournaments) */}
+              {selectedSession && selectedSession.type === "TOURNAMENT" && (
                 <div>
                   <Label htmlFor="buyIn">Buy-In Amount ($)</Label>
-                  {selectedSession.type === "TOURNAMENT" ? (
-                    <Input 
-                      id="buyIn" 
-                      value={selectedSession.buyIn} 
-                      disabled 
-                      className="mt-1"
-                    />
-                  ) : (
-                    <div className="mt-1">
-                      <Input 
-                        id="buyIn" 
-                        type="number" 
-                        min={selectedSession.minBuyIn || 50} 
-                        max={selectedSession.maxBuyIn || 200} 
-                        value={buyInAmount} 
-                        onChange={(e) => setBuyInAmount(Number(e.target.value))} 
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Min: ${selectedSession.minBuyIn || 50} | Max: ${selectedSession.maxBuyIn || 200}
-                      </p>
-                    </div>
-                  )}
+                  <Input 
+                    id="buyIn" 
+                    value={selectedSession.buyIn} 
+                    disabled 
+                    className="mt-1"
+                  />
                 </div>
               )}
               
-              {/* Terms and Payment Info */}
-              <div className="border rounded-md p-3 bg-muted/30">
-                <p className="text-sm">
-                  By registering, you agree to our <Link href="/policy" className="text-primary hover:underline">policies</Link>. 
-                  Payment is required to secure your spot. After submission, you'll receive payment instructions.
-                </p>
-              </div>
+              {/* Cash Game Policy */}
+              {selectedSession && selectedSession.type === "CASH_GAME" && (
+                <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
+                  <p className="text-sm font-medium text-blue-800 mb-1">Cash Game Rules</p>
+                  <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
+                    <li>Minimum buy-in of ${selectedSession.minBuyIn} to secure your spot</li>
+                    <li>Players must arrive within 30 minutes of start time</li>
+                    <li>Late players will be moved to the waitlist</li>
+                    <li>No refunds for no-shows</li>
+                  </ul>
+                </div>
+              )}
+              
+              {/* Tournament Policy */}
+              {selectedSession && selectedSession.type === "TOURNAMENT" && (
+                <div className="border rounded-md p-3 bg-muted/30">
+                  <p className="text-sm">
+                    By registering, you agree to our <Link href="/policy" className="text-primary hover:underline">policies</Link>. 
+                    Payment is required to secure your spot. After submission, you'll receive payment instructions.
+                  </p>
+                </div>
+              )}
             </div>
             
             <Button 
@@ -415,7 +419,9 @@ export default function Register() {
                   <h3 className="font-medium text-lg mb-2">Payment Instructions</h3>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                     <li>Open your Venmo app or website</li>
-                    <li>Send ${selectedSession?.type === "TOURNAMENT" ? selectedSession?.buyIn : buyInAmount} to <span className="font-medium text-foreground">@catalina-poker</span></li>
+                    <li>Send ${selectedSession?.type === "TOURNAMENT" ? 
+                      selectedSession?.buyIn : 
+                      selectedSession?.minBuyIn} to <span className="font-medium text-foreground">@catalina-poker</span></li>
                     <li>In the payment note, you <span className="font-bold">MUST</span> include your unique payment code:</li>
                   </ol>
                 </div>
@@ -425,14 +431,26 @@ export default function Register() {
                   <p className="font-mono text-lg font-semibold text-center">{paymentCode}</p>
                 </div>
                 
-                <div className="text-sm text-muted-foreground">
-                  <p className="mb-1 font-medium">Important:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Payment must be received within 24 hours to secure your spot</li>
-                    <li>Your registration is not confirmed until payment is approved</li>
-                    <li>No refunds after payment confirmation</li>
-                  </ul>
-                </div>
+                {selectedSession?.type === "TOURNAMENT" ? (
+                  <div className="text-sm text-muted-foreground">
+                    <p className="mb-1 font-medium">Important:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Payment must be received within 24 hours to secure your spot</li>
+                      <li>Your registration is not confirmed until payment is approved</li>
+                      <li>No refunds after payment confirmation</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    <p className="mb-1 font-medium">Important for Cash Games:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Payment confirms your reservation</li>
+                      <li>Please arrive within 30 minutes of the start time</li>
+                      <li>Late arrivals may lose their spot to waitlisted players</li>
+                      <li>You can buy in for more than the minimum at the table</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           )}
