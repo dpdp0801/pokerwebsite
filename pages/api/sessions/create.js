@@ -110,12 +110,13 @@ export default async function handler(req, res) {
       if (type.toLowerCase() === 'mtt') {
         sessionData.buyIn = parseInt(buyIn, 10);
       } else {
-        // Cash game specific fields
+        // Cash game specific fields - store values in the title/description only since the schema doesn't have smallBlind/bigBlind fields
         sessionData.buyIn = parseInt(minBuyIn, 10);
         sessionData.minBuyIn = parseInt(minBuyIn, 10);
         sessionData.maxBuyIn = parseInt(minBuyIn, 10) * 2; // Default max buy-in to 2x min
-        sessionData.smallBlind = parseFloat(smallBlind);
-        sessionData.bigBlind = parseFloat(bigBlind);
+        
+        // Store blind information in the description instead
+        sessionData.description = `$${smallBlind}/$${bigBlind} blinds, ${maxPlayers}-max cash game`;
       }
 
       console.log("Prepared session data for database:", sessionData);

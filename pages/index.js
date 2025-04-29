@@ -98,8 +98,10 @@ export default function Home() {
     if (sessionData.type === 'MTT' || sessionData.type === 'TOURNAMENT') {
       return `$${sessionData.buyIn} NLH ${sessionData.maxPlayers}-Max Tournament`;
     } else {
-      // Cash game
-      return `$${sessionData.smallBlind}/$${sessionData.bigBlind} NLH ${sessionData.maxPlayers}-Max Cash Game`;
+      // Cash game - use the smallBlind/bigBlind values that were extracted in the API
+      const smallBlind = sessionData.smallBlind || 0.25;
+      const bigBlind = sessionData.bigBlind || 0.5;
+      return `$${smallBlind}/$${bigBlind} NLH ${sessionData.maxPlayers}-Max Cash Game`;
     }
   };
 
