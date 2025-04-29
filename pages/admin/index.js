@@ -113,7 +113,7 @@ export default function AdminDashboard() {
     
     // Only run after router is ready
     if (router.isReady) {
-      handleQueryAction();
+      handleQueryAction(); // Call the function but don't return its result
     }
   }, [router.isReady, router.query, router]);
   
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
       }
     };
     
-    fetchSessions();
+    fetchSessions(); // Call the function but don't return its result
   }, [toast]);
   
   // Fetch buy-in requests
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
       }
     };
     
-    fetchBuyInRequests();
+    fetchBuyInRequests(); // Call the function but don't return its result
   }, []);
   
   // Update session status
