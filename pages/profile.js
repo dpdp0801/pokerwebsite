@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Profile() {
   const { data: session, status } = useSession();
-  const [activeTab, setActiveTab] = useState("upcoming");
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -109,7 +109,6 @@ export default function Profile() {
   
   const upcomingGames = profileData?.upcomingGames || [];
   const currentBuyInRequests = profileData?.currentBuyInRequests || [];
-  const gameHistory = profileData?.gameHistory || [];
 
   return (
     <div className="container py-12 max-w-4xl">
@@ -154,6 +153,11 @@ export default function Profile() {
                 <dd>{stats.firstPlace}</dd>
               </div>
             </dl>
+            <div className="mt-4 text-center">
+              <Button variant="outline" asChild>
+                <Link href="/record">View Full Game History</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
         
@@ -196,111 +200,50 @@ export default function Profile() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Your Games</CardTitle>
+          <CardTitle>Upcoming Games</CardTitle>
+          <CardDescription>
+            Sessions you've registered for that haven't started yet
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="upcoming">Upcoming Games</TabsTrigger>
-              <TabsTrigger value="history">Game History</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="upcoming" className="mt-4">
-              {upcomingGames.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">No upcoming games found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcomingGames.map((reg) => (
-                      <TableRow key={reg.id}>
-                        <TableCell>{reg.session.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}</TableCell>
-                        <TableCell>{reg.session.title}</TableCell>
-                        <TableCell>{formatDisplayDate(reg.session.date)}</TableCell>
-                        <TableCell>{formatDisplayTime(reg.session.startTime)}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            reg.status === "CONFIRMED" 
-                              ? "bg-green-100 text-green-800" 
-                              : reg.status === "WAITLISTED"
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}>
-                            {reg.status}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="history" className="mt-4">
-              {gameHistory.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">No game history found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Buy-In</TableHead>
-                      <TableHead>Result</TableHead>
-                      <TableHead>Winnings</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {gameHistory.map((game) => (
-                      <TableRow key={game.id}>
-                        <TableCell>{game.session.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}</TableCell>
-                        <TableCell>{game.session.title}</TableCell>
-                        <TableCell>{formatDisplayDate(game.session.date)}</TableCell>
-                        <TableCell>${game.buyIn}</TableCell>
-                        <TableCell>
-                          {game.session.type === "TOURNAMENT" 
-                            ? game.position 
-                              ? `${game.position}${getOrdinalSuffix(game.position)} Place` 
-                              : "Unknown"
-                            : game.notes || "Cash Game"}
-                        </TableCell>
-                        <TableCell className={game.winnings > game.buyIn ? 'text-green-600' : game.winnings === 0 ? 'text-red-600' : ''}>
-                          ${game.winnings}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-          </Tabs>
+          {upcomingGames.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">No upcoming games found</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {upcomingGames.map((reg) => (
+                  <TableRow key={reg.id}>
+                    <TableCell>{reg.session.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}</TableCell>
+                    <TableCell>{reg.session.title}</TableCell>
+                    <TableCell>{formatDisplayDate(reg.session.date)}</TableCell>
+                    <TableCell>{formatDisplayTime(reg.session.startTime)}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        reg.status === "CONFIRMED" 
+                          ? "bg-green-100 text-green-800" 
+                          : reg.status === "WAITLISTED"
+                          ? "bg-orange-100 text-orange-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {reg.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-}
-
-// Helper function to get ordinal suffix for numbers
-function getOrdinalSuffix(i) {
-  const j = i % 10,
-        k = i % 100;
-  if (j === 1 && k !== 11) {
-    return "st";
-  }
-  if (j === 2 && k !== 12) {
-    return "nd";
-  }
-  if (j === 3 && k !== 13) {
-    return "rd";
-  }
-  return "th";
 } 

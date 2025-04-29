@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/lib/hooks/use-toast";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Register() {
   const { data: session, status } = useSession();
@@ -17,17 +18,71 @@ export default function Register() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
   const [paymentCode, setPaymentCode] = useState("");
-  
-  // This would come from an API in a real implementation
-  const sessionData = {
-    exists: true,
-    type: 'mtt', // 'mtt' or 'cash'
-    buyIn: 100,
-    minBuyIn: 100, // For cash games, can be different from buyIn
-    maxBuyIn: 200, // For cash games
+  const [loading, setLoading] = useState(true);
+  const [availableSessions, setAvailableSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [buyInAmount, setBuyInAmount] = useState(100);
+
+  // Fetch available sessions
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchAvailableSessions();
+    } else if (status === "unauthenticated") {
+      setLoading(false);
+    }
+  }, [status]);
+
+  const fetchAvailableSessions = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/sessions/manage");
+      
+      if (!res.ok) {
+        throw new Error("Failed to fetch available sessions");
+      }
+      
+      const data = await res.json();
+      
+      // Filter only NOT_STARTED sessions
+      const openSessions = data.sessions?.filter(session => 
+        session.status === "NOT_STARTED"
+      ) || [];
+      
+      setAvailableSessions(openSessions);
+      
+      // Set first session as selected if any exist
+      if (openSessions.length > 0) {
+        setSelectedSessionId(openSessions[0].id);
+        setSelectedSession(openSessions[0]);
+        setBuyInAmount(openSessions[0].type === "TOURNAMENT" ? 
+          openSessions[0].buyIn : 
+          openSessions[0].minBuyIn || 100);
+      }
+    } catch (err) {
+      console.error("Error fetching sessions:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load available sessions",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [buyInAmount, setBuyInAmount] = useState(sessionData.type === 'mtt' ? sessionData.buyIn : sessionData.minBuyIn);
+  // Update selected session when ID changes
+  useEffect(() => {
+    if (selectedSessionId) {
+      const session = availableSessions.find(s => s.id === selectedSessionId);
+      if (session) {
+        setSelectedSession(session);
+        setBuyInAmount(session.type === "TOURNAMENT" ? 
+          session.buyIn : 
+          session.minBuyIn || 100);
+      }
+    }
+  }, [selectedSessionId, availableSessions]);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -42,13 +97,6 @@ export default function Register() {
     }
   }, [status, router, toast]);
 
-  const generatePaymentCode = (userId, sessionId) => {
-    // Create a unique but readable code format
-    const userIdPart = userId?.substring(0, 3).toUpperCase() || 'USR';
-    const timestamp = new Date().getTime().toString().substring(9, 13);
-    return `CP-${userIdPart}-${sessionId}-${timestamp}`;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -61,32 +109,84 @@ export default function Register() {
       });
       return;
     }
+
+    // Check if a session is selected
+    if (!selectedSessionId || !selectedSession) {
+      toast({
+        title: "Session Required",
+        description: "Please select a session to register for",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
-    // Generate a payment code for this registration
-    const code = generatePaymentCode(session.user.email || session.user.id, sessionData.type === 'mtt' ? 'MTT1' : 'CASH1');
-    setPaymentCode(code);
-    
-    // This would be an API call in a real implementation
-    setTimeout(() => {
-      setRegistrationSubmitted(true);
+    try {
+      // Submit registration to API
+      const response = await fetch('/api/registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: selectedSessionId,
+          buyInAmount: Number(buyInAmount)
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setRegistrationSubmitted(true);
+        setPaymentCode(data.paymentCode);
+        toast({
+          title: "Registration Success",
+          description: "Your registration has been submitted successfully",
+        });
+      } else {
+        throw new Error(data.error || "Failed to register");
+      }
+    } catch (err) {
+      console.error("Error submitting registration:", err);
+      toast({
+        title: "Registration Failed",
+        description: err.message || "An error occurred during registration",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  // Format time for display
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   // Show loading state while checking authentication
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
-      <div className="container py-12 max-w-lg">
-        <Card>
-          <CardHeader>
-            <CardTitle>Registration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-center text-muted-foreground">Loading...</p>
-          </CardContent>
-        </Card>
+      <div className="container py-12 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+        <p className="mt-2 text-muted-foreground">Loading registration...</p>
       </div>
     );
   }
@@ -115,7 +215,7 @@ export default function Register() {
     );
   }
 
-  if (!sessionData.exists) {
+  if (availableSessions.length === 0) {
     return (
       <div className="container py-12 max-w-lg">
         <Card>
@@ -124,7 +224,7 @@ export default function Register() {
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground">
-              There is currently no active session to register for. Please check back later.
+              There are currently no open sessions to register for. Please check back later.
             </p>
           </CardContent>
         </Card>
@@ -137,12 +237,10 @@ export default function Register() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {sessionData.type === 'mtt' ? 'Tournament Registration' : 'Cash Game Registration'}
+            Session Registration
           </CardTitle>
           <CardDescription>
-            {sessionData.type === 'mtt' 
-              ? 'Register for the upcoming tournament. Payment required to secure your seat.'
-              : 'Register for the cash game. Payment required to secure your seat.'}
+            Register for an upcoming poker session
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -169,32 +267,79 @@ export default function Register() {
                 />
               </div>
               
-              {/* Buy-In Amount (only adjustable for cash games) */}
+              {/* Session Selection */}
               <div>
-                <Label htmlFor="buyIn">Buy-In Amount ($)</Label>
-                {sessionData.type === 'mtt' ? (
-                  <Input 
-                    id="buyIn" 
-                    value={sessionData.buyIn} 
-                    disabled 
-                    className="mt-1"
-                  />
-                ) : (
-                  <div className="mt-1">
+                <Label htmlFor="session">Select Session</Label>
+                <Select 
+                  value={selectedSessionId} 
+                  onValueChange={setSelectedSessionId}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.title} - {formatDate(session.date)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Session Details */}
+              {selectedSession && (
+                <div className="border p-3 rounded-md bg-muted/30">
+                  <h3 className="font-medium mb-2">Session Details</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Type:</span>{' '}
+                      {selectedSession.type === "TOURNAMENT" ? "Tournament" : "Cash Game"}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Date:</span>{' '}
+                      {formatDate(selectedSession.date)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Time:</span>{' '}
+                      {formatTime(selectedSession.startTime)}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Location:</span>{' '}
+                      {selectedSession.location}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Buy-In Amount (only adjustable for cash games) */}
+              {selectedSession && (
+                <div>
+                  <Label htmlFor="buyIn">Buy-In Amount ($)</Label>
+                  {selectedSession.type === "TOURNAMENT" ? (
                     <Input 
                       id="buyIn" 
-                      type="number" 
-                      min={sessionData.minBuyIn} 
-                      max={sessionData.maxBuyIn} 
-                      value={buyInAmount} 
-                      onChange={(e) => setBuyInAmount(Number(e.target.value))} 
+                      value={selectedSession.buyIn} 
+                      disabled 
+                      className="mt-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Min: ${sessionData.minBuyIn} | Max: ${sessionData.maxBuyIn}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="mt-1">
+                      <Input 
+                        id="buyIn" 
+                        type="number" 
+                        min={selectedSession.minBuyIn || 50} 
+                        max={selectedSession.maxBuyIn || 200} 
+                        value={buyInAmount} 
+                        onChange={(e) => setBuyInAmount(Number(e.target.value))} 
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Min: ${selectedSession.minBuyIn || 50} | Max: ${selectedSession.maxBuyIn || 200}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Terms and Payment Info */}
               <div className="border rounded-md p-3 bg-muted/30">
@@ -225,7 +370,7 @@ export default function Register() {
                   <h3 className="font-medium text-lg mb-2">Payment Instructions</h3>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                     <li>Open your Venmo app or website</li>
-                    <li>Send ${sessionData.type === 'mtt' ? sessionData.buyIn : buyInAmount} to <span className="font-medium text-foreground">@catalina-poker</span></li>
+                    <li>Send ${selectedSession?.type === "TOURNAMENT" ? selectedSession?.buyIn : buyInAmount} to <span className="font-medium text-foreground">@catalina-poker</span></li>
                     <li>In the payment note, you <span className="font-bold">MUST</span> include your unique payment code:</li>
                   </ol>
                 </div>
