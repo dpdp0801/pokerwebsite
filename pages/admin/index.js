@@ -72,7 +72,50 @@ export default function AdminDashboard() {
   const [sessions, setSessions] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   
-  // Authentication check
+  // Load sessions function - now outside useEffect to prevent any return value issues
+  function loadSessions() {
+    setIsLoaded(false);
+    fetch('/api/sessions/manage')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSessions(data.sessions || []);
+        } else {
+          setErrorMessage("Failed to load sessions");
+        }
+        setIsLoaded(true);
+      })
+      .catch(err => {
+        console.error("Error loading sessions:", err);
+        setErrorMessage("Error connecting to server");
+        setIsLoaded(true);
+      });
+  }
+  
+  // Fixed useEffect implementation to avoid React Error #310
+  useEffect(() => {
+    // Ensure we never return anything from the main function
+    let isMounted = true;
+    
+    function fetchData() {
+      if (isMounted) {
+        loadSessions();
+      }
+    }
+    
+    try {
+      fetchData(); // call the function directly to avoid returning anything
+    } catch (err) {
+      console.error("Effect error:", err);
+    }
+    
+    // Only return a cleanup function
+    return function cleanup() {
+      isMounted = false;
+    };
+  }, []); 
+  
+  // Check authentication - move this out of component body
   if (status === "loading") {
     return <LoadingState />;
   }
@@ -88,47 +131,6 @@ export default function AdminDashboard() {
       </div>
     );
   }
-  
-  // Simplified fetch function - this will run on the client side safely
-  function loadSessions() {
-    setIsLoaded(false);
-    fetch('/api/sessions/manage')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setSessions(data.sessions || []);
-          setIsLoaded(true);
-        } else {
-          setErrorMessage("Failed to load sessions");
-          setIsLoaded(true);
-        }
-      })
-      .catch(err => {
-        console.error("Error loading sessions:", err);
-        setErrorMessage("Error connecting to server");
-        setIsLoaded(true);
-      });
-  }
-  
-  // This useEffect is simplified to avoid any potential errors
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Wrap in try/catch to be extra safe
-    try {
-      if (isMounted) {
-        loadSessions();
-      }
-    } catch (err) {
-      console.error("Effect error:", err);
-    }
-    
-    // Clean up function
-    return () => {
-      isMounted = false;
-    };
-  // Empty dependency array means this runs once on mount
-  }, []); 
   
   // Error state
   if (errorMessage) {
@@ -151,6 +153,11 @@ export default function AdminDashboard() {
   if (!isLoaded) {
     return <LoadingState />;
   }
+  
+  // Handle navigation to create session
+  const handleCreateSessionClick = () => {
+    router.push('/admin?action=create-session');
+  };
   
   // Render the main dashboard
   return (
@@ -187,7 +194,7 @@ export default function AdminDashboard() {
                 )}
                 
                 <div className="mt-6 text-center">
-                  <Button onClick={() => router.push('/admin?action=create-session')}>
+                  <Button onClick={handleCreateSessionClick}>
                     Create New Session
                   </Button>
                 </div>
