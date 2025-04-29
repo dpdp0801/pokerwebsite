@@ -50,14 +50,23 @@ export default async function handler(req, res) {
       if (pokerSession.status === "NOT_STARTED" && status === "ACTIVE") {
         // Update all registrations - move from upcoming to current buy-in requests
         await prisma.$transaction(async (prisma) => {
+          // For tournaments, set the initial blind level and start time
+          const updateData = {
+            status: status
+          };
+          
+          // For tournaments, set current blind level to 0 (first level) and record start time
+          if (pokerSession.type === "TOURNAMENT") {
+            updateData.currentBlindLevel = 0; // Start at the first level
+            updateData.levelStartTime = new Date(); // Current time as level start
+          }
+          
           // Update the session status first
           const updatedSession = await prisma.pokerSession.update({
             where: {
               id: sessionId,
             },
-            data: {
-              status: status,
-            },
+            data: updateData
           });
 
           // No need to update registrations since their relation to the session

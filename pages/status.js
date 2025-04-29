@@ -60,11 +60,26 @@ export default function Status() {
         clearInterval(timerInterval);
       }
 
-      // Set initial timer value
+      // Get level start time and duration
       const levelDuration = blindStructureData.currentLevel.duration;
+      const startTime = sessionData.session.levelStartTime 
+        ? new Date(sessionData.session.levelStartTime)
+        : new Date(); // Fallback to now if no start time
+
+      // Set initial timer based on elapsed time
+      const now = new Date();
+      const elapsedSeconds = Math.floor((now - startTime) / 1000);
+      const totalSeconds = levelDuration * 60;
+      const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
       
-      // Initialize timer with full duration
-      setTimer({ minutes: levelDuration, seconds: 0 });
+      const initialMinutes = Math.floor(remainingSeconds / 60);
+      const initialSeconds = remainingSeconds % 60;
+      
+      // Initialize timer with remaining time
+      setTimer({ 
+        minutes: initialMinutes, 
+        seconds: initialSeconds
+      });
       
       // Start a new interval
       const interval = setInterval(() => {
@@ -159,6 +174,7 @@ export default function Status() {
     if (!isAdmin || !sessionData.exists) return;
     
     try {
+      console.log(`Requesting level change to ${levelIndex}`);
       const response = await fetch('/api/blinds/update-level', {
         method: 'PUT',
         headers: {
@@ -175,6 +191,14 @@ export default function Status() {
         throw new Error(data.message || 'Failed to update blind level');
       }
       
+      const data = await response.json();
+      console.log("API response:", data);
+      
+      // Refresh the session data and blind structure data
+      const sessionResponse = await fetch('/api/session-status');
+      const sessionData = await sessionResponse.json();
+      setSessionData(sessionData);
+      
       // Refresh blind structure data
       fetchBlindStructure(sessionData.session.id);
       
@@ -183,6 +207,7 @@ export default function Status() {
         description: "The current blind level has been updated successfully.",
       });
     } catch (error) {
+      console.error("Error updating level:", error);
       toast({
         title: "Error",
         description: error.message || "An error occurred while updating the blind level",
@@ -470,19 +495,41 @@ export default function Status() {
                         <div className="flex items-center space-x-1">
                           <Button 
                             variant="outline" 
-                            size="icon"
-                            onClick={() => updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1))}
-                            disabled={currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel === 0}
+                            size="sm"
+                            onClick={async () => {
+                              // Only allow the click if not currently processing
+                              if (!blindsLoading) {
+                                setBlindsLoading(true);
+                                try {
+                                  await updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1));
+                                } finally {
+                                  setBlindsLoading(false);
+                                }
+                              }
+                            }}
+                            disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel === 0}
                           >
-                            <ArrowLeft className="h-4 w-4" />
+                            <ArrowLeft className="h-4 w-4 mr-1" />
+                            <span>Previous</span>
                           </Button>
                           <Button 
                             variant="outline" 
-                            size="icon"
-                            onClick={() => updateBlindLevel((currentSession.currentBlindLevel || 0) + 1)}
-                            disabled={currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel >= (blindStructureData.totalLevels - 1)}
+                            size="sm"
+                            onClick={async () => {
+                              // Only allow the click if not currently processing
+                              if (!blindsLoading) {
+                                setBlindsLoading(true);
+                                try {
+                                  await updateBlindLevel((currentSession.currentBlindLevel || 0) + 1);
+                                } finally {
+                                  setBlindsLoading(false);
+                                }
+                              }
+                            }}
+                            disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel >= (blindStructureData.totalLevels - 1)}
                           >
-                            <ArrowRight className="h-4 w-4" />
+                            <span>Next</span>
+                            <ArrowRight className="h-4 w-4 ml-1" />
                           </Button>
                         </div>
                       )}

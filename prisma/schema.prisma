@@ -54,6 +54,7 @@ model PokerSession {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   currentBlindLevel Int?    // Current blind level index for tournaments
+  levelStartTime  DateTime? // When the current blind level started
   
   // relations
   registrations Registration[]

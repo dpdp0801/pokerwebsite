@@ -17,6 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log("Received update-level request:", req.body);
     const { sessionId, levelIndex } = req.body;
 
     if (!sessionId || typeof levelIndex !== 'number') {
@@ -47,14 +48,35 @@ export default async function handler(req, res) {
       });
     }
 
-    // Update the current blind level
+    // If this is the same level as before, don't reset the timer
+    if (pokerSession.currentBlindLevel === levelIndex) {
+      return res.status(200).json({
+        success: true,
+        message: 'Already at this level, no changes made',
+        session: pokerSession
+      });
+    }
+
+    console.log(`Updating blind level from ${pokerSession.currentBlindLevel} to ${levelIndex}`);
+
+    // Set the current time as the level start time
+    const now = new Date();
+
+    // Update the current blind level and level start time
     const updatedSession = await prisma.pokerSession.update({
       where: {
         id: sessionId
       },
       data: {
-        currentBlindLevel: levelIndex
+        currentBlindLevel: levelIndex,
+        levelStartTime: now
       }
+    });
+
+    console.log("Updated session:", {
+      id: updatedSession.id,
+      level: updatedSession.currentBlindLevel,
+      startTime: updatedSession.levelStartTime
     });
 
     return res.status(200).json({

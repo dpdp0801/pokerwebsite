@@ -39,7 +39,8 @@ export default async function handler(req, res) {
       title: session.title,
       description: session.description,
       status: session.status,
-      currentBlindLevel: session.currentBlindLevel
+      currentBlindLevel: session.currentBlindLevel,
+      levelStartTime: session.levelStartTime
     };
     
     // Add type-specific fields
