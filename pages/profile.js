@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export default function Profile() {
   const { data: session, status } = useSession();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (status === "authenticated") {
@@ -37,6 +39,35 @@ export default function Profile() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelWaitlistRegistration = async (registrationId) => {
+    if (window.confirm("Are you sure you want to remove yourself from the waitlist?")) {
+      try {
+        const response = await fetch(`/api/registration?id=${registrationId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Waitlist Registration Cancelled",
+            description: "You have been removed from the waitlist successfully.",
+          });
+          
+          // Refresh the profile data
+          fetchProfileData();
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to cancel waitlist registration");
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred while cancelling your registration",
+          variant: "destructive",
+        });
+      }
     }
   };
   
@@ -217,6 +248,7 @@ export default function Profile() {
                   <TableHead>Date</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -236,6 +268,18 @@ export default function Profile() {
                       }`}>
                         {reg.status}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {reg.status === "WAITLISTED" && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => cancelWaitlistRegistration(reg.id)}
+                          title="Cancel waitlist registration"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
