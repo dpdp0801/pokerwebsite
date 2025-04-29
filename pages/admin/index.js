@@ -79,6 +79,17 @@ export default function AdminDashboard() {
   const [sortDirection, setSortDirection] = useState("desc");
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Add state for all sessions
+  const [allSessions, setAllSessions] = useState([]);
+  
+  // Add state for session deletion confirmation
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
+  
+  // Add state for session editing
+  const [editSessionDialog, setEditSessionDialog] = useState(false);
+  const [editSessionData, setEditSessionData] = useState(null);
+  
   const handleCreateSession = () => {
     console.log("Create Session button clicked");
     console.log("Form data:", newSession);
@@ -278,39 +289,63 @@ export default function AdminDashboard() {
 
   // Update the fetchCurrentSession function
   useEffect(() => {
-    // Fetch current session when component mounts
-    const fetchCurrentSession = async () => {
+    // Fetch all sessions when component mounts
+    const fetchSessions = async () => {
       try {
-        const response = await fetch('/api/session-status');
-        const data = await response.json();
+        // First get all sessions
+        const allSessionsResponse = await fetch('/api/sessions/manage');
+        const allSessionsData = await allSessionsResponse.json();
         
-        if (data.exists && data.session) {
-          setCurrentSession({
-            exists: true,
-            id: data.session.id,
-            type: data.session.type.toLowerCase(),
-            status: data.session.status.toLowerCase(),
-            date: formatDate(data.session.date),
-            time: formatTime(data.session.startTime),
-            buyIn: data.session.buyIn,
-            maxPlayers: data.session.maxPlayers,
-            smallBlind: data.session.smallBlind,
-            bigBlind: data.session.bigBlind,
-            minBuyIn: data.session.minBuyIn,
-            registeredPlayers: data.session.registeredPlayers || 0
-          });
+        if (allSessionsData.success && allSessionsData.sessions) {
+          // Get the most recent active or not_started session
+          const activeSessions = allSessionsData.sessions.filter(
+            s => s.status === 'ACTIVE' || s.status === 'NOT_STARTED'
+          );
+          
+          if (activeSessions.length > 0) {
+            const mostRecentSession = activeSessions[0]; // Sessions are already ordered by createdAt desc
+            setCurrentSession({
+              exists: true,
+              id: mostRecentSession.id,
+              type: mostRecentSession.type.toLowerCase(),
+              status: mostRecentSession.status.toLowerCase(),
+              date: formatDate(mostRecentSession.date),
+              time: formatTime(mostRecentSession.startTime),
+              buyIn: mostRecentSession.buyIn,
+              maxPlayers: mostRecentSession.maxPlayers,
+              minBuyIn: mostRecentSession.minBuyIn,
+              registeredPlayers: 0 // We'll update this separately
+            });
+            
+            // Get registration count
+            try {
+              const countResponse = await fetch('/api/session-status');
+              const countData = await countResponse.json();
+              if (countData.exists && countData.session) {
+                setCurrentSession(prev => ({
+                  ...prev,
+                  registeredPlayers: countData.session.registeredPlayers || 0
+                }));
+              }
+            } catch (error) {
+              console.error("Error fetching registration count:", error);
+            }
+          }
+          
+          // Save all sessions to state for the sessions list tab
+          setAllSessions(allSessionsData.sessions);
         }
       } catch (error) {
-        console.error("Error fetching current session:", error);
+        console.error("Error fetching sessions:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch current session data",
+          description: "Failed to fetch session data",
           variant: "destructive"
         });
       }
     };
     
-    fetchCurrentSession();
+    fetchSessions();
   }, [toast]);
 
   // Add these helper functions near the top of the component
@@ -331,8 +366,10 @@ export default function AdminDashboard() {
   };
 
   // Add a new function to handle session status updates
-  const updateSessionStatus = async (newStatus) => {
-    if (!currentSession.id) {
+  const updateSessionStatus = async (newStatus, sessionId = null) => {
+    const targetId = sessionId || currentSession.id;
+    
+    if (!targetId) {
       toast({
         title: "Error",
         description: "No active session found",
@@ -342,13 +379,12 @@ export default function AdminDashboard() {
     }
     
     try {
-      const response = await fetch('/api/sessions/update-status', {
-        method: 'POST',
+      const response = await fetch(`/api/sessions/manage?id=${targetId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sessionId: currentSession.id,
           status: newStatus
         }),
       });
@@ -356,15 +392,30 @@ export default function AdminDashboard() {
       const data = await response.json();
       
       if (data.success) {
-        setCurrentSession({
-          ...currentSession,
-          status: newStatus.toLowerCase()
-        });
+        // Update in allSessions
+        setAllSessions(prev => 
+          prev.map(s => s.id === targetId ? { ...s, status: newStatus } : s)
+        );
+        
+        // If we updated the current session, update it too
+        if (currentSession.id === targetId) {
+          setCurrentSession({
+            ...currentSession,
+            status: newStatus.toLowerCase()
+          });
+        }
         
         toast({
           title: "Status Updated",
           description: `Session status has been updated to ${newStatus.toLowerCase()}.`
         });
+        
+        // Special case: if we completed a session, refresh to update the home page
+        if (newStatus === 'COMPLETED') {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
       } else {
         toast({
           title: "Error",
@@ -377,6 +428,160 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "An error occurred while updating the session status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add handler for deleting a session
+  const handleDeleteSession = async (sessionId) => {
+    try {
+      const response = await fetch(`/api/sessions/manage?id=${sessionId}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Remove the session from our state
+        setAllSessions(prevSessions => prevSessions.filter(s => s.id !== sessionId));
+        
+        // If we deleted the current session, clear it
+        if (currentSession.id === sessionId) {
+          setCurrentSession({
+            exists: false,
+            type: null,
+            status: null,
+            date: "",
+            time: "",
+            buyIn: 0,
+            maxPlayers: 0
+          });
+        }
+        
+        setDeleteConfirmDialog(false);
+        setSessionToDelete(null);
+        
+        toast({
+          title: "Session Deleted",
+          description: "The session has been successfully deleted."
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to delete session",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while deleting the session",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Add handler for opening the edit dialog
+  const handleEditSessionOpen = (session) => {
+    // Extract the time from the startTime field
+    const startTime = new Date(session.startTime);
+    const hours = startTime.getHours().toString().padStart(2, '0');
+    const minutes = startTime.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    // Set up the edit form data
+    setEditSessionData({
+      id: session.id,
+      title: session.title,
+      description: session.description,
+      type: session.type.toLowerCase(),
+      date: formatDate(session.date),
+      time: timeString,
+      buyIn: session.buyIn,
+      maxPlayers: session.maxPlayers,
+      minBuyIn: session.minBuyIn,
+      maxBuyIn: session.maxBuyIn,
+      location: session.location
+    });
+    
+    setEditSessionDialog(true);
+  };
+  
+  // Add handler for updating a session
+  const handleUpdateSession = async () => {
+    try {
+      if (!editSessionData.id) {
+        toast({
+          title: "Error",
+          description: "Session ID is missing",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Validate form
+      if (!editSessionData.date || !editSessionData.time || !editSessionData.maxPlayers) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill out all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const response = await fetch(`/api/sessions/manage?id=${editSessionData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editSessionData),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update the session in our state
+        setAllSessions(prevSessions => 
+          prevSessions.map(s => s.id === editSessionData.id ? data.session : s)
+        );
+        
+        // If we updated the current session, update it
+        if (currentSession.id === editSessionData.id) {
+          setCurrentSession({
+            exists: true,
+            id: data.session.id,
+            type: data.session.type.toLowerCase(),
+            status: data.session.status.toLowerCase(),
+            date: formatDate(data.session.date),
+            time: formatTime(data.session.startTime),
+            buyIn: data.session.buyIn,
+            maxPlayers: data.session.maxPlayers,
+            minBuyIn: data.session.minBuyIn,
+            registeredPlayers: currentSession.registeredPlayers || 0
+          });
+        }
+        
+        setEditSessionDialog(false);
+        setEditSessionData(null);
+        
+        toast({
+          title: "Session Updated",
+          description: "The session has been successfully updated."
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update session",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating session:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while updating the session",
         variant: "destructive"
       });
     }
@@ -400,8 +605,9 @@ export default function AdminDashboard() {
       <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="session">Session Management</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="session">Active Session</TabsTrigger>
+          <TabsTrigger value="sessions">All Sessions</TabsTrigger>
           <TabsTrigger value="buyins">Manage Buy-ins</TabsTrigger>
         </TabsList>
         
@@ -409,9 +615,9 @@ export default function AdminDashboard() {
         <TabsContent value="session">
           <Card>
             <CardHeader>
-              <CardTitle>Session Management</CardTitle>
+              <CardTitle>Active Session Management</CardTitle>
               <CardDescription>
-                Create, start, pause, and end poker sessions.
+                Manage the current active poker session.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -441,12 +647,6 @@ export default function AdminDashboard() {
                       {currentSession.type === 'cash' && (
                         <>
                           <div>
-                            <span className="text-muted-foreground">Small Blind:</span> ${currentSession.smallBlind}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Big Blind:</span> ${currentSession.bigBlind}
-                          </div>
-                          <div>
                             <span className="text-muted-foreground">Min Buy-in:</span> ${currentSession.minBuyIn}
                           </div>
                         </>
@@ -470,7 +670,16 @@ export default function AdminDashboard() {
                       <Button onClick={handleResumeSession}>Resume Tournament</Button>
                     )}
                     
-                    <Button variant="destructive" onClick={handleEndSession}>End Session</Button>
+                    <Button onClick={() => handleEditSessionOpen(allSessions.find(s => s.id === currentSession.id))}>
+                      Edit Session
+                    </Button>
+                    
+                    <Button variant="destructive" onClick={() => {
+                      setSessionToDelete(currentSession.id);
+                      setDeleteConfirmDialog(true);
+                    }}>
+                      Delete Session
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -479,6 +688,122 @@ export default function AdminDashboard() {
                   <Button onClick={() => setCreateSessionDialog(true)}>Create New Session</Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* All Sessions Tab */}
+        <TabsContent value="sessions">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <CardTitle>All Sessions</CardTitle>
+                  <CardDescription>
+                    View and manage all poker sessions.
+                  </CardDescription>
+                </div>
+                
+                <Button onClick={() => setCreateSessionDialog(true)}>
+                  Create New Session
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border mb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allSessions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">No sessions found</TableCell>
+                      </TableRow>
+                    ) : (
+                      allSessions.map((session) => (
+                        <TableRow key={session.id}>
+                          <TableCell>
+                            <div>
+                              <div>{session.title}</div>
+                              <div className="text-xs text-muted-foreground">{session.description}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{session.type}</TableCell>
+                          <TableCell>
+                            {formatDate(session.date)} {formatTime(session.startTime)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={
+                              `${
+                                session.status === 'NOT_STARTED' ? 'bg-yellow-100 text-yellow-800' :
+                                session.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                session.status === 'PAUSED' ? 'bg-blue-100 text-blue-800' :
+                                session.status === 'COMPLETED' ? 'bg-gray-100 text-gray-800' :
+                                'bg-red-100 text-red-800'
+                              }`
+                            }>
+                              {session.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {session.status === 'NOT_STARTED' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8"
+                                  onClick={() => updateSessionStatus('ACTIVE', session.id)}
+                                >
+                                  Start
+                                </Button>
+                              )}
+                              
+                              {session.status === 'ACTIVE' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-8"
+                                  onClick={() => updateSessionStatus('COMPLETED', session.id)}
+                                >
+                                  End
+                                </Button>
+                              )}
+                              
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8"
+                                onClick={() => handleEditSessionOpen(session)}
+                              >
+                                Edit
+                              </Button>
+                              
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8 text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  setSessionToDelete(session.id);
+                                  setDeleteConfirmDialog(true);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -661,6 +986,16 @@ export default function AdminDashboard() {
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input 
+                id="location" 
+                type="text" 
+                value={newSession.location}
+                onChange={(e) => setNewSession({...newSession, location: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
               <Input 
                 id="buyIn" 
@@ -726,6 +1061,141 @@ export default function AdminDashboard() {
             </Button>
             <Button onClick={handleCreateSession}>
               Create Session
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Session Dialog */}
+      <Dialog open={editSessionDialog} onOpenChange={setEditSessionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Session</DialogTitle>
+            <DialogDescription>
+              Update the poker session details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editSessionData && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="editTitle">Title</Label>
+                <Input 
+                  id="editTitle" 
+                  type="text" 
+                  value={editSessionData.title}
+                  onChange={(e) => setEditSessionData({...editSessionData, title: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editDescription">Description</Label>
+                <Input 
+                  id="editDescription" 
+                  type="text" 
+                  value={editSessionData.description || ''}
+                  onChange={(e) => setEditSessionData({...editSessionData, description: e.target.value})}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editDate">Date</Label>
+                  <Input 
+                    id="editDate" 
+                    type="date" 
+                    value={editSessionData.date}
+                    onChange={(e) => setEditSessionData({...editSessionData, date: e.target.value})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editTime">Time</Label>
+                  <Input 
+                    id="editTime" 
+                    type="time" 
+                    value={editSessionData.time}
+                    onChange={(e) => setEditSessionData({...editSessionData, time: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editLocation">Location</Label>
+                <Input 
+                  id="editLocation" 
+                  type="text" 
+                  value={editSessionData.location}
+                  onChange={(e) => setEditSessionData({...editSessionData, location: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editBuyIn">Buy-in Amount ($)</Label>
+                <Input 
+                  id="editBuyIn" 
+                  type="number" 
+                  min="1"
+                  value={editSessionData.buyIn}
+                  onChange={(e) => setEditSessionData({...editSessionData, buyIn: Number(e.target.value)})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editMaxPlayers">Maximum Players</Label>
+                <Input 
+                  id="editMaxPlayers" 
+                  type="number" 
+                  min="2"
+                  value={editSessionData.maxPlayers}
+                  onChange={(e) => setEditSessionData({...editSessionData, maxPlayers: Number(e.target.value)})}
+                />
+              </div>
+              
+              {editSessionData.type === "cash" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="editMinBuyIn">Minimum Buy-in</Label>
+                    <Input 
+                      id="editMinBuyIn" 
+                      type="number" 
+                      min="1"
+                      value={editSessionData.minBuyIn}
+                      onChange={(e) => setEditSessionData({...editSessionData, minBuyIn: Number(e.target.value)})}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setEditSessionDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSession}>
+              Update Session
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Confirm Delete Dialog */}
+      <Dialog open={deleteConfirmDialog} onOpenChange={setDeleteConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this session? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setDeleteConfirmDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => handleDeleteSession(sessionToDelete)}>
+              Delete Session
             </Button>
           </div>
         </DialogContent>
