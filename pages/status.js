@@ -62,26 +62,31 @@ export default function Status() {
 
       // Set initial timer value
       const levelDuration = blindStructureData.currentLevel.duration;
-      const now = new Date();
       
-      // Calculate elapsed time in minutes based on current blind level
-      let elapsedMinutes = 0;
+      // Initialize timer with full duration
+      setTimer({ minutes: levelDuration, seconds: 0 });
       
       // Start a new interval
       const interval = setInterval(() => {
-        const now = new Date();
-        // For demo, use the actual elapsed time since page load
-        const elapsedSec = Math.floor((now - new Date(now.getTime() - now.getSeconds() * 1000)) / 1000) + elapsedMinutes * 60;
-        const remainingSec = levelDuration * 60 - elapsedSec;
-        
-        if (remainingSec <= 0) {
-          // Time's up, could auto-advance to next level here
-          setTimer({ minutes: 0, seconds: 0 });
-        } else {
-          const min = Math.floor(remainingSec / 60);
-          const sec = remainingSec % 60;
-          setTimer({ minutes: min, seconds: sec });
-        }
+        setTimer(prevTimer => {
+          // Calculate new time
+          let newSeconds = prevTimer.seconds - 1;
+          let newMinutes = prevTimer.minutes;
+          
+          if (newSeconds < 0) {
+            newSeconds = 59;
+            newMinutes = newMinutes - 1;
+          }
+          
+          // Check if timer is finished
+          if (newMinutes < 0) {
+            newMinutes = 0;
+            newSeconds = 0;
+            // Could add auto-level advancement here
+          }
+          
+          return { minutes: newMinutes, seconds: newSeconds };
+        });
       }, 1000);
       
       setTimerInterval(interval);
@@ -124,7 +129,9 @@ export default function Status() {
   const fetchPayoutStructure = async (playerCount) => {
     try {
       setPayoutLoading(true);
-      const response = await fetch(`/api/payout-structures/get-by-entries?entries=${playerCount}`);
+      // Use max of entry count and 0 to avoid negative values
+      const entryCount = Math.max(playerCount || 0, 0);
+      const response = await fetch(`/api/payout-structures/get-by-entries?entries=${entryCount}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch payout structure');
@@ -134,6 +141,14 @@ export default function Status() {
       setPayoutStructure(data);
     } catch (error) {
       console.error('Error fetching payout structure:', error);
+      // Initialize with an empty structure on error
+      setPayoutStructure({
+        id: "default",
+        name: "No entries yet",
+        minEntries: 0,
+        maxEntries: 0,
+        tiers: []
+      });
     } finally {
       setPayoutLoading(false);
     }
@@ -211,6 +226,10 @@ export default function Status() {
 
   // Calculate payout amount
   const calculatePayout = (percentage, buyIn, playerCount) => {
+    // Add safety checks
+    if (!percentage || !buyIn || !playerCount || playerCount <= 0) {
+      return '0.00';
+    }
     const totalPrizePool = buyIn * playerCount;
     return (totalPrizePool * (percentage / 100)).toFixed(2);
   };
@@ -251,7 +270,7 @@ export default function Status() {
 
   // Get next blind level
   const getNextLevel = () => {
-    if (!blindStructureData || !sessionData.session.currentBlindLevel) {
+    if (!blindStructureData?.levels || !sessionData?.session?.currentBlindLevel) {
       return null;
     }
     
@@ -580,13 +599,14 @@ export default function Status() {
                   <p>Loading payout structure...</p>
                 </div>
               ) : blindStructureData?.currentLevel?.specialAction === 'REG_CLOSE' || 
-                  (currentSession.currentBlindLevel && 
+                  (currentSession.currentBlindLevel !== undefined && 
                   blindStructureData?.levels?.findIndex(l => l.specialAction === 'REG_CLOSE') < currentSession.currentBlindLevel) ? (
                 // Registration is closed, show payout structure
                 payoutStructure ? (
                   <>
                     <div className="mb-2 text-center text-sm text-muted-foreground">
-                      Based on {currentSession.entries || currentSession.registeredPlayers} entries - Total Prize Pool: ${(currentSession.buyIn * (currentSession.entries || currentSession.registeredPlayers)).toLocaleString()}
+                      Based on {currentSession.entries || currentSession.registeredPlayers || 0} entries - 
+                      Total Prize Pool: ${(currentSession.buyIn * (currentSession.entries || currentSession.registeredPlayers || 0)).toLocaleString()}
                     </div>
                     <div className="border rounded-md overflow-hidden mb-4">
                       <Table>
@@ -598,15 +618,23 @@ export default function Status() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {payoutStructure.tiers?.map((tier) => (
-                            <TableRow key={tier.id}>
-                              <TableCell className="font-medium">{tier.position}</TableCell>
-                              <TableCell>{tier.percentage}%</TableCell>
-                              <TableCell className="font-medium">
-                                ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.entries || currentSession.registeredPlayers)}
+                          {(payoutStructure.tiers || []).length > 0 ? (
+                            payoutStructure.tiers.map((tier) => (
+                              <TableRow key={tier.id}>
+                                <TableCell className="font-medium">{tier.position}</TableCell>
+                                <TableCell>{tier.percentage}%</TableCell>
+                                <TableCell className="font-medium">
+                                  ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.entries || currentSession.registeredPlayers || 0)}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                                Payout information will appear when entries are registered.
                               </TableCell>
                             </TableRow>
-                          ))}
+                          )}
                         </TableBody>
                       </Table>
                     </div>

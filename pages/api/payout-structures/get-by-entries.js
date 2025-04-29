@@ -13,10 +13,23 @@ export default async function handler(req, res) {
     const entries = parseInt(req.query.entries);
     
     // Validate entries
-    if (isNaN(entries) || entries < 2) {
-      return res.status(400).json({ error: 'Invalid number of entries. Must be a number greater than or equal to 2.' });
+    if (isNaN(entries) || entries < 0) {
+      return res.status(400).json({ error: 'Invalid number of entries. Must be a number greater than or equal to 0.' });
     }
 
+    // If entries is 0, return a default empty structure
+    if (entries === 0) {
+      return res.status(200).json({
+        id: "default",
+        name: "No entries yet",
+        minEntries: 0,
+        maxEntries: 0,
+        tiers: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    }
+    
     // Find the appropriate structure based on entries
     const payoutStructure = await prisma.payoutStructure.findFirst({
       where: {
