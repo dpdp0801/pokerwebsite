@@ -22,14 +22,9 @@ export default function AdminDashboard() {
   const [createSessionDialog, setCreateSessionDialog] = useState(false);
   const [sessionType, setSessionType] = useState("mtt");
   
-  // Early redirect if not authenticated
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      console.log("User not authenticated, redirecting to login");
-      // Redirect to login page
-      window.location.href = "/admin/login";
-    }
-  }, [status]);
+  // NOTE: We no longer redirect here. Middleware already protects this page.
+  // If the user somehow reaches this page unauthenticated, we'll show a minimal
+  // message instead of flashing back and forth.
   
   // Don't render anything until we know the authentication status
   if (status === "loading") {
@@ -37,6 +32,17 @@ export default function AdminDashboard() {
       <div className="container py-12 flex justify-center items-center">
         <div className="text-center">
           <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user is not authenticated or not an admin, show a simple not-authorized message.
+  if (status === "unauthenticated" || session?.role !== "ADMIN") {
+    return (
+      <div className="container py-12 flex justify-center items-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">You must be an admin to view this page.</p>
         </div>
       </div>
     );
@@ -606,20 +612,6 @@ export default function AdminDashboard() {
       });
     }
   };
-
-  if (!session || session.role !== "ADMIN") {
-    return (
-      <div className="container py-12">
-        <Card>
-          <CardContent className="py-10 text-center">
-            <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">You don't have permission to access this page.</p>
-            <Button onClick={() => signIn('google')}>Sign in with different account</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="container py-12 max-w-6xl">
