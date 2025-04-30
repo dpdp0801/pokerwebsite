@@ -489,31 +489,33 @@ export default function Status() {
               {isTournament && currentSession.registrations.itm && (
                 <PlayerList 
                   players={currentSession.registrations.itm.map((player, index) => {
-                    // Add prize information to ITM players
-                    if (payoutStructure && payoutStructure.length > 0) {
-                      // Find prize position based on the total number of payouts and current index
-                      // The first player added to ITM gets the lowest place (payoutStructure.length)
-                      // Each subsequent player gets the next higher place
-                      // This implements bottom-up assignment (last to first place)
-                      const position = payoutStructure.length - index;
+                    // Calculate player position (bottom-up assignment)
+                    // Last player gets 1st, second-to-last gets 2nd, etc.
+                    const itmCount = currentSession.registrations.itm.length;
+                    const position = itmCount - index;
+                    
+                    // Find the corresponding payout tier if available
+                    let payoutInfo = "";
+                    if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
+                      const tier = payoutStructure.tiers.find(t => t.position === position);
                       
-                      // Find the corresponding prize amount 
-                      const payoutTier = payoutStructure.tiers && 
-                                        payoutStructure.tiers.find(tier => tier.position === position);
-                      
-                      const prizePercentage = payoutTier?.percentage || 0;
-                      const prizeAmount = calculatePrizeAmount(
-                        prizePercentage, 
-                        currentSession.buyIn, 
-                        currentSession.totalEntries || 0
-                      );
-                      
-                      return {
-                        ...player,
-                        displayName: `${player.user.name || player.user.email} - ${position}${getOrdinalSuffix(position)} Place ($${prizeAmount})`
-                      };
+                      if (tier) {
+                        const percentage = tier.percentage;
+                        const totalPrize = currentSession.buyIn * (currentSession.totalEntries || 0);
+                        const amount = Math.floor(totalPrize * (percentage / 100));
+                        payoutInfo = ` - ${position}${getOrdinalSuffix(position)} Place ($${amount})`;
+                      }
                     }
-                    return player;
+                    
+                    // Format display name with place and payout
+                    const displayName = player.user 
+                      ? `${player.user.name || player.user.email}${payoutInfo}`
+                      : `Unknown Player${payoutInfo}`;
+                    
+                    return {
+                      ...player,
+                      displayName
+                    };
                   })}
                   title="In The Money"
                   emptyMessage="No players in the money yet"
