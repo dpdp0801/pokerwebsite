@@ -19,20 +19,11 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'Blind structure not found' });
     }
 
-    // Sort levels:
-    // 1. Regular levels come before breaks
-    // 2. Regular levels are ordered by their level number
-    // 3. Breaks maintain their original order
+    // Sort levels by their ID to maintain the original sequence
+    // This preserves the intended order of levels and breaks as defined in the database
     blindStructure.levels.sort((a, b) => {
-      // If one is a break and the other isn't, place breaks after regular levels
-      if (a.isBreak && !b.isBreak) return 1;
-      if (!a.isBreak && b.isBreak) return -1;
-      
-      // If both are breaks, keep them in their original order (by id)
-      if (a.isBreak && b.isBreak) return a.id - b.id;
-      
-      // If neither are breaks, sort by level number
-      return a.level - b.level;
+      // Use createdAt or id for consistent ordering
+      return new Date(a.createdAt) - new Date(b.createdAt);
     });
 
     return res.status(200).json({ structure: blindStructure });

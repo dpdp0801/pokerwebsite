@@ -98,18 +98,24 @@ export default function Structure() {
     );
   }
 
-  // Get unique positions from all payout structures
-  const allPositions = [];
-  payoutStructures.forEach(structure => {
-    structure.tiers?.forEach(tier => {
-      if (!allPositions.includes(tier.position)) {
-        allPositions.push(tier.position);
-      }
-    });
+  // Create a more compact display of positions
+  // Only show key places: 1st, 2nd, 3rd, and optionally 4th-9th if they exist
+  const displayPlaces = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(place => {
+    // Only include places that have payouts in at least one structure
+    return payoutStructures.some(structure => 
+      structure.tiers?.some(tier => tier.position === place)
+    );
   });
-  
-  // Sort positions in ascending order
-  allPositions.sort((a, b) => a - b);
+
+  // Format the place name (1st, 2nd, 3rd, etc.)
+  const getPlaceName = (place) => {
+    switch(place) {
+      case 1: return '1st Place';
+      case 2: return '2nd Place';
+      case 3: return '3rd Place';
+      default: return `${place}th Place`;
+    }
+  };
 
   return (
     <div className="container py-12 max-w-4xl">
@@ -189,8 +195,8 @@ export default function Structure() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Entries</TableHead>
-                      {allPositions.map(position => (
-                        <TableHead key={position} className="text-center">{position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`}</TableHead>
+                      {displayPlaces.map(place => (
+                        <TableHead key={place} className="text-center">{getPlaceName(place)}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -198,10 +204,10 @@ export default function Structure() {
                     {payoutStructures.map((structure) => (
                       <TableRow key={structure.id}>
                         <TableCell className="font-medium">{structure.name.replace("Players", "Entries")}</TableCell>
-                        {allPositions.map(position => {
-                          const tier = structure.tiers?.find(t => t.position === position);
+                        {displayPlaces.map(place => {
+                          const tier = structure.tiers?.find(t => t.position === place);
                           return (
-                            <TableCell key={position} className="text-center">
+                            <TableCell key={place} className="text-center">
                               {tier ? `${tier.percentage}%` : '—'}
                             </TableCell>
                           );
