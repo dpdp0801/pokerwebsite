@@ -133,6 +133,13 @@ export default function Status() {
           <div className="text-center mb-4">
             <h2 className="text-xl font-bold">{currentSession.title}</h2>
             <p className="text-sm text-muted-foreground">{currentSession.location}</p>
+            {currentSession.registrationClosed && (
+              <div className="mt-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Registration Closed
+                </span>
+              </div>
+            )}
           </div>
           
           {/* Session statistics overview */}

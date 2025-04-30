@@ -252,9 +252,9 @@ export default function Home() {
             <Button 
               onClick={handleRegisterClick} 
               className="mt-10"
-              disabled={sessionData.status === 'COMPLETED' || sessionData.status === 'CANCELLED'}
+              disabled={sessionData.status === 'COMPLETED' || sessionData.status === 'CANCELLED' || sessionData.registrationClosed}
             >
-              Register Now
+              {sessionData.registrationClosed ? "Registration Closed" : "Register Now"}
             </Button>
           </>
         ) : (

@@ -61,7 +61,7 @@ export default function PlayerList({
                   )}
                   {registration.rebuys > 0 && (
                     <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                      {registration.rebuys} {registration.rebuys === 1 ? 'rebuy' : 'rebuys'}
+                      {registration.rebuys} {registration.rebuys === 1 ? 'buy-in' : 'buy-ins'}
                     </span>
                   )}
                 </div>
