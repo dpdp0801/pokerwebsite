@@ -7,10 +7,6 @@ import Link from "next/link";
 import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate, formatTimeOnly, shouldShowPayouts } from "@/lib/tournament-utils";
 import { useRouter } from 'next/router';
-import { toast } from 'sonner';
-import Tooltip from '@/components/tooltip'
-import useUserSettings from '@/hooks/useUserSettings'
-import useTournamentSession from '@/hooks/useTournamentSession'
 import {
   Dialog,
   DialogContent,
@@ -653,6 +649,104 @@ export default function Status() {
             </div>
         </CardContent>
       </Card>
+      
+      {/* Blinds and Payouts Dialogs */}
+      {isTournament && (
+        <>
+          <Dialog open={showBlindsDialog} onOpenChange={setShowBlindsDialog}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Blind Structure</DialogTitle>
+                <DialogDescription>
+                  Current tournament blind structure and schedule
+                </DialogDescription>
+              </DialogHeader>
+              
+              {blindStructureData ? (
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Level</TableHead>
+                        <TableHead>Blinds</TableHead>
+                        <TableHead>Ante</TableHead>
+                        <TableHead>Duration</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {blindStructureData.levels?.map((level, index) => (
+                        <TableRow 
+                          key={index}
+                          className={currentSession.currentBlindLevel === index ? "bg-muted" : ""}
+                        >
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{level.smallBlind}/{level.bigBlind}</TableCell>
+                          <TableCell>{level.ante || '-'}</TableCell>
+                          <TableCell>{level.duration} min</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-muted-foreground">
+                  No blind structure data available
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowBlindsDialog(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={showPayoutsDialog} onOpenChange={setShowPayoutsDialog}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Payout Structure</DialogTitle>
+                <DialogDescription>
+                  Current tournament payout structure based on {currentSession.totalEntries || 0} entries
+                </DialogDescription>
+              </DialogHeader>
+              
+              {payoutStructure?.length > 0 ? (
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Position</TableHead>
+                        <TableHead>Payout</TableHead>
+                        <TableHead>Percentage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payoutStructure.map((payout, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{index + 1}{getOrdinalSuffix(index + 1)}</TableCell>
+                          <TableCell>${payout.amount}</TableCell>
+                          <TableCell>{payout.percentage}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-muted-foreground">
+                  No payout structure data available
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPayoutsDialog(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
       
       {/* Add the confirmation dialog */}
       <ConfirmationDialog />
