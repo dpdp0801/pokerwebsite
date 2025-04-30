@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, Trash2, Timer, Clock, ArrowLeft, ArrowRight, Award, ChevronDown } from "lucide-react";
+import { Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/lib/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDate, formatTimeOnly, shouldShowPayouts } from "@/lib/tournament-utils";
 
 // Custom hooks
 import useSessionData from "@/hooks/useSessionData";
@@ -61,7 +59,6 @@ export default function Status() {
     seatFromWaitlist 
   } = usePlayerService(fetchSessionData);
 
-  const router = useRouter();
   const { toast } = useToast();
 
   // If active tournament, fetch blind structure and payout structure
