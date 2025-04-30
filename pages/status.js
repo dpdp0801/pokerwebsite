@@ -53,6 +53,22 @@ import PlayerList from "@/components/ui/tournament/PlayerList";
 import TournamentTimer from "@/components/ui/tournament/TournamentTimer";
 import PayoutStructure from "@/components/ui/tournament/PayoutStructure";
 
+// Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
+const getOrdinalSuffix = (num) => {
+  const j = num % 10;
+  const k = num % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
+
 export default function Status() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.isAdmin;
@@ -63,9 +79,10 @@ export default function Status() {
   const [loading, setLoading] = useState(true);
   const [currentBlindLevel, setCurrentBlindLevel] = useState(0);
   const [blindStructure, setBlindStructure] = useState([]);
-  const [payoutStructure, setPayoutStructure] = useState([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const [sessionUpdating, setSessionUpdating] = useState(false);
+  const [showBlindsDialog, setShowBlindsDialog] = useState(false);
+  const [showPayoutsDialog, setShowPayoutsDialog] = useState(false);
   const router = useRouter();
 
   // Check for admin role in multiple possible locations
@@ -90,6 +107,7 @@ export default function Status() {
   );
   
   const { 
+    payoutStructure,
     fetchPayoutStructureIfNeeded 
   } = usePayoutStructure();
   
@@ -518,7 +536,22 @@ export default function Status() {
                     label: "Eliminate",
                     variant: "outline",
                     title: "Move player to eliminated",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
+                    onClick: (registration) => {
+                      // Check if we're at the final table (# of current players equals # of payout positions)
+                      // and if registration is closed
+                      const payoutPositions = payoutStructure?.length || 0;
+                      const currentPlayerCount = currentSession.currentPlayersCount;
+                      
+                      if (payoutPositions > 0 && 
+                          currentPlayerCount <= payoutPositions && 
+                          currentSession.registrationClosed) {
+                        // We're in the money - move directly to ITM
+                        updatePlayerStatus(registration.id, 'ITM');
+                      } else {
+                        // Standard elimination
+                        updatePlayerStatus(registration.id, 'ELIMINATED');
+                      }
+                    }
                   },
                   {
                     label: "Waitlist",
@@ -586,7 +619,22 @@ export default function Status() {
               
               {isTournament && currentSession.registrations.itm && (
                 <PlayerList 
-                  players={currentSession.registrations.itm}
+                  players={currentSession.registrations.itm.map((player, index) => {
+                    // Add prize information to ITM players
+                    if (payoutStructure && payoutStructure.length > 0) {
+                      // Reverse the index since the first player eliminated should get the lowest prize
+                      const position = payoutStructure.length - index;
+                      const prize = payoutStructure[position - 1]?.amount;
+                      
+                      if (prize) {
+                        return {
+                          ...player,
+                          displayName: `${player.displayName} - ${position}${getOrdinalSuffix(position)} Place ($${prize})`
+                        };
+                      }
+                    }
+                    return player;
+                  })}
                   title="In The Money"
                   emptyMessage="No players in the money yet"
                   colorClass="bg-blue-100 text-blue-800"
