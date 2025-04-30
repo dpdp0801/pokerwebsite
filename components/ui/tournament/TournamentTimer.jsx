@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export default function TournamentTimer({
   formatTimer,
@@ -8,8 +8,7 @@ export default function TournamentTimer({
   isAdmin,
   blindsLoading,
   currentSession,
-  updateBlindLevel,
-  nextLevel
+  updateBlindLevel
 }) {
   return (
     <div className="border-t pt-4 mt-4">
@@ -72,15 +71,9 @@ export default function TournamentTimer({
       {/* Level Information */}
       {blindStructureData?.currentLevel ? (
         blindStructureData.currentLevel.isBreak ? (
-          <BreakDisplay 
-            currentLevel={blindStructureData.currentLevel} 
-            nextLevel={nextLevel}
-          />
+          <BreakDisplay currentLevel={blindStructureData.currentLevel} />
         ) : (
-          <LevelDisplay 
-            currentLevel={blindStructureData.currentLevel} 
-            nextLevel={nextLevel}
-          />
+          <LevelDisplay currentLevel={blindStructureData.currentLevel} />
         )
       ) : (
         <div className="bg-background border rounded-md p-4">
@@ -94,7 +87,7 @@ export default function TournamentTimer({
 }
 
 // Break display component
-function BreakDisplay({ currentLevel, nextLevel }) {
+function BreakDisplay({ currentLevel }) {
   // Ensure currentLevel is not null
   if (!currentLevel) {
     return (
@@ -119,42 +112,12 @@ function BreakDisplay({ currentLevel, nextLevel }) {
           )}
         </p>
       )}
-      
-      {/* Show next level during break */}
-      {nextLevel && (
-        <div className="mt-4 p-3 bg-white rounded border">
-          <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
-            <ChevronDown className="h-4 w-4 mr-1" />
-            <span>Next: Level {nextLevel.levelNumber}</span>
-          </div>
-          {!nextLevel.isBreak ? (
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Small Blind</p>
-                <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Big Blind</p>
-                <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Ante</p>
-                <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-1">
-              {nextLevel.duration} minute {nextLevel.breakName || 'Break'}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 // Level display component
-function LevelDisplay({ currentLevel, nextLevel }) {
+function LevelDisplay({ currentLevel }) {
   // Ensure currentLevel is not null
   if (!currentLevel) {
     return (
@@ -186,57 +149,6 @@ function LevelDisplay({ currentLevel, nextLevel }) {
           <p className="text-2xl font-bold">{currentLevel.ante || '—'}</p>
         </div>
       </div>
-
-      {/* Next Level */}
-      {nextLevel ? (
-        <div className="mt-4 pt-4 border-t">
-          <div className="text-center text-sm text-muted-foreground mb-2 flex items-center justify-center">
-            <ChevronDown className="h-3 w-3 mr-1" />
-            <span>
-              {nextLevel?.isBreak 
-                ? `Next: ${nextLevel.breakName || 'Break'}`
-                : `Next: Level ${nextLevel?.levelNumber || (currentLevel?.level || 1) + 1}`
-              }
-            </span>
-          </div>
-          {!nextLevel.isBreak ? (
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Small Blind</p>
-                <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Big Blind</p>
-                <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Ante</p>
-                <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-1 text-sm">
-              {nextLevel.duration} minute {nextLevel.breakName || 'Break'}
-              {nextLevel.specialAction && (
-                <div className="text-xs text-muted-foreground mt-1">
-                  {nextLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
-                  {nextLevel.specialAction === 'CHIP_UP_5S' && 'Chip Up 5s'}
-                  {nextLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
-                  {nextLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S' && (
-                    <>Registration Closes, Chip Up 5s</>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mt-4 pt-4 border-t">
-          <div className="text-center text-sm text-muted-foreground">
-            <span>This is the final level</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 

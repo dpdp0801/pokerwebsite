@@ -34,8 +34,7 @@ export default function Status() {
   const { 
     blindStructureData, 
     fetchBlindStructureIfNeeded,
-    updateBlindLevel,
-    getNextBlindLevel
+    updateBlindLevel
   } = useBlindStructure(sessionData, fetchSessionData);
   
   const { timer, formatTimer, blindsLoading, setBlindsLoading } = useTournamentTimer(
@@ -110,7 +109,6 @@ export default function Status() {
   const currentSession = sessionData.session;
   const isTournament = currentSession.type === 'TOURNAMENT';
   const isActive = currentSession.status === 'ACTIVE';
-  const nextLevel = getNextBlindLevel();
 
   return (
     <div className="container py-12 max-w-3xl">
@@ -197,7 +195,6 @@ export default function Status() {
               blindsLoading={blindsLoading}
               currentSession={currentSession}
               updateBlindLevel={updateBlindLevel}
-              nextLevel={nextLevel}
             />
           )}
           
@@ -211,78 +208,80 @@ export default function Status() {
             />
           )}
           
-          {/* Participants lists - only shown to admins */}
-          {isAdmin && (
-            <div className="border-t pt-4">
-              <h3 className="font-medium text-lg mb-3">Participants</h3>
-              
+          {/* Participants lists - shown to all users, but only admins see action buttons */}
+          <div className="border-t pt-4">
+            <h3 className="font-medium text-lg mb-3">Participants</h3>
+            
+            <PlayerList 
+              players={currentSession.registrations.current}
+              title="Current Players"
+              emptyMessage="No active players currently at the table"
+              colorClass="bg-green-100 text-green-800"
+              isAdmin={isAdmin}
+              removePlayer={isAdmin ? removePlayer : null}
+              actions={isAdmin ? [
+                {
+                  label: "Eliminate",
+                  variant: "outline",
+                  title: "Move player to eliminated",
+                  onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
+                },
+                {
+                  label: "Waitlist",
+                  variant: "outline",
+                  title: "Move player to waitlist",
+                  onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
+                },
+                isTournament ? {
+                  label: "Buy-in",
+                  variant: "default",
+                  title: "Process a buy-in for this player",
+                  disabled: isSubmitting,
+                  onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
+                } : null
+              ].filter(Boolean) : []}
+            />
+            
+            {isTournament && currentSession.registrations.inTheMoney && currentSession.registrations.inTheMoney.length > 0 && (
               <PlayerList 
-                players={currentSession.registrations.current}
-                title="Current Players"
-                emptyMessage="No active players currently at the table"
-                colorClass="bg-green-100 text-green-800"
+                players={currentSession.registrations.inTheMoney}
+                title="In the Money"
+                emptyMessage="No players in the money yet"
+                colorClass="bg-amber-100 text-amber-800"
                 isAdmin={isAdmin}
-                removePlayer={removePlayer}
-                actions={[
-                  {
-                    label: "Eliminate",
-                    variant: "outline",
-                    title: "Move player to eliminated",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
-                  },
-                  {
-                    label: "Waitlist",
-                    variant: "outline",
-                    title: "Move player to waitlist",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
-                  },
-                  isTournament ? {
-                    label: "Buy-in",
-                    variant: "default",
-                    title: "Process a buy-in for this player",
-                    disabled: isSubmitting,
-                    onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
-                  } : null
-                ].filter(Boolean)}
+                removePlayer={isAdmin ? removePlayer : null}
+                actions={[]}
               />
-              
-              {isTournament && currentSession.registrations.inTheMoney && currentSession.registrations.inTheMoney.length > 0 && (
-                <PlayerList 
-                  players={currentSession.registrations.inTheMoney}
-                  title="In the Money"
-                  emptyMessage="No players in the money yet"
-                  colorClass="bg-amber-100 text-amber-800"
-                  isAdmin={isAdmin}
-                  removePlayer={removePlayer}
-                  actions={[]}
-                />
-              )}
-              
+            )}
+            
+            {currentSession.registrations.waitlisted && currentSession.registrations.waitlisted.length > 0 && (
               <PlayerList 
                 players={currentSession.registrations.waitlisted}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
                 colorClass="bg-yellow-100 text-yellow-800"
                 isAdmin={isAdmin}
-                removePlayer={removePlayer}
-                actions={[
+                removePlayer={isAdmin ? removePlayer : null}
+                actions={isAdmin ? [
                   {
                     label: "Seat",
                     variant: "default",
                     title: "Move player from waitlist to current",
                     onClick: seatFromWaitlist
                   }
-                ]}
+                ] : []}
               />
-              
+            )}
+            
+            {isTournament && currentSession.registrations.eliminated && currentSession.registrations.eliminated.length > 0 && (
               <PlayerList 
                 players={currentSession.registrations.eliminated}
                 title="Eliminated Players"
                 emptyMessage="No eliminated players"
                 colorClass="bg-red-100 text-red-800"
                 isAdmin={isAdmin}
-                removePlayer={removePlayer}
-                actions={[
+                removePlayer={isAdmin ? removePlayer : null}
+                actions={isAdmin ? [
                   {
                     label: "Seat",
                     variant: "default",
@@ -302,10 +301,10 @@ export default function Status() {
                     disabled: isSubmitting,
                     onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
                   } : null
-                ].filter(Boolean)}
+                ].filter(Boolean) : []}
               />
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
