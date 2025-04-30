@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       current: [],
       eliminated: [],
       waitlist: [],
-      inTheMoney: []
+      itm: []
     };
     
     registrations.forEach(registration => {
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
         groupedRegistrations.eliminated.push(registration);
       } else if (registration.status === 'ITM' || registration.playerStatus === 'ITM') {
         console.log(`→ Adding to ITM: ${registration.user?.name}`);
-        groupedRegistrations.inTheMoney.push(registration);
+        groupedRegistrations.itm.push(registration);
       } else if (registration.status === 'CURRENT' || registration.playerStatus === 'CURRENT' || 
                 registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
         // For initial loading, move CONFIRMED or REGISTERED players to CURRENT if session is ACTIVE
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
     });
     
     // Log group counts for debugging
-    console.log(`Grouped: Current: ${groupedRegistrations.current.length}, Waitlisted: ${groupedRegistrations.waitlist.length}, Eliminated: ${groupedRegistrations.eliminated.length}, ITM: ${groupedRegistrations.inTheMoney.length}`);
+    console.log(`Grouped: Current: ${groupedRegistrations.current.length}, Waitlisted: ${groupedRegistrations.waitlist.length}, Eliminated: ${groupedRegistrations.eliminated.length}, ITM: ${groupedRegistrations.itm.length}`);
     
     // Format response
     const response = {
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
         currentPlayersCount: groupedRegistrations.current.length,
         waitlistedPlayersCount: groupedRegistrations.waitlist.length,
         eliminatedPlayersCount: groupedRegistrations.eliminated.length,
-        itmPlayersCount: groupedRegistrations.inTheMoney.length,
+        itmPlayersCount: groupedRegistrations.itm.length,
         totalEntries: activeSession.entries || 0,
         registrations: groupedRegistrations,
         userRegistration: userRegistration,

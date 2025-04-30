@@ -64,6 +64,15 @@ const getOrdinalSuffix = (num) => {
   return "th";
 };
 
+// Helper function to calculate prize amount
+const calculatePrizeAmount = (percentage, buyIn, entries) => {
+  if (!percentage || !buyIn || !entries) return "0";
+  
+  const totalPrizePool = buyIn * entries;
+  const amount = (totalPrizePool * (percentage / 100)).toFixed(0);
+  return amount;
+};
+
 export default function Status() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.isAdmin;
@@ -348,7 +357,33 @@ export default function Status() {
               
               <PlayerList 
                 players={currentSession.registrations.current}
-                title="Current Players"
+                title={
+                  (() => {
+                    // See if we're in ITM mode
+                    let payoutPositions = 0;
+                    if (payoutStructure && payoutStructure.tiers) {
+                      payoutPositions = Math.max(
+                        ...payoutStructure.tiers.map(tier => tier.position)
+                      );
+                    }
+                    
+                    const isITMMode = 
+                      currentSession.registrationClosed && 
+                      payoutPositions > 0 && 
+                      currentSession.currentPlayersCount <= payoutPositions;
+                    
+                    return (
+                      <div className="flex items-center">
+                        <span>Current Players</span>
+                        {isITMMode && (
+                          <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                            ITM Mode
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()
+                }
                 emptyMessage="No active players currently at the table"
                 colorClass="bg-green-100 text-green-800"
                 isAdmin={isAdmin}
@@ -359,15 +394,33 @@ export default function Status() {
                     variant: "outline",
                     title: "Move player to eliminated",
                     onClick: (registration) => {
-                      // Check if we're at the final table (# of current players equals # of payout positions)
-                      // and if registration is closed
-                      const payoutPositions = payoutStructure?.length || 0;
+                      // Get payout positions from the payout structure
+                      let payoutPositions = 0;
+                      if (payoutStructure && payoutStructure.tiers) {
+                        // Find the max position from the tiers
+                        payoutPositions = Math.max(
+                          ...payoutStructure.tiers.map(tier => tier.position)
+                        );
+                      }
+                      
+                      // Get current number of players
                       const currentPlayerCount = currentSession.currentPlayersCount;
                       
-                      if (payoutPositions > 0 && 
-                          currentPlayerCount <= payoutPositions && 
-                          currentSession.registrationClosed) {
-                        // We're in the money - move directly to ITM
+                      // Registration must be closed to use ITM
+                      const isRegistrationClosed = currentSession.registrationClosed;
+                      
+                      // Debug info
+                      console.log("Eliminate clicked:", {
+                        currentPlayerCount,
+                        payoutPositions,
+                        isRegistrationClosed
+                      });
+                      
+                      // If we've reached ITM criteria, place directly in ITM
+                      if (isRegistrationClosed && 
+                          payoutPositions > 0 && 
+                          currentPlayerCount <= payoutPositions) {
+                        console.log("Placing player in ITM");
                         updatePlayerStatus(registration.id, 'ITM');
                       } else {
                         // Standard elimination
@@ -438,16 +491,27 @@ export default function Status() {
                   players={currentSession.registrations.itm.map((player, index) => {
                     // Add prize information to ITM players
                     if (payoutStructure && payoutStructure.length > 0) {
-                      // Reverse the index since the first player eliminated should get the lowest prize
+                      // Find prize position based on the total number of payouts and current index
+                      // The first player added to ITM gets the lowest place (payoutStructure.length)
+                      // Each subsequent player gets the next higher place
+                      // This implements bottom-up assignment (last to first place)
                       const position = payoutStructure.length - index;
-                      const prize = payoutStructure[position - 1]?.amount;
                       
-                      if (prize) {
-                        return {
-                          ...player,
-                          displayName: `${player.displayName} - ${position}${getOrdinalSuffix(position)} Place ($${prize})`
-                        };
-                      }
+                      // Find the corresponding prize amount 
+                      const payoutTier = payoutStructure.tiers && 
+                                        payoutStructure.tiers.find(tier => tier.position === position);
+                      
+                      const prizePercentage = payoutTier?.percentage || 0;
+                      const prizeAmount = calculatePrizeAmount(
+                        prizePercentage, 
+                        currentSession.buyIn, 
+                        currentSession.totalEntries || 0
+                      );
+                      
+                      return {
+                        ...player,
+                        displayName: `${player.user.name || player.user.email} - ${position}${getOrdinalSuffix(position)} Place ($${prizeAmount})`
+                      };
                     }
                     return player;
                   })}

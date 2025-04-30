@@ -39,7 +39,7 @@ export default function useSessionData() {
                 current: data.session.registrations.current,
                 waitlist: data.session.registrations.waitlist,
                 eliminated: data.session.registrations.eliminated,
-                inTheMoney: data.session.registrations.inTheMoney
+                itm: data.session.registrations.itm
               }
             }
           };
