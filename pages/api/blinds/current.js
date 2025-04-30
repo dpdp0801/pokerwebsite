@@ -40,7 +40,7 @@ export default async function handler(req, res) {
         include: {
           levels: {
             orderBy: {
-              level: 'asc'
+              createdAt: 'asc' // Use creation time for consistent ordering
             }
           }
         }
@@ -102,7 +102,7 @@ export default async function handler(req, res) {
         include: {
           levels: {
             orderBy: {
-              level: 'asc'
+              createdAt: 'asc' // Use creation time for consistent ordering
             }
           }
         }

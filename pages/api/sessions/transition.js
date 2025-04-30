@@ -55,10 +55,34 @@ export default async function handler(req, res) {
             status: status
           };
           
-          // For tournaments, set current blind level to 0 (first level) and record start time
+          // For tournaments, find the first non-break level to start with
           if (pokerSession.type === "TOURNAMENT") {
-            updateData.currentBlindLevel = 0; // Start at the first level
-            updateData.levelStartTime = new Date(); // Current time as level start
+            // Get the blind structure to find the first valid level
+            const blindStructure = await prisma.blindStructure.findFirst({
+              include: {
+                levels: {
+                  orderBy: {
+                    createdAt: 'asc' // Sort by creation time to maintain original order
+                  }
+                },
+              },
+            });
+            
+            if (blindStructure) {
+              // Find the index of the first non-break level
+              const firstLevelIndex = blindStructure.levels.findIndex(level => !level.isBreak);
+              
+              // If found, use that index, otherwise default to 0
+              updateData.currentBlindLevel = firstLevelIndex >= 0 ? firstLevelIndex : 0;
+              updateData.levelStartTime = new Date(); // Current time as level start
+              
+              console.log(`Starting tournament with level index: ${updateData.currentBlindLevel}`);
+            } else {
+              // Fallback if no blind structure is found
+              updateData.currentBlindLevel = 0;
+              updateData.levelStartTime = new Date();
+              console.log('No blind structure found, defaulting to level 0');
+            }
           }
           
           // Update the session status first
