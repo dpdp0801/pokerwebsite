@@ -23,7 +23,9 @@ export default function PlayerList({
   colorClass, 
   actions = [],
   isAdmin,
-  removePlayer 
+  removePlayer,
+  isITM = false,
+  getOrdinalSuffix = (n) => n // Default suffix function if not provided
 }) {
   if (!players || players.length === 0) {
     return (
@@ -39,9 +41,17 @@ export default function PlayerList({
       <h3 className="text-sm font-medium mb-2">{title}</h3>
       <div className="border rounded-md overflow-hidden">
         <ul className="divide-y">
-          {players.map((registration) => (
+          {players.map((registration, idx) => (
             <li key={registration.id} className="p-3 flex items-center justify-between">
+              {/* Left side - Player info */}
               <div className="flex items-center space-x-3">
+                {/* Place number for ITM players */}
+                {isITM && (
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold mr-1">
+                    {registration.place}
+                  </div>
+                )}
+                
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={registration.user.image} alt={registration.user.name} />
                   <AvatarFallback className={colorClass}>
@@ -66,33 +76,44 @@ export default function PlayerList({
                   )}
                 </div>
               </div>
-              {isAdmin && (
-                <div className="flex space-x-1">
-                  {actions.map((action, index) => (
-                    <Button 
-                      key={index}
-                      size="sm"
-                      variant={action.variant || "outline"}
-                      onClick={() => action.onClick(registration)}
-                      title={action.title}
-                      disabled={action.disabled}
-                    >
-                      {action.icon && <action.icon className="h-4 w-4 mr-1" />}
-                      {action.label}
-                    </Button>
-                  ))}
-                  {removePlayer && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => removePlayer(registration.id)}
-                      title="Remove player"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  )}
-                </div>
-              )}
+              
+              {/* Right side - Action buttons and prize indicator */}
+              <div className="flex items-center space-x-1">
+                {/* Prize amount for ITM players */}
+                {isITM && registration.prize && (
+                  <div className="mr-2 text-sm font-medium text-green-600">
+                    ${registration.prize}
+                  </div>
+                )}
+                
+                {isAdmin && (
+                  <div className="flex space-x-1">
+                    {actions.map((action, index) => (
+                      <Button 
+                        key={index}
+                        size="sm"
+                        variant={action.variant || "outline"}
+                        onClick={() => action.onClick(registration)}
+                        title={action.title}
+                        disabled={action.disabled}
+                      >
+                        {action.icon && <action.icon className="h-4 w-4 mr-1" />}
+                        {action.label}
+                      </Button>
+                    ))}
+                    {removePlayer && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => removePlayer(registration.id)}
+                        title="Remove player"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
             </li>
           ))}
         </ul>

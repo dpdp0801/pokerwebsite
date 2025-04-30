@@ -495,26 +495,22 @@ export default function Status() {
                     const position = itmCount - index;
                     
                     // Find the corresponding payout tier if available
-                    let payoutInfo = "";
+                    let prize = 0;
                     if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
                       const tier = payoutStructure.tiers.find(t => t.position === position);
                       
                       if (tier) {
                         const percentage = tier.percentage;
                         const totalPrize = currentSession.buyIn * (currentSession.totalEntries || 0);
-                        const amount = Math.floor(totalPrize * (percentage / 100));
-                        payoutInfo = ` - ${position}${getOrdinalSuffix(position)} Place ($${amount})`;
+                        prize = Math.floor(totalPrize * (percentage / 100));
                       }
                     }
                     
-                    // Format display name with place and payout
-                    const displayName = player.user 
-                      ? `${player.user.name || player.user.email}${payoutInfo}`
-                      : `Unknown Player${payoutInfo}`;
-                    
+                    // Return enhanced player object with place and prize
                     return {
                       ...player,
-                      displayName
+                      place: position,
+                      prize: prize
                     };
                   })}
                   title="In The Money"
@@ -530,6 +526,8 @@ export default function Status() {
                       onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
                     }
                   ] : []}
+                  isITM={true}
+                  getOrdinalSuffix={getOrdinalSuffix}
                 />
               )}
             </div>
