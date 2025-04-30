@@ -46,27 +46,34 @@ export default function Header() {
     };
   }, []);
 
+  // Handle manual navigation to fix the client-side navigation issue
+  const handleNavigation = (e, href) => {
+    e.preventDefault();
+    // Use window.location for a full page reload
+    window.location.href = href;
+  };
+
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center px-4 md:px-8 backdrop-blur">
       <div className="w-full flex items-center justify-between">
         {/* Left – logo */}
         <div className="flex-1">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
+          <a href="/" className="text-lg font-semibold tracking-tight">
             Catalina&nbsp;Poker
-          </Link>
+          </a>
         </div>
 
         {/* Center nav - now with flex-1 and justify-center */}
         <nav className="hidden md:flex flex-1 justify-center">
           <div className="flex gap-6">
             {nav.map((item) => (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
                 className="text-sm uppercase tracking-wider hover:underline underline-offset-4"
               >
                 {item.label}
-              </Link>
+              </a>
             ))}
           </div>
         </nav>
@@ -93,9 +100,9 @@ export default function Header() {
                   {isAdmin ? (
                     // Admin-specific dropdown items
                     <div>
-                      <Link href="/admin" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                      <a href="/admin" className="block px-4 py-2 text-sm hover:bg-gray-100">
                         Admin Dashboard
-                      </Link>
+                      </a>
                       <button 
                         onClick={() => signOut()} 
                         className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
@@ -106,9 +113,9 @@ export default function Header() {
                   ) : (
                     // Regular user dropdown items
                     <div>
-                      <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                      <a href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
                         Settings
-                      </Link>
+                      </a>
                       <button 
                         onClick={() => signOut()} 
                         className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
