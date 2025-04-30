@@ -721,9 +721,9 @@ export default function Status() {
                     {isAdmin && registration.user.venmoId && (
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
-                    {registration.buyInCount > 0 && (
+                    {(registration.buyInCount > 0 || registration.isRebuy) && (
                       <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                        {registration.buyInCount + 1} {registration.buyInCount === 0 ? 'buy-in' : 'buy-ins'}
+                        {(registration.buyInCount || 0) + 1} {(registration.buyInCount || 0) === 0 ? 'buy-in' : 'buy-ins'}
                       </span>
                     )}
                   </div>
@@ -856,6 +856,7 @@ export default function Status() {
           body: JSON.stringify({
             registrationId: registration.id,
             newStatus: 'CURRENT',
+            playerStatus: 'CURRENT',
             isRebuy: true
           }),
         });
@@ -864,7 +865,9 @@ export default function Status() {
         
         if (response.ok) {
           console.log("Rebuy processed successfully:", result);
-          await fetchSessionData();
+          setTimeout(async () => {
+            await fetchSessionData();
+          }, 500);
           toast.success(`Processed rebuy for ${registration.user.name}`);
         } else {
           console.error("Error processing rebuy:", result);
