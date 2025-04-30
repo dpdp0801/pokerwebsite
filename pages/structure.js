@@ -165,11 +165,10 @@ export default function Structure() {
         {/* Blind Structure */}
         <Card>
           <CardHeader>
-            <CardTitle>Tournament Blind Structure</CardTitle>
+            <CardTitle>Blind Structure</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="my-6">
-              <h2 className="text-2xl font-bold mb-4">Tournament Blind Structure</h2>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
@@ -179,7 +178,7 @@ export default function Structure() {
                       <th className="border p-2 text-left">Big Blind</th>
                       <th className="border p-2 text-left">Ante</th>
                       <th className="border p-2 text-left">Duration</th>
-                      <th className="border p-2 text-left">Special Actions</th>
+                      <th className="border p-2 text-left">Notes</th>
                     </tr>
                   </thead>
                   <tbody>

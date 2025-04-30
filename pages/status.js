@@ -396,6 +396,46 @@ export default function Status() {
   const isActive = currentSession.status === 'ACTIVE';
   const nextLevel = getNextLevel();
 
+  const shouldShowPayouts = () => {
+    // If we don't have blind data or current level, we can't show payouts
+    if (!blindStructureData || !currentSession) {
+      return false;
+    }
+    
+    // Get current level index
+    const levelIndex = currentSession.currentBlindLevel;
+    
+    // Check if we're at or after break 2
+    // Break 2 should be around level 8-9 in the sequence
+    if (levelIndex >= 8) {
+      return true;
+    }
+    
+    // Check if the current level has special actions related to break 2
+    const currentLevel = blindStructureData.currentLevel;
+    if (currentLevel?.specialAction) {
+      // These actions indicate we're at break 2 or later
+      if (currentLevel.specialAction === 'CHIP_UP_5S' || 
+          currentLevel.specialAction === 'REG_CLOSE' ||
+          currentLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S') {
+        return true;
+      }
+    }
+    
+    // Check if registration has already closed by seeing if we're past any level with REG_CLOSE
+    const regCloseIndex = blindStructureData.levels?.findIndex(l => 
+      l.specialAction === 'REG_CLOSE' || 
+      l.specialAction === 'REG_CLOSE_CHIP_UP_5S'
+    );
+    
+    if (regCloseIndex !== -1 && regCloseIndex < levelIndex) {
+      return true;
+    }
+    
+    // By default, don't show payouts yet
+    return false;
+  };
+
   return (
     <div className="container py-12 max-w-3xl">
       <Card>
@@ -637,11 +677,8 @@ export default function Status() {
                   <Clock className="h-5 w-5 animate-spin mr-2" />
                   <p>Loading payout structure...</p>
                 </div>
-              ) : (blindStructureData?.currentLevel?.isBreak || 
-                  blindStructureData?.currentLevel?.specialAction === 'REG_CLOSE' || 
-                  (currentSession.currentBlindLevel !== undefined && 
-                  blindStructureData?.levels?.findIndex(l => l.specialAction === 'REG_CLOSE') < currentSession.currentBlindLevel)) ? (
-                // Show payout structure during breaks or after registration closes
+              ) : shouldShowPayouts() ? (
+                // Show payout structure after/during 2nd break or registration closed
                 payoutStructure ? (
                   <>
                     <div className="mb-2 text-center text-sm text-muted-foreground">
@@ -683,9 +720,9 @@ export default function Status() {
                   <p className="text-center text-muted-foreground">No payout structure information available</p>
                 )
               ) : (
-                // Registration is still open and not in a break
+                // Registration is still open and we're not yet at break 2
                 <div className="text-center py-4">
-                  <p className="text-muted-foreground">Payouts will be displayed during breaks or after registration closes.</p>
+                  <p className="text-muted-foreground">Payouts will be displayed after the 2nd break or when registration closes.</p>
                   {isAdmin && (
                     <div className="mt-2">
                       <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
