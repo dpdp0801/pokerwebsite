@@ -19,6 +19,8 @@ export default async function handler(req, res) {
         const user = await prisma.user.findUnique({
           where: { id: userId },
           select: {
+            firstName: true,
+            lastName: true,
             name: true,
             venmoId: true
           }
@@ -31,6 +33,8 @@ export default async function handler(req, res) {
         console.log("Retrieved user settings:", user);
         
         return res.status(200).json({
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
           name: user.name || "",
           venmoId: user.venmoId || ""
         });
@@ -42,22 +46,27 @@ export default async function handler(req, res) {
     
     // PUT request - update user settings
     if (req.method === "PUT") {
-      const { name, venmoId } = req.body;
+      const { firstName, lastName, venmoId } = req.body;
       
       // Validate the data
-      if (name !== undefined && typeof name !== "string") {
-        return res.status(400).json({ message: "Invalid name" });
+      if (firstName !== undefined && typeof firstName !== "string") {
+        return res.status(400).json({ message: "Invalid first name" });
+      }
+      
+      if (lastName !== undefined && typeof lastName !== "string") {
+        return res.status(400).json({ message: "Invalid last name" });
       }
       
       if (venmoId !== undefined && typeof venmoId !== "string") {
         return res.status(400).json({ message: "Invalid Venmo ID" });
       }
       
-      console.log("Updating user settings:", { userId, name, venmoId });
+      console.log("Updating user settings:", { userId, firstName, lastName, venmoId });
       
       // Update the user with proper handling of empty values
       const updateData = {};
-      if (name !== undefined) updateData.name = name;
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
       if (venmoId !== undefined) updateData.venmoId = venmoId || null;
       
       try {
@@ -70,6 +79,8 @@ export default async function handler(req, res) {
         console.log("User updated successfully:", updatedUser);
         
         return res.status(200).json({
+          firstName: updatedUser.firstName || "",
+          lastName: updatedUser.lastName || "",
           name: updatedUser.name || "",
           venmoId: updatedUser.venmoId || ""
         });
