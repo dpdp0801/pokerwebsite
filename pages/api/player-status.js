@@ -112,9 +112,14 @@ export default async function handler(req, res) {
             where: { id: registrationId },
             data: { 
               status: normalizedNewStatus,
-              ...(playerStatus && { playerStatus })
+              // Ensure playerStatus is set correctly, with special handling for waitlisted
+              playerStatus: normalizedNewStatus === "WAITLISTED" 
+                ? "WAITLISTED"
+                : (playerStatus || normalizedNewStatus)
             }
           });
+          
+          console.log(`Updated registration ${registrationId} - Status: ${normalizedNewStatus}, PlayerStatus: ${normalizedNewStatus === "WAITLISTED" ? "WAITLISTED" : (playerStatus || normalizedNewStatus)}`);
           
           // If moving from non-current to current in a tournament, increment entries
           if (normalizedNewStatus === "CURRENT" && 

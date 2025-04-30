@@ -68,26 +68,33 @@ export default async function handler(req, res) {
       // Log each registration for debugging
       console.log(`Registration: ${registration.id}, Status: ${registration.status}, Player Status: ${registration.playerStatus}, User: ${registration.user?.name}`);
       
+      // Check for waitlisted players first - prioritize this check
       if (registration.status === 'WAITLISTED' || registration.playerStatus === 'WAITLISTED') {
+        console.log(`→ Adding to WAITLIST: ${registration.user?.name}`);
         groupedRegistrations.waitlisted.push(registration);
-      } else if (registration.status === 'CURRENT' || registration.playerStatus === 'CURRENT') {
-        groupedRegistrations.current.push(registration);
       } else if (registration.status === 'ELIMINATED' || registration.playerStatus === 'ELIMINATED') {
+        console.log(`→ Adding to ELIMINATED: ${registration.user?.name}`);
         groupedRegistrations.eliminated.push(registration);
       } else if (registration.status === 'ITM' || registration.playerStatus === 'ITM') {
+        console.log(`→ Adding to ITM: ${registration.user?.name}`);
         groupedRegistrations.inTheMoney.push(registration);
-      } else if (registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
+      } else if (registration.status === 'CURRENT' || registration.playerStatus === 'CURRENT' || 
+                registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
         // For initial loading, move CONFIRMED or REGISTERED players to CURRENT if session is ACTIVE
         if (activeSession.status === 'ACTIVE') {
           // Only send a copy with updated status for display
           // The actual database remains CONFIRMED/REGISTERED
+          console.log(`→ Adding to CURRENT (active): ${registration.user?.name}`);
           groupedRegistrations.current.push({
             ...registration,
             status: 'CURRENT'
           });
         } else {
+          console.log(`→ Adding to CURRENT (not active): ${registration.user?.name}`);
           groupedRegistrations.current.push(registration);
         }
+      } else {
+        console.log(`→ UNHANDLED STATUS for ${registration.user?.name}: ${registration.status}, PlayerStatus: ${registration.playerStatus}`);
       }
     });
     
