@@ -659,60 +659,13 @@ export default function Status() {
         </div>
       );
     }
-    
-    // Count rebuys by user
-    const buyInCountByUser = {};
-    
-    // First pass to identify all users
-    players.forEach(reg => {
-      if (!buyInCountByUser[reg.userId]) {
-        buyInCountByUser[reg.userId] = { 
-          count: 0,
-          mainRegistrationId: reg.isRebuy ? null : reg.id
-        };
-      }
-      
-      // If this is the main entry (not a rebuy), store its ID
-      if (!reg.isRebuy && !buyInCountByUser[reg.userId].mainRegistrationId) {
-        buyInCountByUser[reg.userId].mainRegistrationId = reg.id;
-      }
-    });
-    
-    // Second pass to count rebuys
-    players.forEach(reg => {
-      if (reg.isRebuy) {
-        buyInCountByUser[reg.userId].count++;
-      }
-    });
-    
-    // Create unique player list (one entry per user)
-    const uniquePlayers = [];
-    const processedUsers = new Set();
-    
-    players.forEach(registration => {
-      if (!processedUsers.has(registration.userId)) {
-        // Find the main registration (non-rebuy) for this user if possible
-        const mainRegId = buyInCountByUser[registration.userId].mainRegistrationId;
-        const mainRegistration = mainRegId ? 
-                                 players.find(r => r.id === mainRegId) : 
-                                 registration;
-        
-        // Use the main registration for display, but include rebuy count
-        uniquePlayers.push({
-          ...mainRegistration,
-          buyInCount: buyInCountByUser[registration.userId].count
-        });
-        
-        processedUsers.add(registration.userId);
-      }
-    });
 
     return (
       <div className="mt-4">
         <h3 className="text-sm font-medium mb-2">{title}</h3>
         <div className="border rounded-md overflow-hidden">
           <ul className="divide-y">
-            {uniquePlayers.map((registration) => (
+            {players.map((registration) => (
               <li key={registration.id} className="p-3 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
@@ -732,9 +685,9 @@ export default function Status() {
                     {isAdmin && registration.user.venmoId && (
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
-                    {(registration.buyInCount > 0 || registration.isRebuy) && (
+                    {registration.rebuys > 0 && (
                       <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                        {(registration.buyInCount || 0) + 1} {(registration.buyInCount || 0) === 0 ? 'buy-in' : 'buy-ins'}
+                        {registration.rebuys} {registration.rebuys === 1 ? 'buy-in' : 'buy-ins'}
                       </span>
                     )}
                   </div>
@@ -882,11 +835,7 @@ export default function Status() {
           console.log("Rebuy processed successfully:", result);
           // Give database more time to process the rebuy
           setTimeout(async () => {
-            // Do a more complete refresh
-            setSessionData({ exists: false, session: null });
-            setLoading(true);
             await fetchSessionData();
-            setLoading(false);
             setIsSubmitting(false);
           }, 500);
           toast.success(`Processed rebuy for ${registration.user.name}`);

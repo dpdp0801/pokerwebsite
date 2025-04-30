@@ -64,55 +64,36 @@ export default async function handler(req, res) {
     // Handle rebuy case separately
     if (isRebuy) {
       console.log(`Processing rebuy for ${registration.user?.name}`);
-      // Always increment totalEntries for rebuys
-      sessionUpdateData = {
-        entries: { increment: 1 }
-      };
       
-      // First mark the original registration as REBOUGHT regardless of current status
+      // Increment the rebuys/entries count
       try {
-        console.log(`Marking original registration ${registrationId} as REBOUGHT`);
+        // Update the player's rebuy count
         await prisma.registration.update({
           where: { id: registrationId },
-          data: { 
-            status: "REBOUGHT",
-            playerStatus: registration.playerStatus === "CURRENT" ? "ELIMINATED" : registration.playerStatus
+          data: {
+            rebuys: {
+              increment: 1
+            }
           }
         });
-      } catch (error) {
-        console.error("Error updating original registration during rebuy:", error);
-        return res.status(500).json({ message: "Error updating original registration", error: error.message });
-      }
-      
-      // Update session entries count
-      try {
+        
+        // Update session entries count
         await prisma.pokerSession.update({
           where: { id: sessionId },
           data: {
-            entries: sessionUpdateData.entries
+            entries: { 
+              increment: 1 
+            }
           }
+        });
+        
+        return res.status(200).json({ 
+          success: true, 
+          message: "Buy-in count incremented successfully" 
         });
       } catch (error) {
         console.error("Error updating session entries:", error);
         return res.status(500).json({ message: "Error updating entries", error: error.message });
-      }
-      
-      // Create a new registration entry to track the rebuy
-      try {
-        console.log(`Creating new rebuy registration for user ${registration.userId}`);
-        await prisma.registration.create({
-          data: {
-            userId: registration.userId,
-            sessionId: registration.sessionId,
-            buyInAmount: registration.buyInAmount, // reuse original buy-in amount
-            status: "CONFIRMED",
-            playerStatus: "CURRENT",
-            isRebuy: true
-          }
-        });
-      } catch (error) {
-        console.error("Error creating rebuy registration:", error);
-        return res.status(500).json({ message: "Error creating rebuy record", error: error.message });
       }
     } else {
       // Only process status changes if there's an actual change
