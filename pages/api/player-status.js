@@ -113,6 +113,9 @@ export default async function handler(req, res) {
               decrement: 1
             }
           };
+        } else if (registration.status === 'CURRENT') {
+          // Already in current status, no need to change player counts
+          sessionUpdate = {};
         }
 
         // If this is a rebuy, increment total entries

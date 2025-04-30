@@ -97,8 +97,7 @@ export default async function handler(req, res) {
     
     // Update the session data with accurate counts if needed
     if (activeSession.status === 'ACTIVE' && (
-        activeSession.currentPlayersCount !== currentPlayersCount ||
-        activeSession.entries === 0 && registeredPlayersCount > 0
+        activeSession.currentPlayersCount !== currentPlayersCount
     )) {
       try {
         await prisma.pokerSession.update({
@@ -108,7 +107,7 @@ export default async function handler(req, res) {
             waitlistedPlayersCount: waitlistedPlayersCount,
             eliminatedPlayersCount: eliminatedPlayersCount,
             itmPlayersCount: itmPlayersCount,
-            entries: registeredPlayersCount, // Set entries to match registered players if it's 0
+            // Don't set entries based on registered players - only increased by buy-ins
           }
         });
       } catch (updateError) {
@@ -126,7 +125,7 @@ export default async function handler(req, res) {
         eliminatedPlayersCount: eliminatedPlayersCount,
         itmPlayersCount: itmPlayersCount,
         registeredPlayersCount: registeredPlayersCount,
-        totalEntries: Math.max(activeSession.entries || 0, registeredPlayersCount),
+        totalEntries: activeSession.entries || 0, // Only use actual entries, not registeredPlayersCount
         registrations: groupedRegistrations,
         userRegistration: userRegistration,
         registrationClosed: activeSession.registrationClosed || false
