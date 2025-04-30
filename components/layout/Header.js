@@ -20,8 +20,8 @@ export default function Header() {
   
   // Handle new user redirect
   useEffect(() => {
-    // If the user is logged in, has just signed in, and is marked as new
-    if (session?.newUser && router.pathname !== '/settings') {
+    // If the user is logged in and is marked as new
+    if (session && session.newUser) {
       // Redirect to settings page with new user flag
       router.push('/settings?new=true');
     }

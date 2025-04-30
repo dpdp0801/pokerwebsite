@@ -358,33 +358,7 @@ export default function Status() {
               
               <PlayerList 
                 players={currentSession.registrations.current}
-                title={
-                  (() => {
-                    // See if we're in ITM mode
-                    let payoutPositions = 0;
-                    if (payoutStructure && payoutStructure.tiers) {
-                      payoutPositions = Math.max(
-                        ...payoutStructure.tiers.map(tier => tier.position)
-                      );
-                    }
-                    
-                    const isITMMode = 
-                      currentSession.registrationClosed && 
-                      payoutPositions > 0 && 
-                      currentSession.currentPlayersCount <= payoutPositions;
-                    
-                    return (
-                      <div className="flex items-center">
-                        <span>Current Players</span>
-                        {isITMMode && (
-                          <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
-                            ITM Mode
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()
-                }
+                title="Current Players"
                 emptyMessage="No active players currently at the table"
                 colorClass="bg-green-100 text-green-800"
                 isAdmin={isAdmin}
@@ -510,7 +484,8 @@ export default function Status() {
                     
                     // Create array of payout slots
                     const payoutSlots = Array.from({ length: payoutPositions }, (_, i) => {
-                      const position = i + 1; // 1st, 2nd, 3rd, etc.
+                      // Position in reverse order - start with position 1 at index 0
+                      const position = payoutPositions - i;
                       
                       // Find prize amount for this position
                       let prize = 0;
@@ -526,8 +501,8 @@ export default function Status() {
                       const itmCount = playersInITM.length;
                       
                       // Match player to this position if available
-                      // If we have 3 payout positions and 1 player in ITM, that player goes to position 3
-                      // If we have 3 payout positions and 2 players in ITM, they go to positions 3 and 2
+                      // If we have 3 positions (1,2,3) and 1 player in ITM, that player goes to position 3
+                      // If we have 3 positions and 2 players in ITM, they go to positions 3 and 2
                       let playerIndex = null;
                       if (position > payoutPositions - itmCount) {
                         // Calculate index in the ITM array
@@ -541,9 +516,6 @@ export default function Status() {
                         player: playerIndex !== null && playerIndex >= 0 ? playersInITM[playerIndex] : null
                       };
                     });
-                    
-                    // Reverse to display 1st place at the top
-                    payoutSlots.reverse();
                     
                     // Render slots
                     return (
