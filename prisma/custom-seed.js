@@ -13,7 +13,7 @@ async function seedBlindStructure() {
     data: {
       name: "Default Tournament Structure",
       description: "Standard tournament structure with 20-minute levels and breaks",
-      startingStack: 10000,
+      startingStack: 300,
       isDefault: true
     }
   });
