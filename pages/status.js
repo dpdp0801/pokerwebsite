@@ -94,10 +94,28 @@ export default function Status() {
           }
           
           // Check if timer is finished
-          if (newMinutes < 0) {
+          if (newMinutes <= 0 && newSeconds <= 0) {
             newMinutes = 0;
             newSeconds = 0;
-            // Could add auto-level advancement here
+            
+            // Auto-advance to the next level if we're admin
+            if (isAdmin && !blindsLoading) {
+              // Clear the interval to prevent multiple calls
+              clearInterval(interval);
+              setTimerInterval(null);
+              
+              // Use setTimeout to give a small delay before advancing
+              setTimeout(async () => {
+                try {
+                  setBlindsLoading(true);
+                  await updateBlindLevel((sessionData.session.currentBlindLevel || 0) + 1);
+                } catch (error) {
+                  console.error("Error advancing to next level:", error);
+                } finally {
+                  setBlindsLoading(false);
+                }
+              }, 500);
+            }
           }
           
           return { minutes: newMinutes, seconds: newSeconds };
@@ -113,7 +131,7 @@ export default function Status() {
         }
       };
     }
-  }, [blindStructureData, sessionData]);
+  }, [blindStructureData, sessionData, isAdmin, blindsLoading]);
   
   // Format timer for display
   const formatTimer = () => {
@@ -696,7 +714,7 @@ export default function Status() {
                   {currentSession.currentPlayersCount}/{currentSession.maxPlayers}
                 </p>
               </div>
-              <p className="text-muted-foreground">Current Players</p>
+              <p className="text-muted-foreground">{isActive ? "Current Players" : "Registered Players"}</p>
             </div>
             
             {isTournament ? (
@@ -988,13 +1006,13 @@ export default function Status() {
                     onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
                   },
                   isTournament ? {
-                    label: "Rebuy",
+                    label: "Buy-in",
                     variant: "default",
-                    title: "Process a rebuy for this player",
+                    title: "Process a buy-in for this player",
                     onClick: (registration) => {
                       // Ask for confirmation
                       const confirmed = window.confirm(
-                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
+                        `Process a buy-in for ${registration.user.name}? This will increase the total entries count.`
                       );
                       if (confirmed) {
                         updatePlayerStatus(registration.id, 'CURRENT', true);
@@ -1058,13 +1076,13 @@ export default function Status() {
                 colorClass="bg-red-100 text-red-800"
                 actions={[
                   isTournament ? {
-                    label: "Rebuy",
+                    label: "Buy-in",
                     variant: "default",
-                    title: "Process a rebuy for this player",
+                    title: "Process a buy-in for this player",
                     onClick: (registration) => {
                       // Ask for confirmation
                       const confirmed = window.confirm(
-                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
+                        `Process a buy-in for ${registration.user.name}? This will increase the total entries count.`
                       );
                       if (confirmed) {
                         updatePlayerStatus(registration.id, 'CURRENT', true);

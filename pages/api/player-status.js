@@ -117,7 +117,7 @@ export default async function handler(req, res) {
 
         // If this is a rebuy, increment total entries
         if (isRebuy) {
-          sessionUpdate.totalEntries = {
+          sessionUpdate.entries = {
             increment: 1
           };
         }
@@ -156,7 +156,7 @@ export default async function handler(req, res) {
       }
       
       // Update session counts
-      const updatedSession = await prisma.session.update({
+      const updatedSession = await prisma.pokerSession.update({
         where: {
           id: registration.sessionId,
         },
