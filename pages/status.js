@@ -223,7 +223,7 @@ export default function Status() {
     }
     
     try {
-      setBlindsLoading(true);
+      // Don't set loading state to avoid UI flicker
       const response = await fetch(`/api/blinds/current?sessionId=${sessionId}`);
       
       if (!response.ok) {
@@ -231,6 +231,10 @@ export default function Status() {
       }
       
       const data = await response.json();
+      
+      // Keep the next level function using the same data
+      const nextLevelData = getNextLevel();
+      
       setBlindStructureData({
         ...data,
         sessionId, // Store the sessionId for future comparisons
@@ -238,8 +242,6 @@ export default function Status() {
       });
     } catch (error) {
       console.error('Error fetching blind structure:', error);
-    } finally {
-      setBlindsLoading(false);
     }
   };
   
@@ -257,7 +259,7 @@ export default function Status() {
     }
     
     try {
-      setPayoutLoading(true);
+      // Don't set loading state to avoid UI flicker
       const entryCount = Math.max(playerCount || 0, 0);
       const response = await fetch(`/api/payout-structures/get-by-entries?entries=${entryCount}`);
       
@@ -281,8 +283,6 @@ export default function Status() {
         tiers: [],
         playerCount
       });
-    } finally {
-      setPayoutLoading(false);
     }
   };
 
@@ -425,7 +425,7 @@ export default function Status() {
 
   // Get next blind level
   const getNextLevel = () => {
-    if (!blindStructureData?.levels || !sessionData?.session?.currentBlindLevel) {
+    if (!blindStructureData?.levels || sessionData?.session?.currentBlindLevel === undefined) {
       return null;
     }
     
@@ -939,28 +939,25 @@ export default function Status() {
             <div className="border-t pt-4 mt-4">
               <h3 className="font-medium text-lg mb-3 text-center">Timer</h3>
               
+              {/* Timer Display - Always visible */}
               <div className="text-center mb-6">
                 <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
-                {!blindStructureData ? (
-                  <div className="text-sm text-muted-foreground">Loading levels...</div>
-                ) : blindStructureData.currentLevel?.isBreak ? (
-                  <div className="text-sm text-muted-foreground">Break</div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Level {blindStructureData?.currentLevel?.level || 1}
-                  </div>
-                )}
+                <div className="text-sm text-muted-foreground">
+                  {blindStructureData?.currentLevel?.isBreak 
+                    ? "Break" 
+                    : `Level ${blindStructureData?.currentLevel?.level || 1}`}
+                </div>
               </div>
               
+              {/* Admin Controls */}
               <div className="text-center mb-4">
                 <div className="flex items-center justify-center space-x-3">
-                  {isAdmin && !blindsLoading && (
+                  {isAdmin && (
                     <div className="flex items-center space-x-1">
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={async () => {
-                          // Only allow the click if not currently processing
                           if (!blindsLoading) {
                             try {
                               setBlindsLoading(true);
@@ -979,7 +976,6 @@ export default function Status() {
                         variant="outline" 
                         size="sm"
                         onClick={async () => {
-                          // Only allow the click if not currently processing
                           if (!blindsLoading) {
                             try {
                               setBlindsLoading(true);
@@ -996,20 +992,11 @@ export default function Status() {
                       </Button>
                     </div>
                   )}
-                  {blindsLoading && (
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 animate-spin mr-2" />
-                      <span className="text-sm">Updating...</span>
-                    </div>
-                  )}
                 </div>
               </div>
               
-              {!blindStructureData ? (
-                <div className="text-center py-4">
-                  <Clock className="h-5 w-5 animate-spin mx-auto" />
-                </div>
-              ) : blindStructureData.currentLevel?.isBreak ? (
+              {/* Level Information */}
+              {blindStructureData?.currentLevel?.isBreak ? (
                 <div className="bg-blue-50 p-4 rounded-md text-center mb-4">
                   <h4 className="font-medium text-blue-800">
                     {blindStructureData.currentLevel.breakName || 'Break'} - {blindStructureData.currentLevel.duration} minutes
@@ -1024,28 +1011,34 @@ export default function Status() {
                       )}
                     </p>
                   )}
-
-                  {/* Always show next level information */}
-                  {nextLevel && !nextLevel.isBreak && (
+                  
+                  {/* Show next level during break */}
+                  {nextLevel && (
                     <div className="mt-4 p-3 bg-white rounded border">
                       <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
                         <ChevronDown className="h-4 w-4 mr-1" />
                         <span>Next Level</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 items-center">
-                        <div className="text-center">
-                          <p className="text-xs text-muted-foreground">Small Blind</p>
-                          <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
+                      {!nextLevel.isBreak ? (
+                        <div className="grid grid-cols-3 gap-4 items-center">
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Small Blind</p>
+                            <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Big Blind</p>
+                            <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground">Ante</p>
+                            <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <p className="text-xs text-muted-foreground">Big Blind</p>
-                          <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
+                      ) : (
+                        <div className="text-center py-1">
+                          {nextLevel.duration} minute {nextLevel.breakName || 'Break'}
                         </div>
-                        <div className="text-center">
-                          <p className="text-xs text-muted-foreground">Ante</p>
-                          <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1059,27 +1052,27 @@ export default function Status() {
                     <div className="grid grid-cols-3 gap-4 items-center my-3">
                       <div className="text-center">
                         <p className="text-xs text-muted-foreground">Small Blind</p>
-                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.smallBlind || '—'}</p>
+                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.smallBlind || '—'}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-muted-foreground">Big Blind</p>
-                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.bigBlind || '—'}</p>
+                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.bigBlind || '—'}</p>
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-muted-foreground">Ante</p>
-                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.ante || '—'}</p>
+                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.ante || '—'}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Always show next level */}
-                  {nextLevel ? (
-                    <div className="bg-background border rounded-md p-4">
-                      <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
-                        <ChevronDown className="h-4 w-4 mr-1" />
-                        <span>{nextLevel.isBreak ? `Next: ${nextLevel.breakName || 'Break'} - ${nextLevel.duration} min` : 'Next Level'}</span>
-                      </div>
-                      {!nextLevel.isBreak ? (
+                  {/* Next Level */}
+                  <div className="bg-background border rounded-md p-4">
+                    <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
+                      <ChevronDown className="h-4 w-4 mr-1" />
+                      <span>{nextLevel?.isBreak ? `Next: ${nextLevel.breakName || 'Break'} - ${nextLevel.duration} min` : 'Next Level'}</span>
+                    </div>
+                    {nextLevel ? (
+                      !nextLevel.isBreak ? (
                         <div className="grid grid-cols-3 gap-4 items-center my-2">
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Small Blind</p>
@@ -1108,15 +1101,13 @@ export default function Status() {
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-background border rounded-md p-4">
+                      )
+                    ) : (
                       <div className="text-center text-muted-foreground">
                         Final Level
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
               
@@ -1138,12 +1129,7 @@ export default function Status() {
                 Payout Structure
               </h3>
               
-              {payoutLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <Clock className="h-5 w-5 animate-spin mr-2" />
-                  <p>Loading payout structure...</p>
-                </div>
-              ) : shouldShowPayouts() ? (
+              {shouldShowPayouts() ? (
                 // Show payout structure after/during 2nd break or registration closed
                 payoutStructure ? (
                   <>
@@ -1183,7 +1169,9 @@ export default function Status() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-center text-muted-foreground">No payout structure information available</p>
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">No payout structure available yet.</p>
+                  </div>
                 )
               ) : (
                 // Registration is still open and we're not yet at break 2
