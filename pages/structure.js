@@ -13,17 +13,37 @@ export default function Structure() {
   const isAdmin = session?.role === "ADMIN";
 
   useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
       try {
-        // Fetch blind structure
-        const blindResponse = await fetch('/api/blinds/structure');
+        setLoading(true);
+        // Fetch the blind structure
+        const response = await fetch('/api/blinds/structure');
         
-        if (!blindResponse.ok) {
-          throw new Error('Failed to fetch blind structure');
+        if (!response.ok) {
+          throw new Error('Failed to load blind structure');
         }
         
-        const blindData = await blindResponse.json();
-        setBlindStructure(blindData.structure);
+        const data = await response.json();
+        
+        // Process the levels to assign display numbers (skip breaks)
+        let regularLevelCount = 0;
+        let breakCount = 0;
+        const processedLevels = data.structure.levels.map(level => {
+          if (level.isBreak) {
+            breakCount++;
+            // Add special text to the second break
+            const breakText = breakCount === 2 ? "Break (Chip up 5s - Registration Closes)" : "Break";
+            return { ...level, displayLevel: breakText };
+          } else {
+            regularLevelCount++;
+            return { ...level, displayLevel: regularLevelCount };
+          }
+        });
+        
+        setBlindStructure({
+          ...data.structure,
+          levels: processedLevels
+        });
         
         // Fetch all payout structures
         const payoutResponse = await fetch('/api/payout-structures');
@@ -35,13 +55,13 @@ export default function Structure() {
         
         const payoutData = await payoutResponse.json();
         setPayoutStructures(payoutData.structures);
-      } catch (err) {
-        console.error('Error fetching tournament structure:', err);
-        setError(err.message);
+      } catch (error) {
+        console.error('Error fetching blind structure:', error);
+        setError('Failed to load blind structure. Please try again later.');
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchData();
   }, []);
@@ -63,6 +83,16 @@ export default function Structure() {
         <div className="text-center py-12">
           <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
           <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!blindStructure) {
+    return (
+      <div className="container py-12 max-w-4xl">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-bold text-red-500 mb-2">No blind structure available</h2>
         </div>
       </div>
     );
@@ -114,38 +144,36 @@ export default function Structure() {
         {/* Blind Structure */}
         <Card>
           <CardHeader>
-            <CardTitle>Blind Structure</CardTitle>
+            <CardTitle>Tournament Blind Structure</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Small Blind</TableHead>
-                  <TableHead>Big Blind</TableHead>
-                  <TableHead>Ante</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {blindStructure?.levels.map((level) => (
-                  <TableRow key={level.id} className={level.isBreak ? "bg-muted/30" : ""}>
-                    <TableCell>
-                      {level.isBreak ? level.breakName : level.level}
-                    </TableCell>
-                    <TableCell>{level.duration} min</TableCell>
-                    <TableCell>{level.isBreak ? '—' : level.smallBlind}</TableCell>
-                    <TableCell>{level.isBreak ? '—' : level.bigBlind}</TableCell>
-                    <TableCell>{level.isBreak ? '—' : level.ante}</TableCell>
-                    <TableCell>
-                      {level.specialAction === 'REG_CLOSE' && 'Registration Closes'}
-                      {level.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="my-6">
+              <h2 className="text-2xl font-bold mb-4">Tournament Blind Structure</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border p-2 text-left">Level</th>
+                      <th className="border p-2 text-left">Small Blind</th>
+                      <th className="border p-2 text-left">Big Blind</th>
+                      <th className="border p-2 text-left">Ante</th>
+                      <th className="border p-2 text-left">Duration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blindStructure?.levels.map((level, index) => (
+                      <tr key={index} className={level.isBreak ? 'bg-accent/20' : ''}>
+                        <td className="border p-2">{level.displayLevel}</td>
+                        <td className="border p-2">{level.isBreak ? '-' : level.smallBlind}</td>
+                        <td className="border p-2">{level.isBreak ? '-' : level.bigBlind}</td>
+                        <td className="border p-2">{level.isBreak ? '-' : (level.ante || '-')}</td>
+                        <td className="border p-2">{level.duration} mins</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

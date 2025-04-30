@@ -546,7 +546,11 @@ export default function Status() {
                       {blindStructureData.currentLevel.specialAction && (
                         <p className="text-sm text-blue-700 mt-1">
                           {blindStructureData.currentLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
+                          {blindStructureData.currentLevel.specialAction === 'CHIP_UP_5S' && 'Chip Up 5s'}
                           {blindStructureData.currentLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
+                          {blindStructureData.currentLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S' && (
+                            <>Registration Closes<br />Chip Up 5s</>
+                          )}
                         </p>
                       )}
                     </div>

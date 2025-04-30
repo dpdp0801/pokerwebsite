@@ -86,6 +86,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("sessions");
   const [isLoaded, setIsLoaded] = useState(false);
   const [sessions, setSessions] = useState([]);
+  const [users, setUsers] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   
   // Session management dialogs
@@ -218,6 +219,45 @@ export default function AdminDashboard() {
     }
     
     fetchBuyInRequests();
+    
+    return function cleanup() {
+      isMounted = false;
+    };
+  }, []);
+  
+  // Load users
+  useEffect(() => {
+    let isMounted = true;
+    
+    function fetchUsers() {
+      try {
+        fetch('/api/users')
+          .then(res => {
+            if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
+            return res.json();
+          })
+          .then(data => {
+            if (isMounted) {
+              if (data.success) {
+                setUsers(data.users || []);
+              } else {
+                console.warn("No users data in API response");
+                setUsers([]);
+              }
+            }
+          })
+          .catch(err => {
+            console.error("Error fetching users:", err);
+            if (isMounted) {
+              setUsers([]);
+            }
+          });
+      } catch (err) {
+        console.error("Error in fetchUsers:", err);
+      }
+    }
+    
+    fetchUsers();
     
     return function cleanup() {
       isMounted = false;
@@ -699,9 +739,10 @@ export default function AdminDashboard() {
         <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
         
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="buyins">Buy-ins</TabsTrigger>
+            <TabsTrigger value="accounts">Accounts</TabsTrigger>
           </TabsList>
           
           {/* Sessions tab */}
@@ -897,6 +938,48 @@ export default function AdminDashboard() {
                                 Cancel
                               </Button>
                             )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Accounts tab */}
+          <TabsContent value="accounts">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>User Accounts</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {users.length === 0 ? (
+                  <p className="text-center py-4">No user accounts found.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {users.map(user => (
+                      <div key={user.id} className="p-4 border rounded-md shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-medium">
+                              {user.name || 'Unnamed User'}
+                              {user.role === "ADMIN" && (
+                                <Badge className="ml-2 bg-purple-100 text-purple-800">
+                                  Admin
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {user.email}
+                            </div>
+                            <div className="flex items-center mt-1 text-xs text-gray-500">
+                              <div>Created: {formatDate(user.createdAt)}</div>
+                              <div className="ml-4">Email verified: {user.emailVerified ? 'Yes' : 'No'}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
