@@ -33,34 +33,69 @@ export default function Status() {
 
   // Fetch real session data
   useEffect(() => {
-    fetchSessionData();
+    fetchSessionData(true);
     
     // Set up polling to refresh data every 5 seconds
     const intervalId = setInterval(() => {
-      fetchSessionData();
+      fetchSessionData(false);
     }, 5000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, []);
 
-  const fetchSessionData = async () => {
+  const fetchSessionData = async (initialLoad = false) => {
     try {
-      setLoading(true);
+      // Only show loading state on initial load
+      if (initialLoad) {
+        setLoading(true);
+      }
+      
       const response = await fetch('/api/session-status');
       const data = await response.json();
-      setSessionData(data);
+      
+      // Update the session data state without causing a flash
+      setSessionData(prevData => {
+        // If it's the first load or session existence changed
+        if (initialLoad || prevData.exists !== data.exists) {
+          return data;
+        }
+        
+        // For subsequent loads, if the session exists, merge
+        // the new data with the existing data to avoid UI flickering
+        if (data.exists && prevData.exists) {
+          return {
+            exists: true,
+            session: {
+              ...prevData.session,
+              ...data.session,
+              // Keep the same objects for these unless they've actually changed
+              // This prevents unnecessary re-renders
+              registrations: {
+                current: data.session.registrations.current,
+                waitlisted: data.session.registrations.waitlisted,
+                eliminated: data.session.registrations.eliminated,
+                inTheMoney: data.session.registrations.inTheMoney
+              }
+            }
+          };
+        }
+        
+        return data;
+      });
       
       // If active tournament, fetch blind structure and payout structure
       if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
-        fetchBlindStructure(data.session.id);
-        // Use entries if available, otherwise use registered players
-        fetchPayoutStructure(data.session.entries || data.session.registeredPlayers);
+        fetchBlindStructureIfNeeded(data.session.id, data.session.currentBlindLevel);
+        fetchPayoutStructureIfNeeded(data.session.totalEntries || data.session.registeredPlayers);
       }
     } catch (error) {
       console.error('Error fetching session data:', error);
     } finally {
-      setLoading(false);
+      // Only update loading state on initial load
+      if (initialLoad) {
+        setLoading(false);
+      }
     }
   };
 
@@ -173,8 +208,20 @@ export default function Status() {
     return `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
   };
 
-  // Fetch blind structure for active tournament
-  const fetchBlindStructure = async (sessionId) => {
+  // Only fetch blind structure if it's not loaded or has changed
+  const fetchBlindStructureIfNeeded = async (sessionId, currentLevel) => {
+    // Skip if already loading
+    if (blindsLoading) return;
+    
+    // Skip if we already have the data and the level hasn't changed
+    if (
+      blindStructureData && 
+      blindStructureData.sessionId === sessionId &&
+      blindStructureData.currentLevelIndex === currentLevel
+    ) {
+      return;
+    }
+    
     try {
       setBlindsLoading(true);
       const response = await fetch(`/api/blinds/current?sessionId=${sessionId}`);
@@ -184,21 +231,33 @@ export default function Status() {
       }
       
       const data = await response.json();
-      setBlindStructureData(data);
-      return data; // Return the data for promise chaining
+      setBlindStructureData({
+        ...data,
+        sessionId, // Store the sessionId for future comparisons
+        currentLevelIndex: currentLevel // Store the current level for future comparisons
+      });
     } catch (error) {
       console.error('Error fetching blind structure:', error);
-      throw error; // Rethrow to allow error handling in caller
     } finally {
       setBlindsLoading(false);
     }
   };
-
-  // Fetch payout structure based on player count
-  const fetchPayoutStructure = async (playerCount) => {
+  
+  // Only fetch payout structure if it's not loaded or entries have changed
+  const fetchPayoutStructureIfNeeded = async (playerCount) => {
+    // Skip if already loading
+    if (payoutLoading) return;
+    
+    // Skip if we already have the data and the player count hasn't changed significantly
+    if (
+      payoutStructure && 
+      payoutStructure.playerCount === playerCount
+    ) {
+      return;
+    }
+    
     try {
       setPayoutLoading(true);
-      // Use max of entry count and 0 to avoid negative values
       const entryCount = Math.max(playerCount || 0, 0);
       const response = await fetch(`/api/payout-structures/get-by-entries?entries=${entryCount}`);
       
@@ -207,7 +266,10 @@ export default function Status() {
       }
       
       const data = await response.json();
-      setPayoutStructure(data);
+      setPayoutStructure({
+        ...data,
+        playerCount // Store the player count for future comparisons
+      });
     } catch (error) {
       console.error('Error fetching payout structure:', error);
       // Initialize with an empty structure on error
@@ -216,7 +278,8 @@ export default function Status() {
         name: "No entries yet",
         minEntries: 0,
         maxEntries: 0,
-        tiers: []
+        tiers: [],
+        playerCount
       });
     } finally {
       setPayoutLoading(false);
@@ -265,7 +328,7 @@ export default function Status() {
       await fetchSessionData();
       
       // Refresh blind structure data
-      await fetchBlindStructure(sessionData.session.id);
+      await fetchBlindStructureIfNeeded(sessionData.session.id, sessionData.session.currentBlindLevel);
       
       toast({
         title: "Blind Level Updated",
