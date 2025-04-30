@@ -66,15 +66,15 @@ export default async function handler(req, res) {
     
     registrations.forEach(registration => {
       // Log each registration for debugging
-      console.log(`Registration: ${registration.id}, Status: ${registration.status}, User: ${registration.user?.name}`);
+      console.log(`Registration: ${registration.id}, Status: ${registration.status}, Player Status: ${registration.playerStatus}, User: ${registration.user?.name}`);
       
-      if (registration.status === 'WAITLISTED') {
+      if (registration.status === 'WAITLISTED' || registration.playerStatus === 'WAITLISTED') {
         groupedRegistrations.waitlisted.push(registration);
-      } else if (registration.status === 'CURRENT') {
+      } else if (registration.status === 'CURRENT' || registration.playerStatus === 'CURRENT') {
         groupedRegistrations.current.push(registration);
-      } else if (registration.status === 'ELIMINATED') {
+      } else if (registration.status === 'ELIMINATED' || registration.playerStatus === 'ELIMINATED') {
         groupedRegistrations.eliminated.push(registration);
-      } else if (registration.status === 'ITM') {
+      } else if (registration.status === 'ITM' || registration.playerStatus === 'ITM') {
         groupedRegistrations.inTheMoney.push(registration);
       } else if (registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
         // For initial loading, move CONFIRMED or REGISTERED players to CURRENT if session is ACTIVE
