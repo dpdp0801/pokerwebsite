@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, UserPlus, Clock, DollarSign, Play, CheckCircle, X } from "lucide-react";
+import { Users, AlertCircle, Play, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate, formatTimeOnly, shouldShowPayouts } from "@/lib/tournament-utils";
@@ -14,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -77,8 +76,6 @@ export default function Status() {
   const [blindStructure, setBlindStructure] = useState([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const [sessionUpdating, setSessionUpdating] = useState(false);
-  const [showBlindsDialog, setShowBlindsDialog] = useState(false);
-  const [showPayoutsDialog, setShowPayoutsDialog] = useState(false);
   const router = useRouter();
 
   // Check for admin role in multiple possible locations
@@ -298,31 +295,6 @@ export default function Status() {
     }
   };
 
-  const handleCancelSession = async () => {
-    setSessionUpdating(true);
-    try {
-      const response = await fetch(`/api/sessions/${sessionData.id}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to cancel session');
-      }
-
-      await fetchSessionData();
-      toast.success('Session cancelled successfully');
-    } catch (error) {
-      console.error('Error cancelling session:', error);
-      toast.error(error.message || 'Failed to cancel session');
-    } finally {
-      setSessionUpdating(false);
-    }
-  };
-
   const confirmSessionAction = (action, message) => {
     setConfirmMessage(message);
     setConfirmAction(() => action);
@@ -394,45 +366,10 @@ export default function Status() {
           {/* Admin Panel */}
           {session?.user?.isAdmin && sessionData?.session && (
             <div className="space-y-4 mt-6">
-              <div>
-                <h3 className="text-lg font-medium">Admin Controls</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                  <Button
-                    onClick={() => router.push("/registration?sessionId=" + sessionData.session.id)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add Players
-                  </Button>
-                  
-                  <Button
-                    onClick={() => setShowBlindsDialog(true)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    View Blinds
-                  </Button>
-                  
-                  <Button
-                    onClick={() => setShowPayoutsDialog(true)}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                  >
-                    <DollarSign className="mr-2 h-4 w-4" />
-                    View Payouts
-                  </Button>
-                </div>
-              </div>
-
               {/* Session Status Controls */}
               <div>
                 <h3 className="text-lg font-medium">Session Status Controls</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                   {/* Start Session Button - Show only if session is SCHEDULED */}
                   {sessionData?.session?.status === "SCHEDULED" && (
                     <Button
@@ -468,25 +405,6 @@ export default function Status() {
                     >
                       <CheckCircle className="mr-2 h-4 w-4 text-blue-600" />
                       Finish Session
-                    </Button>
-                  )}
-                  
-                  {/* Cancel Session Button - Show if session is SCHEDULED or ACTIVE */}
-                  {(sessionData?.session?.status === "SCHEDULED" || sessionData?.session?.status === "ACTIVE") && (
-                    <Button
-                      onClick={() => 
-                        confirmSessionAction(
-                          handleCancelSession, 
-                          "Are you sure you want to cancel this session? This action cannot be undone."
-                        )
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-red-50 hover:bg-red-100 border-red-200"
-                      disabled={sessionUpdating}
-                    >
-                      <X className="mr-2 h-4 w-4 text-red-600" />
-                      Cancel Session
                     </Button>
                   )}
                 </div>
@@ -649,104 +567,6 @@ export default function Status() {
             </div>
         </CardContent>
       </Card>
-      
-      {/* Blinds and Payouts Dialogs */}
-      {isTournament && (
-        <>
-          <Dialog open={showBlindsDialog} onOpenChange={setShowBlindsDialog}>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Blind Structure</DialogTitle>
-                <DialogDescription>
-                  Current tournament blind structure and schedule
-                </DialogDescription>
-              </DialogHeader>
-              
-              {blindStructureData ? (
-                <div className="max-h-[60vh] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Level</TableHead>
-                        <TableHead>Blinds</TableHead>
-                        <TableHead>Ante</TableHead>
-                        <TableHead>Duration</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {blindStructureData.levels?.map((level, index) => (
-                        <TableRow 
-                          key={index}
-                          className={currentSession.currentBlindLevel === index ? "bg-muted" : ""}
-                        >
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{level.smallBlind}/{level.bigBlind}</TableCell>
-                          <TableCell>{level.ante || '-'}</TableCell>
-                          <TableCell>{level.duration} min</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="py-4 text-center text-muted-foreground">
-                  No blind structure data available
-                </div>
-              )}
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowBlindsDialog(false)}>
-                  Close
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
-          <Dialog open={showPayoutsDialog} onOpenChange={setShowPayoutsDialog}>
-            <DialogContent className="max-w-xl">
-              <DialogHeader>
-                <DialogTitle>Payout Structure</DialogTitle>
-                <DialogDescription>
-                  Current tournament payout structure based on {currentSession.totalEntries || 0} entries
-                </DialogDescription>
-              </DialogHeader>
-              
-              {payoutStructure?.length > 0 ? (
-                <div className="max-h-[60vh] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Position</TableHead>
-                        <TableHead>Payout</TableHead>
-                        <TableHead>Percentage</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payoutStructure.map((payout, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{index + 1}{getOrdinalSuffix(index + 1)}</TableCell>
-                          <TableCell>${payout.amount}</TableCell>
-                          <TableCell>{payout.percentage}%</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="py-4 text-center text-muted-foreground">
-                  No payout structure data available
-                </div>
-              )}
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowPayoutsDialog(false)}>
-                  Close
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
       
       {/* Add the confirmation dialog */}
       <ConfirmationDialog />
