@@ -19,7 +19,8 @@ export default async function handler(req, res) {
         where: {
           status: {
             in: ["NOT_STARTED", "ACTIVE"]
-          }
+          },
+          registrationClosed: false
         },
         orderBy: {
           date: "asc"
