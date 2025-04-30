@@ -106,7 +106,6 @@ export default function Status() {
   
   const { 
     removePlayer, 
-    markNoShow, 
     updatePlayerStatus, 
     handleBuyIn, 
     stopRegistration, 
@@ -526,19 +525,13 @@ export default function Status() {
                 isAdmin={isAdmin}
                 removePlayer={isAdmin ? removePlayer : null}
                 actions={isAdmin ? [
-                  currentSession.registeredPlayers < currentSession.maxPlayers ? {
+                  {
                     label: "Seat",
                     variant: "default",
                     title: "Seat player from waitlist",
                     onClick: (registration) => seatFromWaitlist(registration.id)
-                  } : null,
-                  {
-                    label: "No-show",
-                    variant: "destructive",
-                    title: "Mark player as no-show",
-                    onClick: (registration) => markNoShow(registration.id)
                   }
-                ].filter(Boolean) : []}
+                ] : []}
               />
               
               {isTournament && currentSession.registrations.eliminated && (
