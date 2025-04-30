@@ -68,11 +68,15 @@ export default async function handler(req, res) {
       // Log each registration for debugging
       console.log(`Registration: ${registration.id}, Status: ${registration.status}, User: ${registration.user?.name}`);
       
+      // Skip any REBOUGHT registrations for current players list to prevent duplicates
+      if (registration.status === 'REBOUGHT') {
+        console.log(`REBOUGHT registration ${registration.id} for user ${registration.user?.name} - adding to eliminated`);
+        groupedRegistrations.eliminated.push(registration);
+        return; // Skip further processing for this registration  
+      }
+      
       if (registration.status === 'WAITLISTED') {
         groupedRegistrations.waitlisted.push(registration);
-      } else if (registration.status === 'REBOUGHT') {
-        // Special case for rebuys - add to eliminated list for history, but don't count as current
-        groupedRegistrations.eliminated.push(registration);
       } else if (registration.status === 'CURRENT') {
         groupedRegistrations.current.push(registration);
       } else if (registration.status === 'ELIMINATED') {
@@ -103,7 +107,9 @@ export default async function handler(req, res) {
     // Count unique players (not counting rebuys)
     const uniquePlayerIds = new Set();
     registrations.forEach(reg => {
-      if (reg.status === 'CURRENT' || reg.status === 'CONFIRMED' || reg.status === 'REGISTERED') {
+      // Only count players who are actually current and not rebought 
+      if ((reg.status === 'CURRENT' || reg.status === 'CONFIRMED' || reg.status === 'REGISTERED') 
+          && reg.status !== 'REBOUGHT') {
         uniquePlayerIds.add(reg.userId);
       }
     });

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function Status() {
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessionData, setSessionData] = useState({
     exists: false,
     session: null
@@ -747,6 +748,7 @@ export default function Status() {
                         variant={action.variant || "outline"}
                         onClick={() => action.onClick(registration)}
                         title={action.title}
+                        disabled={action.disabled}
                       >
                         {action.icon && <action.icon className="h-4 w-4 mr-1" />}
                         {action.label}
@@ -858,6 +860,9 @@ export default function Status() {
     
     if (confirm(`Confirm rebuy for ${registration.user.name}?`)) {
       try {
+        // Disable buy-in button to prevent double clicks
+        setIsSubmitting(true);
+        
         const response = await fetch('/api/player-status', {
           method: 'PUT',
           headers: {
@@ -875,17 +880,25 @@ export default function Status() {
         
         if (response.ok) {
           console.log("Rebuy processed successfully:", result);
+          // Give database more time to process the rebuy
           setTimeout(async () => {
+            // Do a more complete refresh
+            setSessionData({ exists: false, session: null });
+            setLoading(true);
             await fetchSessionData();
+            setLoading(false);
+            setIsSubmitting(false);
           }, 500);
           toast.success(`Processed rebuy for ${registration.user.name}`);
         } else {
           console.error("Error processing rebuy:", result);
           toast.error(`Failed to process rebuy: ${result.message || 'Unknown error'}`);
+          setIsSubmitting(false);
         }
       } catch (error) {
         console.error("Exception in handleBuyIn:", error);
         toast.error(`Error: ${error.message || 'Unknown error'}`);
+        setIsSubmitting(false);
       }
     }
   };
@@ -1257,6 +1270,7 @@ export default function Status() {
                     label: "Buy-in",
                     variant: "default",
                     title: "Process a buy-in for this player",
+                    disabled: isSubmitting,
                     onClick: handleBuyIn
                   } : null
                 ].filter(Boolean)}
@@ -1331,6 +1345,7 @@ export default function Status() {
                     label: "Buy-in",
                     variant: "default",
                     title: "Process a rebuy for this player",
+                    disabled: isSubmitting,
                     onClick: handleBuyIn
                   } : null
                 ].filter(Boolean)}

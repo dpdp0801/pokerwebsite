@@ -69,60 +69,37 @@ export default async function handler(req, res) {
         entries: { increment: 1 }
       };
       
-      // If player isn't already CURRENT, we need to update their status
-      if (normalizedCurrentStatus !== "CURRENT") {
-        // No specific counters maintained for WAITLISTED/ELIMINATED/ITM in the session table anymore
-        
-        // Increment current player count if it exists
-        try {
-          // Update the session with the new counts without using fields that don't exist
-          await prisma.pokerSession.update({
-            where: { id: sessionId },
-            data: {
-              entries: sessionUpdateData.entries
-            }
-          });
-          
-          // Update player status to CURRENT
-          await prisma.registration.update({
-            where: { id: registrationId },
-            data: { 
-              status: "CURRENT",
-              playerStatus: "CURRENT"
-            }
-          });
-        } catch (error) {
-          console.error("Error updating session during rebuy:", error);
-          return res.status(500).json({ message: "Error updating session", error: error.message });
-        }
-      } else {
-        // Just update the entries
-        try {
-          await prisma.pokerSession.update({
-            where: { id: sessionId },
-            data: {
-              entries: sessionUpdateData.entries
-            }
-          });
-        } catch (error) {
-          console.error("Error updating session entries:", error);
-          return res.status(500).json({ message: "Error updating entries", error: error.message });
-        }
+      // First mark the original registration as REBOUGHT regardless of current status
+      try {
+        console.log(`Marking original registration ${registrationId} as REBOUGHT`);
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: { 
+            status: "REBOUGHT",
+            playerStatus: registration.playerStatus === "CURRENT" ? "ELIMINATED" : registration.playerStatus
+          }
+        });
+      } catch (error) {
+        console.error("Error updating original registration during rebuy:", error);
+        return res.status(500).json({ message: "Error updating original registration", error: error.message });
+      }
+      
+      // Update session entries count
+      try {
+        await prisma.pokerSession.update({
+          where: { id: sessionId },
+          data: {
+            entries: sessionUpdateData.entries
+          }
+        });
+      } catch (error) {
+        console.error("Error updating session entries:", error);
+        return res.status(500).json({ message: "Error updating entries", error: error.message });
       }
       
       // Create a new registration entry to track the rebuy
       try {
-        // First mark the original registration as inactive for rebuys
-        if (normalizedCurrentStatus === "CURRENT") {
-          await prisma.registration.update({
-            where: { id: registrationId },
-            data: { 
-              status: "REBOUGHT",
-              playerStatus: "ELIMINATED"
-            }
-          });
-        }
-        
+        console.log(`Creating new rebuy registration for user ${registration.userId}`);
         await prisma.registration.create({
           data: {
             userId: registration.userId,
