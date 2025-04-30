@@ -525,9 +525,6 @@ export default function Status() {
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
                     <div className="flex space-x-2">
-                      {registration.wasRegistered && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Pre-registered</span>
-                      )}
                       {registration.isRebuy && (
                         <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">1 buy-in</span>
                       )}
@@ -553,16 +550,6 @@ export default function Status() {
                         {action.label}
                       </Button>
                     ))}
-                    {registration.wasRegistered && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => markNoShow(registration.id, registration.user.id)}
-                        title="Mark as no-show"
-                      >
-                        No-show
-                      </Button>
-                    )}
                     <Button 
                       variant="ghost" 
                       size="icon"

@@ -249,23 +249,6 @@ export default function Home() {
               {getStatusBadge()}
             </div>
             
-            <div className="mt-6 bg-muted/50 p-4 rounded-md max-w-md">
-              <div className="flex justify-between mb-2">
-                <span className="text-muted-foreground">Registered Players:</span>
-                <span className="font-medium">{sessionData.registeredPlayers || 0} of {sessionData.maxPlayers}</span>
-              </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full" 
-                  style={{
-                    width: `${sessionData.maxPlayers 
-                      ? Math.min((sessionData.registeredPlayers || 0) / sessionData.maxPlayers * 100, 100) 
-                      : 0}%`
-                  }}
-                />
-              </div>
-            </div>
-
             <Button 
               onClick={handleRegisterClick} 
               className="mt-10"

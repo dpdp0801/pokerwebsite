@@ -156,6 +156,11 @@ export default function Register() {
       return;
     }
     
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -186,16 +191,22 @@ export default function Register() {
           title: "Registration Success",
           description: "Your registration has been submitted successfully",
         });
+        
+        // Prevent showing error messages after successful registration
+        return;
       } else {
         throw new Error(data.error || "Failed to register");
       }
     } catch (err) {
       console.error("Error submitting registration:", err);
-      toast({
-        title: "Registration Failed",
-        description: err.message || "An error occurred during registration",
-        variant: "destructive",
-      });
+      // Only show error toast if registration wasn't successful
+      if (!registrationSubmitted) {
+        toast({
+          title: "Registration Failed",
+          description: err.message || "An error occurred during registration",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

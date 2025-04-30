@@ -119,18 +119,7 @@ export default async function handler(req, res) {
                 }
               });
               
-              // Update entries count based on unique players (not rebuys)
-              const uniquePlayerCount = new Set(registeredPlayers.map(reg => reg.userId)).size;
-              console.log(`Setting initial entries to ${uniquePlayerCount} unique players`);
-              
-              await prisma.pokerSession.update({
-                where: {
-                  id: sessionId
-                },
-                data: {
-                  entries: uniquePlayerCount
-                }
-              });
+              // Don't update entries count - entries only increased by buy-in
             }
           }
         });
