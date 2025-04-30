@@ -76,6 +76,7 @@ model Registration {
   paymentCode   String?      @unique
   paymentStatus String       @default("UNPAID") // UNPAID, PAID, REFUNDED
   isRebuy       Boolean      @default(false)  // Whether this is a rebuy entry
+  rebuys        Int          @default(0)      // Count of rebuys for this registration
   wasRegistered Boolean      @default(false)  // Whether this player pre-registered or walked in
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
