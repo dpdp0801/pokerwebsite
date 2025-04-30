@@ -15,7 +15,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    if (session.role !== "ADMIN") {
+    const isAdmin = 
+      session.user?.isAdmin === true || 
+      session.role === "ADMIN" || 
+      session.user?.role === "ADMIN";
+      
+    if (!isAdmin) {
       return res.status(403).json({ error: "Forbidden: Admin access required" });
     }
 
@@ -25,8 +30,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Session ID is required" });
     }
 
-    // Update the session to mark registration as closed
-    const updatedSession = await prisma.session.update({
+    console.log("Attempting to close registration for session:", sessionId);
+
+    // Update the pokerSession to mark registration as closed
+    // The Prisma error showed that 'registrationClosed' doesn't exist on 'session' but on 'pokerSession'
+    const updatedSession = await prisma.pokerSession.update({
       where: {
         id: sessionId,
       },
@@ -35,6 +43,8 @@ export default async function handler(req, res) {
       },
     });
 
+    console.log("Registration closed successfully:", updatedSession);
+
     return res.status(200).json({ 
       success: true, 
       message: "Session registration has been closed",
@@ -42,6 +52,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Error stopping registration:", error);
-    return res.status(500).json({ error: "Failed to stop registration" });
+    return res.status(500).json({ error: "Failed to stop registration", message: error.message });
   }
 } 

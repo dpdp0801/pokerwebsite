@@ -1051,42 +1051,40 @@ export default function Status() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="bg-background border rounded-md p-4">
                   {/* Current Level */}
-                  <div className="bg-background border rounded-md p-4">
-                    <div className="text-center font-medium text-base text-muted-foreground mb-2">
-                      Current Level: {blindStructureData?.currentLevel?.level || 1}
+                  <div className="text-center font-medium text-base text-muted-foreground mb-2">
+                    Current Level: {blindStructureData?.currentLevel?.level || 1}
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 items-center my-3">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Small Blind</p>
+                      <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.smallBlind || '—'}</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 items-center my-3">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Small Blind</p>
-                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.smallBlind || '—'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Big Blind</p>
-                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.bigBlind || '—'}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Ante</p>
-                        <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.ante || '—'}</p>
-                      </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Big Blind</p>
+                      <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.bigBlind || '—'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Ante</p>
+                      <p className="text-2xl font-bold">{blindStructureData?.currentLevel?.ante || '—'}</p>
                     </div>
                   </div>
 
                   {/* Next Level */}
-                  <div className="bg-background border rounded-md p-4">
-                    <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
-                      <ChevronDown className="h-4 w-4 mr-1" />
-                      <span>
-                        {nextLevel?.isBreak 
-                          ? `Next: ${nextLevel.breakName || 'Break'}`
-                          : `Next: Level ${nextLevel?.levelNumber || (blindStructureData?.currentLevel?.level || 1) + 1}`
-                        }
-                      </span>
-                    </div>
-                    {nextLevel ? (
-                      !nextLevel.isBreak ? (
-                        <div className="grid grid-cols-3 gap-4 items-center my-2">
+                  {nextLevel ? (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="text-center text-sm text-muted-foreground mb-2 flex items-center justify-center">
+                        <ChevronDown className="h-3 w-3 mr-1" />
+                        <span>
+                          {nextLevel?.isBreak 
+                            ? `Next: ${nextLevel.breakName || 'Break'}`
+                            : `Next: Level ${nextLevel?.levelNumber || (blindStructureData?.currentLevel?.level || 1) + 1}`
+                          }
+                        </span>
+                      </div>
+                      {!nextLevel.isBreak ? (
+                        <div className="grid grid-cols-3 gap-4 items-center">
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Small Blind</p>
                             <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
@@ -1114,13 +1112,15 @@ export default function Status() {
                             </div>
                           )}
                         </div>
-                      )
-                    ) : (
-                      <div className="text-center text-muted-foreground">
-                        Final Level
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="text-center text-sm text-muted-foreground">
+                        <span>This is the final level</span>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
               
