@@ -88,6 +88,8 @@ export default function Settings() {
     setIsSubmitting(true);
     
     try {
+      console.log("Submitting settings:", settings);
+      
       const response = await fetch('/api/user/settings', {
         method: 'PUT',
         headers: {
@@ -96,33 +98,42 @@ export default function Settings() {
         body: JSON.stringify(settings)
       });
       
-      if (response.ok) {
-        // Update session with new name if it was changed
-        if (settings.name !== session.user.name) {
-          await updateSession({
-            ...session,
-            user: {
-              ...session.user,
-              name: settings.name
-            }
-          });
-        }
-        
-        toast({
-          title: "Settings Saved",
-          description: "Your profile settings have been updated.",
-        });
-        
-        // No longer a new user after saving
-        setIsNewUser(false);
-        
-        // Remove new parameter from URL
-        if (router.query.new) {
-          router.replace('/settings', undefined, { shallow: true });
-        }
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update settings');
+      }
+      
+      const updatedSettings = await response.json();
+      console.log("Settings updated successfully:", updatedSettings);
+      
+      // Update the form with the server response data
+      setSettings({
+        name: updatedSettings.name || '',
+        venmoId: updatedSettings.venmoId || ''
+      });
+      
+      // Update session with new name if it was changed
+      if (settings.name !== session.user.name) {
+        await updateSession({
+          ...session,
+          user: {
+            ...session.user,
+            name: settings.name
+          }
+        });
+      }
+      
+      toast({
+        title: "Settings Saved",
+        description: "Your profile settings have been updated.",
+      });
+      
+      // No longer a new user after saving
+      setIsNewUser(false);
+      
+      // Remove new parameter from URL
+      if (router.query.new) {
+        router.replace('/settings', undefined, { shallow: true });
       }
     } catch (error) {
       console.error('Error saving settings:', error);

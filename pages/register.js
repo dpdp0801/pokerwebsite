@@ -191,22 +191,29 @@ export default function Register() {
           title: "Registration Success",
           description: "Your registration has been submitted successfully",
         });
+      } else if (data.error === "Already registered") {
+        // Handle already registered case without showing error
+        setRegistrationSubmitted(true);
+        toast({
+          title: "Already Registered",
+          description: "You are already registered for this session",
+        });
         
-        // Prevent showing error messages after successful registration
-        return;
+        // Update the selected session to reflect registration
+        setSelectedSession({
+          ...selectedSession,
+          alreadyRegistered: true
+        });
       } else {
         throw new Error(data.error || "Failed to register");
       }
     } catch (err) {
       console.error("Error submitting registration:", err);
-      // Only show error toast if registration wasn't successful
-      if (!registrationSubmitted) {
-        toast({
-          title: "Registration Failed",
-          description: err.message || "An error occurred during registration",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Registration Failed",
+        description: err.message || "An error occurred during registration",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

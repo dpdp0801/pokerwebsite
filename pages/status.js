@@ -1154,25 +1154,37 @@ export default function Status() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Place</TableHead>
-                            <TableHead>Percentage</TableHead>
-                            <TableHead>Payout</TableHead>
+                            <TableHead className="w-1/3">Percentage</TableHead>
+                            {(payoutStructure.tiers || []).map((tier) => (
+                              <TableHead key={tier.id} className="text-center">
+                                {tier.position}
+                              </TableHead>
+                            ))}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {(payoutStructure.tiers || []).length > 0 ? (
-                            payoutStructure.tiers.map((tier) => (
-                              <TableRow key={tier.id}>
-                                <TableCell className="font-medium">{tier.position}</TableCell>
-                                <TableCell>{tier.percentage}%</TableCell>
-                                <TableCell className="font-medium">
-                                  ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.totalEntries || currentSession.registeredPlayers || 0)}
-                                </TableCell>
+                            <>
+                              <TableRow>
+                                <TableCell className="font-medium">Percentage</TableCell>
+                                {payoutStructure.tiers.map((tier) => (
+                                  <TableCell key={tier.id} className="text-center">
+                                    {tier.percentage}%
+                                  </TableCell>
+                                ))}
                               </TableRow>
-                            ))
+                              <TableRow>
+                                <TableCell className="font-medium">Payout</TableCell>
+                                {payoutStructure.tiers.map((tier) => (
+                                  <TableCell key={tier.id} className="text-center font-medium">
+                                    ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.totalEntries || currentSession.registeredPlayers || 0)}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            </>
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                              <TableCell colSpan={payoutStructure.tiers?.length || 1} className="text-center py-4 text-muted-foreground">
                                 Payout information will appear when entries are registered.
                               </TableCell>
                             </TableRow>

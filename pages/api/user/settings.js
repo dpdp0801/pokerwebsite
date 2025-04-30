@@ -37,32 +37,42 @@ export default async function handler(req, res) {
     
     // PUT request - update user settings
     if (req.method === "PUT") {
-      const { name, venmoId, emailNotifications } = req.body;
+      const { name, venmoId } = req.body;
       
       // Validate the data
-      if (name && typeof name !== "string") {
+      if (name !== undefined && typeof name !== "string") {
         return res.status(400).json({ message: "Invalid name" });
       }
       
-      if (venmoId && typeof venmoId !== "string") {
+      if (venmoId !== undefined && typeof venmoId !== "string") {
         return res.status(400).json({ message: "Invalid Venmo ID" });
       }
       
-      // Update the user
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          name: name || undefined,
-          venmoId: venmoId || null,
-          emailNotifications: typeof emailNotifications === "boolean" ? emailNotifications : undefined
-        }
-      });
+      console.log("Updating user settings:", { userId, name, venmoId });
       
-      return res.status(200).json({
-        name: updatedUser.name,
-        venmoId: updatedUser.venmoId || "",
-        emailNotifications: updatedUser.emailNotifications !== null ? updatedUser.emailNotifications : true
-      });
+      // Update the user with proper handling of empty values
+      const updateData = {};
+      if (name !== undefined) updateData.name = name;
+      if (venmoId !== undefined) updateData.venmoId = venmoId || null;
+      
+      try {
+        // Update the user
+        const updatedUser = await prisma.user.update({
+          where: { id: userId },
+          data: updateData
+        });
+        
+        console.log("User updated successfully:", updatedUser);
+        
+        return res.status(200).json({
+          name: updatedUser.name || "",
+          venmoId: updatedUser.venmoId || "",
+          emailNotifications: updatedUser.emailNotifications !== null ? updatedUser.emailNotifications : true
+        });
+      } catch (dbError) {
+        console.error("Database error updating user:", dbError);
+        return res.status(500).json({ message: "Failed to update user data", error: dbError.message });
+      }
     }
     
     // Method not allowed
