@@ -110,14 +110,30 @@ export default async function handler(req, res) {
       }
     });
 
-    // Separate registrations into confirmed and waitlisted
+    // Separate registrations by status
     const confirmedRegistrations = registrations.filter(reg => reg.status === 'CONFIRMED');
     const waitlistedRegistrations = registrations.filter(reg => reg.status === 'WAITLISTED');
+    
+    // Separate confirmed players by their player status
+    const currentPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'CURRENT');
+    const eliminatedPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'ELIMINATED');
+    const registeredPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'REGISTERED');
 
-    formattedSession.registeredPlayers = confirmedRegistrations.length;
-    formattedSession.waitlistedPlayers = waitlistedRegistrations.length;
+    // Count entries (this counts initial entries plus rebuys)
+    const totalEntries = session.entries || 0;
+    
+    // Add counts to the formatted session
+    formattedSession.registeredPlayersCount = registeredPlayers.length;
+    formattedSession.currentPlayersCount = currentPlayers.length;
+    formattedSession.eliminatedPlayersCount = eliminatedPlayers.length;
+    formattedSession.waitlistedPlayersCount = waitlistedRegistrations.length;
+    formattedSession.totalEntries = totalEntries;
+    
+    // Include all player lists
     formattedSession.registrations = {
-      confirmed: confirmedRegistrations,
+      registered: registeredPlayers,
+      current: currentPlayers,
+      eliminated: eliminatedPlayers,
       waitlisted: waitlistedRegistrations
     };
 

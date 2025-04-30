@@ -309,7 +309,94 @@ export default function Status() {
     return null;
   };
 
-  const PlayerList = ({ players, title, emptyMessage, colorClass }) => {
+  // Add this function to manage player status transitions
+  const updatePlayerStatus = async (registrationId, newStatus, isRebuy = false) => {
+    if (!isAdmin) return;
+    
+    try {
+      const response = await fetch('/api/player-status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          registrationId,
+          newStatus,
+          isRebuy
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Status Updated",
+          description: `Player has been moved to ${newStatus.toLowerCase()}`,
+        });
+        
+        // Refresh the session data
+        const updatedResponse = await fetch('/api/session-status');
+        const updatedData = await updatedResponse.json();
+        setSessionData(updatedData);
+        
+        return true;
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update player status");
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err.message || "An error occurred while updating the player status",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Add this function to move all players from one status to another
+  const batchUpdatePlayerStatuses = async (fromStatus, toStatus) => {
+    if (!isAdmin || !sessionData.exists) return;
+    
+    try {
+      const response = await fetch('/api/player-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: sessionData.session.id,
+          fromStatus,
+          toStatus
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Status Updated",
+          description: `Players moved from ${fromStatus.toLowerCase()} to ${toStatus.toLowerCase()}`,
+        });
+        
+        // Refresh the session data
+        const updatedResponse = await fetch('/api/session-status');
+        const updatedData = await updatedResponse.json();
+        setSessionData(updatedData);
+        
+        return true;
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update player statuses");
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err.message || "An error occurred while updating player statuses",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Enhance the PlayerList component to handle player management
+  const PlayerList = ({ players, title, emptyMessage, colorClass, actions = [] }) => {
     if (!players || players.length === 0) {
       return (
         <div className="mt-4">
@@ -335,17 +422,34 @@ export default function Status() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{registration.user.name}</p>
+                    {registration.isRebuy && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Rebuy</span>
+                    )}
                   </div>
                 </div>
                 {isAdmin && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => removePlayer(registration.id)}
-                    title="Remove player"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+                  <div className="flex space-x-1">
+                    {actions.map((action, index) => (
+                      <Button 
+                        key={index}
+                        size="sm"
+                        variant={action.variant || "outline"}
+                        onClick={() => action.onClick(registration)}
+                        title={action.title}
+                      >
+                        {action.icon && <action.icon className="h-4 w-4 mr-1" />}
+                        {action.label}
+                      </Button>
+                    ))}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => removePlayer(registration.id)}
+                      title="Remove player"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
                 )}
               </li>
             ))}
@@ -485,27 +589,32 @@ export default function Status() {
               <div className="flex items-center justify-center gap-1">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <p className="text-xl font-medium">
-                  {currentSession.registeredPlayers}/{currentSession.maxPlayers}
+                  {currentSession.currentPlayersCount}/{currentSession.maxPlayers}
                 </p>
               </div>
-              <p className="text-muted-foreground">Registered Players</p>
+              <p className="text-muted-foreground">Current Players</p>
             </div>
             
             {isTournament ? (
               <>
                 <div>
-                  <p className="text-xl font-medium">{currentSession.entries || 0}</p>
+                  <p className="text-xl font-medium">{currentSession.totalEntries || 0}</p>
                   <p className="text-muted-foreground">Total Entries</p>
                 </div>
                 
                 <div>
-                  <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
+                  <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
                   <p className="text-muted-foreground">Waitlisted</p>
+                </div>
+                
+                <div>
+                  <p className="text-xl font-medium">{currentSession.eliminatedPlayersCount || 0}</p>
+                  <p className="text-muted-foreground">Eliminated</p>
                 </div>
               </>
             ) : (
               <div>
-                <p className="text-xl font-medium">{currentSession.waitlistedPlayers || 0}</p>
+                <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
                 <p className="text-muted-foreground">Waitlisted</p>
               </div>
             )}
@@ -682,8 +791,8 @@ export default function Status() {
                 payoutStructure ? (
                   <>
                     <div className="mb-2 text-center text-sm text-muted-foreground">
-                      Based on {currentSession.entries || currentSession.registeredPlayers || 0} entries - 
-                      Total Prize Pool: ${(currentSession.buyIn * (currentSession.entries || currentSession.registeredPlayers || 0)).toLocaleString()}
+                      Based on {currentSession.totalEntries || 0} entries - 
+                      Total Prize Pool: ${(currentSession.buyIn * (currentSession.totalEntries || 0)).toLocaleString()}
                     </div>
                     <div className="border rounded-md overflow-hidden mb-4">
                       <Table>
@@ -701,7 +810,7 @@ export default function Status() {
                                 <TableCell className="font-medium">{tier.position}</TableCell>
                                 <TableCell>{tier.percentage}%</TableCell>
                                 <TableCell className="font-medium">
-                                  ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.entries || currentSession.registeredPlayers || 0)}
+                                  ${calculatePayout(tier.percentage, currentSession.buyIn, currentSession.totalEntries || currentSession.registeredPlayers || 0)}
                                 </TableCell>
                               </TableRow>
                             ))
@@ -740,18 +849,170 @@ export default function Status() {
             <div className="border-t pt-4">
               <h3 className="font-medium text-lg mb-3">Participants</h3>
               
+              {isTournament && isActive && (
+                <div className="flex flex-wrap justify-center gap-2 mb-4">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => batchUpdatePlayerStatuses('REGISTERED', 'CURRENT')}
+                    disabled={currentSession.registrations.registered.length === 0}
+                  >
+                    Move All Registered → Current
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        "Are you sure? This will move all players from Current to Eliminated."
+                      );
+                      if (confirmed) batchUpdatePlayerStatuses('CURRENT', 'ELIMINATED');
+                    }}
+                    disabled={currentSession.registrations.current.length === 0}
+                  >
+                    Move All Current → Eliminated
+                  </Button>
+                  {currentSession.registrations.waitlisted.length > 0 && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          "Are you sure? This will move all players from Waitlist to Registered."
+                        );
+                        if (confirmed) {
+                          fetch(`/api/registration/move-waitlist?sessionId=${currentSession.id}`, {
+                            method: 'POST'
+                          })
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data.success) {
+                              toast({
+                                title: "Waitlist Processed",
+                                description: `${data.movedCount} players moved from waitlist to registered.`
+                              });
+                              // Refresh data
+                              fetchSessionData();
+                            }
+                          })
+                          .catch(err => {
+                            toast({
+                              title: "Error",
+                              description: "Failed to process waitlist",
+                              variant: "destructive"
+                            });
+                          });
+                        }
+                      }}
+                    >
+                      Move All Waitlist → Registered
+                    </Button>
+                  )}
+                </div>
+              )}
+              
               <PlayerList 
-                players={registrations.confirmed}
-                title="Registered Players"
-                emptyMessage="No players have registered yet"
+                players={currentSession.registrations.current}
+                title="Current Players"
+                emptyMessage="No active players currently at the table"
                 colorClass="bg-green-100 text-green-800"
+                actions={[
+                  {
+                    label: "Eliminate",
+                    variant: "outline",
+                    title: "Move player to eliminated",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
+                  },
+                  isTournament ? {
+                    label: "Rebuy",
+                    variant: "default",
+                    title: "Process a rebuy for this player",
+                    onClick: (registration) => {
+                      // Ask for confirmation
+                      const confirmed = window.confirm(
+                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
+                      );
+                      if (confirmed) {
+                        updatePlayerStatus(registration.id, 'CURRENT', true);
+                      }
+                    }
+                  } : null
+                ].filter(Boolean)}
               />
               
               <PlayerList 
-                players={registrations.waitlisted}
+                players={currentSession.registrations.eliminated}
+                title="Eliminated Players"
+                emptyMessage="No eliminated players"
+                colorClass="bg-red-100 text-red-800"
+                actions={[
+                  isTournament ? {
+                    label: "Rebuy",
+                    variant: "default",
+                    title: "Process a rebuy for this player",
+                    onClick: (registration) => {
+                      // Ask for confirmation
+                      const confirmed = window.confirm(
+                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
+                      );
+                      if (confirmed) {
+                        updatePlayerStatus(registration.id, 'CURRENT', true);
+                      }
+                    }
+                  } : null
+                ].filter(Boolean)}
+              />
+              
+              <PlayerList 
+                players={currentSession.registrations.registered}
+                title="Registered Players"
+                emptyMessage="No players waiting to be seated"
+                colorClass="bg-blue-100 text-blue-800"
+                actions={[
+                  {
+                    label: "Seat",
+                    variant: "default",
+                    title: "Move player to current (seated at table)",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'CURRENT')
+                  }
+                ]}
+              />
+              
+              <PlayerList 
+                players={currentSession.registrations.waitlisted}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
                 colorClass="bg-yellow-100 text-yellow-800"
+                actions={[
+                  {
+                    label: "Register",
+                    variant: "default",
+                    title: "Move player from waitlist to registered",
+                    onClick: (registration) => {
+                      fetch(`/api/registration/${registration.id}/confirm`, {
+                        method: 'POST'
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.success) {
+                          toast({
+                            title: "Player Registered",
+                            description: `${registration.user.name} has been moved from waitlist to registered.`
+                          });
+                          // Refresh data
+                          fetchSessionData();
+                        }
+                      })
+                      .catch(err => {
+                        toast({
+                          title: "Error",
+                          description: "Failed to move player from waitlist",
+                          variant: "destructive"
+                        });
+                      });
+                    }
+                  }
+                ]}
               />
             </div>
           )}

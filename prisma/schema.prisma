@@ -67,8 +67,10 @@ model Registration {
   sessionId     String
   buyInAmount   Int
   status        String       @default("PENDING") // PENDING, CONFIRMED, WAITLISTED, CANCELLED
+  playerStatus  String       @default("REGISTERED") // REGISTERED, CURRENT, ELIMINATED
   paymentCode   String?      @unique
   paymentStatus String       @default("UNPAID") // UNPAID, PAID, REFUNDED
+  isRebuy       Boolean      @default(false)  // Whether this is a rebuy entry
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   
