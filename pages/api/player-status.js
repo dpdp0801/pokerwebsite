@@ -27,7 +27,8 @@ export default async function handler(req, res) {
 
     const { registrationId, newStatus, playerStatus, isRebuy = false } = req.body;
 
-    if (!registrationId || !newStatus) {
+    // For rebuys, we only need registrationId
+    if (!registrationId || (!newStatus && !isRebuy)) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
