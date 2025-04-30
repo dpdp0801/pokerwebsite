@@ -1,99 +1,41 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-utils";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
   try {
-    // Find active sessions (not started or in progress)
-    const activeSessions = await prisma.pokerSession.findMany({
+    // Get current user session
+    const session = await getServerSession(req, res, authOptions);
+    
+    // Find the active session
+    const activeSession = await prisma.session.findFirst({
       where: {
-        OR: [
-          { status: 'NOT_STARTED' },
-          { status: 'ACTIVE' }
-        ]
+        status: {
+          in: ['CREATED', 'ACTIVE']
+        },
+        date: {
+          lte: new Date(new Date().setHours(23, 59, 59, 999)) // Today or earlier
+        },
+        startTime: {
+          lte: new Date(new Date().setHours(23, 59, 59, 999)) // Today or earlier
+        }
       },
       orderBy: {
-        createdAt: 'desc'
-      },
-      take: 1 // Get only the most recent one
+        date: 'desc'
+      }
     });
-
-    if (activeSessions.length === 0) {
+    
+    if (!activeSession) {
       return res.status(200).json({ exists: false });
     }
-
-    const session = activeSessions[0];
     
-    // Format response based on session type
-    let formattedSession = {
-      id: session.id,
-      type: session.type,
-      date: session.date,
-      startTime: session.startTime,
-      maxPlayers: session.maxPlayers,
-      location: session.location,
-      title: session.title,
-      description: session.description,
-      status: session.status,
-      currentBlindLevel: session.currentBlindLevel,
-      levelStartTime: session.levelStartTime
-    };
-    
-    // Add type-specific fields
-    if (session.type === 'TOURNAMENT' || session.type === 'MTT') {
-      formattedSession = {
-        ...formattedSession,
-        buyIn: session.buyIn,
-        entries: session.entries || 0  // Include entries for tournaments
-      };
-    } else if (session.type === 'CASH_GAME' || session.type === 'CASH') {
-      formattedSession = {
-        ...formattedSession,
-        minBuyIn: session.minBuyIn,
-        maxBuyIn: session.maxBuyIn,
-        buyIn: session.buyIn
-      };
-      
-      // Use smallBlind/bigBlind from DB if available, otherwise try to extract from title/description
-      if (session.smallBlind !== null && session.bigBlind !== null) {
-        formattedSession.smallBlind = session.smallBlind;
-        formattedSession.bigBlind = session.bigBlind;
-      } else {
-        // Fallback to parsing from title/description for backwards compatibility
-        try {
-          // First try to extract from title
-          const titleMatch = session.title.match(/\$([0-9.]+)\/\$([0-9.]+)/);
-          if (titleMatch && titleMatch.length === 3) {
-            formattedSession.smallBlind = parseFloat(titleMatch[1]);
-            formattedSession.bigBlind = parseFloat(titleMatch[2]);
-          } else {
-            // Try to extract from description if title parsing failed
-            const descMatch = session.description.match(/\$([0-9.]+)\/\$([0-9.]+)/);
-            if (descMatch && descMatch.length === 3) {
-              formattedSession.smallBlind = parseFloat(descMatch[1]);
-              formattedSession.bigBlind = parseFloat(descMatch[2]);
-            } else {
-              // Default values if we can't extract
-              formattedSession.smallBlind = 0.25;
-              formattedSession.bigBlind = 0.5;
-            }
-          }
-        } catch (err) {
-          console.error("Error parsing blinds from title/description:", err);
-          formattedSession.smallBlind = 0.25;
-          formattedSession.bigBlind = 0.5;
-        }
-      }
-    }
-
-    // Get registrations with user details
+    // Get all registrations for this session
     const registrations = await prisma.registration.findMany({
       where: {
-        sessionId: session.id
+        sessionId: activeSession.id,
+        status: {
+          in: ['CONFIRMED', 'WAITLISTED']
+        }
       },
       include: {
         user: {
@@ -101,51 +43,99 @@ export default async function handler(req, res) {
             id: true,
             name: true,
             email: true,
-            image: true
+            image: true,
+            venmoId: true
           }
         }
       },
       orderBy: {
-        createdAt: 'asc' // Order by registration time (first come, first served)
+        createdAt: 'asc'
       }
     });
-
-    // Separate registrations by status
-    const confirmedRegistrations = registrations.filter(reg => reg.status === 'CONFIRMED');
-    const waitlistedRegistrations = registrations.filter(reg => reg.status === 'WAITLISTED');
     
-    // Separate confirmed players by their player status
-    const currentPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'CURRENT');
-    const eliminatedPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'ELIMINATED');
-    const registeredPlayers = confirmedRegistrations.filter(reg => reg.playerStatus === 'REGISTERED');
-
-    // Count entries (this counts initial entries plus rebuys)
-    const totalEntries = session.entries || 0;
-    
-    // Add counts to the formatted session
-    formattedSession.registeredPlayersCount = registeredPlayers.length;
-    formattedSession.currentPlayersCount = currentPlayers.length;
-    formattedSession.eliminatedPlayersCount = eliminatedPlayers.length;
-    formattedSession.waitlistedPlayersCount = waitlistedRegistrations.length;
-    formattedSession.totalEntries = totalEntries;
-    
-    // Include all player lists
-    formattedSession.registrations = {
-      registered: registeredPlayers,
-      current: currentPlayers,
-      eliminated: eliminatedPlayers,
-      waitlisted: waitlistedRegistrations
+    // Group registrations by status
+    const groupedRegistrations = {
+      current: [],
+      eliminated: [],
+      waitlisted: [],
+      inTheMoney: []
     };
-
-    return res.status(200).json({
+    
+    registrations.forEach(registration => {
+      if (registration.status === 'WAITLISTED') {
+        groupedRegistrations.waitlisted.push(registration);
+      } else if (registration.status === 'CONFIRMED') {
+        // For initial loading, move REGISTERED players to CURRENT if session is ACTIVE
+        if (registration.playerStatus === 'REGISTERED' && activeSession.status === 'ACTIVE') {
+          registration.playerStatus = 'CURRENT';
+          groupedRegistrations.current.push(registration);
+        } else if (registration.playerStatus === 'CURRENT') {
+          groupedRegistrations.current.push(registration);
+        } else if (registration.playerStatus === 'ELIMINATED') {
+          groupedRegistrations.eliminated.push(registration);
+        } else if (registration.playerStatus === 'ITM') {
+          groupedRegistrations.inTheMoney.push(registration);
+        } else {
+          // Default any unrecognized status to current as well
+          groupedRegistrations.current.push(registration);
+        }
+      }
+    });
+    
+    // Check if current user is registered
+    let userRegistration = null;
+    if (session?.user?.id) {
+      userRegistration = registrations.find(reg => reg.userId === session.user.id);
+    }
+    
+    // Update counts
+    const currentPlayersCount = groupedRegistrations.current.length;
+    const waitlistedPlayersCount = groupedRegistrations.waitlisted.length;
+    const eliminatedPlayersCount = groupedRegistrations.eliminated.length;
+    const itmPlayersCount = groupedRegistrations.inTheMoney.length;
+    const registeredPlayersCount = registrations.filter(r => r.status === 'CONFIRMED').length;
+    
+    // Update the session data with accurate counts if needed
+    if (activeSession.status === 'ACTIVE' && (
+        activeSession.currentPlayersCount !== currentPlayersCount ||
+        activeSession.entries === 0 && registeredPlayersCount > 0
+    )) {
+      try {
+        await prisma.session.update({
+          where: { id: activeSession.id },
+          data: {
+            currentPlayersCount: currentPlayersCount,
+            waitlistedPlayersCount: waitlistedPlayersCount,
+            eliminatedPlayersCount: eliminatedPlayersCount,
+            itmPlayersCount: itmPlayersCount,
+            entries: registeredPlayersCount, // Set entries to match registered players if it's 0
+          }
+        });
+      } catch (updateError) {
+        console.error("Error updating session counts:", updateError);
+      }
+    }
+    
+    // Format response
+    const response = {
       exists: true,
-      session: formattedSession
-    });
+      session: {
+        ...activeSession,
+        currentPlayersCount: currentPlayersCount,
+        waitlistedPlayersCount: waitlistedPlayersCount,
+        eliminatedPlayersCount: eliminatedPlayersCount,
+        itmPlayersCount: itmPlayersCount,
+        registeredPlayersCount: registeredPlayersCount,
+        totalEntries: Math.max(activeSession.entries || 0, registeredPlayersCount),
+        registrations: groupedRegistrations,
+        userRegistration: userRegistration,
+        registrationClosed: activeSession.registrationClosed || false
+      }
+    };
+    
+    return res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching session status:', error);
-    return res.status(500).json({ 
-      exists: false,
-      error: 'Failed to fetch session status' 
-    });
+    console.error("Error fetching session status:", error);
+    return res.status(500).json({ error: "Failed to fetch session status" });
   }
 } 

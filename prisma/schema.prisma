@@ -20,6 +20,7 @@ model User {
   emailVerified DateTime?
   role          String    @default("PLAYER")
   createdAt     DateTime  @default(now())
+  venmoId       String?   // Add Venmo ID field for players
 
   // relations required by NextAuth
   accounts  Account[]
@@ -55,6 +56,8 @@ model PokerSession {
   updatedAt   DateTime      @updatedAt
   currentBlindLevel Int?    // Current blind level index for tournaments
   levelStartTime  DateTime? // When the current blind level started
+  registrationClosed Boolean @default(false) // Whether registration is closed for this session
+  itmPlayersCount Int       @default(0) // Track ITM player count
   
   // relations
   registrations Registration[]
@@ -67,10 +70,11 @@ model Registration {
   sessionId     String
   buyInAmount   Int
   status        String       @default("PENDING") // PENDING, CONFIRMED, WAITLISTED, CANCELLED
-  playerStatus  String       @default("REGISTERED") // REGISTERED, CURRENT, ELIMINATED
+  playerStatus  String       @default("REGISTERED") // REGISTERED, CURRENT, ELIMINATED, ITM
   paymentCode   String?      @unique
   paymentStatus String       @default("UNPAID") // UNPAID, PAID, REFUNDED
   isRebuy       Boolean      @default(false)  // Whether this is a rebuy entry
+  wasRegistered Boolean      @default(false)  // Whether this player pre-registered or walked in
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   

@@ -106,6 +106,11 @@ export default async function handler(req, res) {
       // Check if session is full
       const isWaitlisted = pokerSession.maxPlayers && registrationCount >= pokerSession.maxPlayers;
       const status = isWaitlisted ? "WAITLISTED" : "CONFIRMED";
+      
+      // Set correct player status based on session status
+      const playerStatus = isWaitlisted 
+        ? "REGISTERED" 
+        : (pokerSession.status === "ACTIVE" ? "CURRENT" : "REGISTERED");
 
       // Create registration
       const registration = await prisma.registration.create({
@@ -114,10 +119,37 @@ export default async function handler(req, res) {
           sessionId: sessionId,
           buyInAmount: buyInAmount,
           status: status,
+          playerStatus: playerStatus,
           paymentCode: paymentCode,
           paymentStatus: isWaitlisted ? "NOT_REQUIRED_YET" : "UNPAID",
+          wasRegistered: true
         },
       });
+      
+      // If this is a confirmed registration and the session is active,
+      // update the session's player counts and entries
+      if (status === "CONFIRMED" && pokerSession.status === "ACTIVE") {
+        await prisma.pokerSession.update({
+          where: { id: sessionId },
+          data: {
+            currentPlayersCount: {
+              increment: 1
+            },
+            entries: {
+              increment: 1
+            }
+          }
+        });
+      } else if (status === "WAITLISTED") {
+        await prisma.pokerSession.update({
+          where: { id: sessionId },
+          data: {
+            waitlistedPlayersCount: {
+              increment: 1
+            }
+          }
+        });
+      }
 
       return res.status(201).json({
         ...registration,

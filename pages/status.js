@@ -309,6 +309,86 @@ export default function Status() {
     return null;
   };
 
+  // Add function to stop registration
+  const stopRegistration = async () => {
+    if (!isAdmin) return;
+    
+    if (window.confirm("Are you sure you want to stop registration? This will prevent new players from registering.")) {
+      try {
+        const response = await fetch('/api/sessions/stop-registration', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId: sessionData.session.id
+          }),
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Registration Stopped",
+            description: "New registrations have been disabled for this session.",
+          });
+          
+          // Refresh the session data
+          const updatedResponse = await fetch('/api/session-status');
+          const updatedData = await updatedResponse.json();
+          setSessionData(updatedData);
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to stop registration");
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred while stopping registration",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Mark player as no-show
+  const markNoShow = async (registrationId, userId) => {
+    if (!isAdmin) return;
+    
+    if (window.confirm("Are you sure you want to mark this player as a no-show?")) {
+      try {
+        const response = await fetch('/api/registration/no-show', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId
+          }),
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Player Marked as No-Show",
+            description: "The player has been marked as a no-show.",
+          });
+          
+          // Refresh the session data
+          const updatedResponse = await fetch('/api/session-status');
+          const updatedData = await updatedResponse.json();
+          setSessionData(updatedData);
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to mark player as no-show");
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err.message || "An error occurred",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   // Update player status
   const updatePlayerStatus = async (registrationId, newStatus, isRebuy = false) => {
     if (!isAdmin) return;
@@ -337,6 +417,18 @@ export default function Status() {
           throw new Error(errorData.message || "Failed to move player to waitlist");
         }
       } else {
+        // We need to check if this is an elimination and if we should move to ITM instead
+        if (newStatus === 'ELIMINATED' && !isRebuy) {
+          // If we have payout structure and this would be an ITM player
+          const payoutPlaces = payoutStructure?.tiers?.length || 0;
+          
+          // If current players count equals payout places + 1, the next elimination goes to ITM
+          if (payoutPlaces > 0 && 
+              currentSession.registrations.current.length === payoutPlaces + 1) {
+            newStatus = 'ITM';
+          }
+        }
+        
         const response = await fetch('/api/player-status', {
           method: 'PUT',
           headers: {
@@ -352,7 +444,7 @@ export default function Status() {
         if (response.ok) {
           toast({
             title: "Status Updated",
-            description: `Player has been moved to ${newStatus.toLowerCase()}`,
+            description: `Player has been moved to ${newStatus === 'ITM' ? 'in the money' : newStatus.toLowerCase()}`,
           });
           
           // Refresh the session data
@@ -388,7 +480,7 @@ export default function Status() {
     }
     
     // Count rebuys by user
-    const rebuyCountByUser = players.reduce((counts, reg) => {
+    const buyInCountByUser = players.reduce((counts, reg) => {
       if (reg.isRebuy) {
         counts[reg.userId] = (counts[reg.userId] || 0) + 1;
       }
@@ -411,13 +503,19 @@ export default function Status() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{registration.user.name}</p>
+                    {isAdmin && registration.user.venmoId && (
+                      <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
+                    )}
                     <div className="flex space-x-2">
-                      {registration.isRebuy && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Rebuy</span>
+                      {registration.wasRegistered && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Pre-registered</span>
                       )}
-                      {rebuyCountByUser[registration.user.id] > 0 && (
+                      {registration.isRebuy && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">1 buy-in</span>
+                      )}
+                      {buyInCountByUser[registration.user.id] > 0 && (
                         <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                          {rebuyCountByUser[registration.user.id]} {rebuyCountByUser[registration.user.id] === 1 ? 'rebuy' : 'rebuys'}
+                          {buyInCountByUser[registration.user.id] + 1} buy-ins
                         </span>
                       )}
                     </div>
@@ -437,6 +535,16 @@ export default function Status() {
                         {action.label}
                       </Button>
                     ))}
+                    {registration.wasRegistered && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markNoShow(registration.id, registration.user.id)}
+                        title="Mark as no-show"
+                      >
+                        No-show
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon"
@@ -615,6 +723,20 @@ export default function Status() {
               </div>
             )}
           </div>
+          
+          {/* Admin actions */}
+          {isAdmin && isTournament && isActive && (
+            <div className="flex justify-center mb-6">
+              <Button 
+                variant={currentSession.registrationClosed ? "outline" : "default"}
+                onClick={stopRegistration}
+                disabled={currentSession.registrationClosed}
+                className={currentSession.registrationClosed ? "opacity-50" : ""}
+              >
+                {currentSession.registrationClosed ? "Registration Closed" : "Stop Registration"}
+              </Button>
+            </div>
+          )}
           
           {/* Show timer and blind info for active tournaments */}
           {isTournament && isActive && (
@@ -882,28 +1004,15 @@ export default function Status() {
                 ].filter(Boolean)}
               />
               
-              <PlayerList 
-                players={currentSession.registrations.eliminated}
-                title="Eliminated Players"
-                emptyMessage="No eliminated players"
-                colorClass="bg-red-100 text-red-800"
-                actions={[
-                  isTournament ? {
-                    label: "Rebuy",
-                    variant: "default",
-                    title: "Process a rebuy for this player",
-                    onClick: (registration) => {
-                      // Ask for confirmation
-                      const confirmed = window.confirm(
-                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
-                      );
-                      if (confirmed) {
-                        updatePlayerStatus(registration.id, 'CURRENT', true);
-                      }
-                    }
-                  } : null
-                ].filter(Boolean)}
-              />
+              {isTournament && currentSession.registrations.inTheMoney && currentSession.registrations.inTheMoney.length > 0 && (
+                <PlayerList 
+                  players={currentSession.registrations.inTheMoney}
+                  title="In the Money"
+                  emptyMessage="No players in the money yet"
+                  colorClass="bg-amber-100 text-amber-800"
+                  actions={[]}
+                />
+              )}
               
               <PlayerList 
                 players={currentSession.registrations.waitlisted}
@@ -940,6 +1049,29 @@ export default function Status() {
                     }
                   }
                 ]}
+              />
+              
+              <PlayerList 
+                players={currentSession.registrations.eliminated}
+                title="Eliminated Players"
+                emptyMessage="No eliminated players"
+                colorClass="bg-red-100 text-red-800"
+                actions={[
+                  isTournament ? {
+                    label: "Rebuy",
+                    variant: "default",
+                    title: "Process a rebuy for this player",
+                    onClick: (registration) => {
+                      // Ask for confirmation
+                      const confirmed = window.confirm(
+                        `Process a rebuy for ${registration.user.name}? This will increase the total entries count.`
+                      );
+                      if (confirmed) {
+                        updatePlayerStatus(registration.id, 'CURRENT', true);
+                      }
+                    }
+                  } : null
+                ].filter(Boolean)}
               />
             </div>
           )}
