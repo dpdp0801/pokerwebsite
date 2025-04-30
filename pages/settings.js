@@ -4,21 +4,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/lib/hooks/use-toast";
+import { useRouter } from "next/router";
+import { AlertTriangle } from "lucide-react";
 
 export default function Settings() {
   const { data: session, update: updateSession } = useSession();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const router = useRouter();
   
   // Form state
   const [settings, setSettings] = useState({
     name: '',
     venmoId: '',
-    emailNotifications: true
   });
+  
+  // Check for new user param in URL
+  useEffect(() => {
+    if (router.query.new === 'true') {
+      setIsNewUser(true);
+    }
+  }, [router.query]);
   
   // Fetch user settings when session is available
   useEffect(() => {
@@ -42,11 +51,16 @@ export default function Settings() {
       
       if (response.ok) {
         const data = await response.json();
+        
+        // If venmoId is empty, this might be a new user
+        if (!data.venmoId) {
+          setIsNewUser(true);
+        }
+        
         setSettings(prev => ({
           ...prev,
           name: data.name || session?.user?.name || '',
           venmoId: data.venmoId || '',
-          emailNotifications: data.emailNotifications !== undefined ? data.emailNotifications : true
         }));
       }
     } catch (error) {
@@ -62,17 +76,10 @@ export default function Settings() {
   };
   
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setSettings({
       ...settings,
-      [name]: type === 'checkbox' ? checked : value
-    });
-  };
-  
-  const handleSwitchChange = (name, checked) => {
-    setSettings({
-      ...settings,
-      [name]: checked
+      [name]: value
     });
   };
   
@@ -105,6 +112,14 @@ export default function Settings() {
           title: "Settings Saved",
           description: "Your profile settings have been updated.",
         });
+        
+        // No longer a new user after saving
+        setIsNewUser(false);
+        
+        // Remove new parameter from URL
+        if (router.query.new) {
+          router.replace('/settings', undefined, { shallow: true });
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update settings');
@@ -138,11 +153,27 @@ export default function Settings() {
     <div className="container py-12 max-w-xl">
       <h1 className="text-4xl font-bold mb-8 text-center">Settings</h1>
       
+      {isNewUser && (
+        <Card className="mb-6 border-yellow-200 bg-yellow-50">
+          <CardContent className="py-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-yellow-800 mb-1">Welcome to Catalina Poker!</h3>
+                <p className="text-yellow-700 text-sm">
+                  Please complete your profile below to get started. Adding your Venmo ID will help with payments and prizes.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
           <CardDescription>
-            Update your contact information and preferences.
+            Update your contact information.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -152,72 +183,47 @@ export default function Settings() {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <div className="space-y-6">
-                {/* Contact Information */}
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Name</Label>
-                    <Input 
-                      id="name" 
-                      name="name"
-                      value={settings.name}
-                      onChange={handleChange}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Your name as it will appear to other players.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      value={session.user.email || ''}
-                      disabled 
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Email is managed by your Google account.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="venmoId">Venmo ID</Label>
-                    <Input 
-                      id="venmoId" 
-                      name="venmoId"
-                      value={settings.venmoId} 
-                      onChange={handleChange}
-                      className="mt-1"
-                      placeholder="@your-venmo-id"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Your Venmo ID is used for payments.
-                    </p>
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Name</Label>
+                  <Input 
+                    id="name" 
+                    name="name"
+                    value={settings.name}
+                    onChange={handleChange}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your name as it will appear to other players.
+                  </p>
                 </div>
                 
-                {/* Notification Preferences */}
                 <div>
-                  <h3 className="text-lg font-medium mb-3">Notification Preferences</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="emailNotifications" className="cursor-pointer">
-                          Email Notifications
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Receive updates about upcoming games and results.
-                        </p>
-                      </div>
-                      <Switch 
-                        id="emailNotifications"
-                        checked={settings.emailNotifications}
-                        onCheckedChange={(checked) => handleSwitchChange('emailNotifications', checked)}
-                      />
-                    </div>
-                  </div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input 
+                    id="email" 
+                    value={session.user.email || ''}
+                    disabled 
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Email is managed by your Google account.
+                  </p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="venmoId">Venmo ID</Label>
+                  <Input 
+                    id="venmoId" 
+                    name="venmoId"
+                    value={settings.venmoId} 
+                    onChange={handleChange}
+                    className="mt-1"
+                    placeholder="@your-venmo-id"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your Venmo ID is used for payments and prizes.
+                  </p>
                 </div>
               </div>
               

@@ -431,7 +431,10 @@ export default function Status() {
     
     const currentLevelIndex = sessionData.session.currentBlindLevel;
     if (currentLevelIndex < blindStructureData.levels.length - 1) {
-      return blindStructureData.levels[currentLevelIndex + 1];
+      return {
+        ...blindStructureData.levels[currentLevelIndex + 1],
+        levelNumber: (blindStructureData.currentLevel?.level || 0) + 1
+      };
     }
     
     return null;
@@ -1017,7 +1020,7 @@ export default function Status() {
                     <div className="mt-4 p-3 bg-white rounded border">
                       <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
                         <ChevronDown className="h-4 w-4 mr-1" />
-                        <span>Next Level</span>
+                        <span>Next: Level {nextLevel.levelNumber}</span>
                       </div>
                       {!nextLevel.isBreak ? (
                         <div className="grid grid-cols-3 gap-4 items-center">
@@ -1047,7 +1050,7 @@ export default function Status() {
                   {/* Current Level */}
                   <div className="bg-background border rounded-md p-4">
                     <div className="text-center font-medium text-base text-muted-foreground mb-2">
-                      Current Level
+                      Current Level: {blindStructureData?.currentLevel?.level || 1}
                     </div>
                     <div className="grid grid-cols-3 gap-4 items-center my-3">
                       <div className="text-center">
@@ -1069,7 +1072,12 @@ export default function Status() {
                   <div className="bg-background border rounded-md p-4">
                     <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
                       <ChevronDown className="h-4 w-4 mr-1" />
-                      <span>{nextLevel?.isBreak ? `Next: ${nextLevel.breakName || 'Break'} - ${nextLevel.duration} min` : 'Next Level'}</span>
+                      <span>
+                        {nextLevel?.isBreak 
+                          ? `Next: ${nextLevel.breakName || 'Break'}`
+                          : `Next: Level ${nextLevel?.levelNumber || (blindStructureData?.currentLevel?.level || 1) + 1}`
+                        }
+                      </span>
                     </div>
                     {nextLevel ? (
                       !nextLevel.isBreak ? (

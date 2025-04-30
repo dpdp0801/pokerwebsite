@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
 
 const nav = [
   { href: "/status", label: "Status" },
@@ -12,9 +13,19 @@ export default function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const router = useRouter();
   
   // Check if user is admin
   const isAdmin = session?.role === "ADMIN";
+  
+  // Handle new user redirect
+  useEffect(() => {
+    // If the user is logged in, has just signed in, and is marked as new
+    if (session?.newUser && router.pathname !== '/settings') {
+      // Redirect to settings page with new user flag
+      router.push('/settings?new=true');
+    }
+  }, [session, router]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
