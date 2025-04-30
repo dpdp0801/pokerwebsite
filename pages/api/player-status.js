@@ -112,6 +112,17 @@ export default async function handler(req, res) {
       
       // Create a new registration entry to track the rebuy
       try {
+        // First mark the original registration as inactive for rebuys
+        if (normalizedCurrentStatus === "CURRENT") {
+          await prisma.registration.update({
+            where: { id: registrationId },
+            data: { 
+              status: "REBOUGHT",
+              playerStatus: "ELIMINATED"
+            }
+          });
+        }
+        
         await prisma.registration.create({
           data: {
             userId: registration.userId,

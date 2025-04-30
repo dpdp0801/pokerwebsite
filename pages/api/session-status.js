@@ -41,6 +41,8 @@ export default async function handler(req, res) {
           select: {
             id: true,
             name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             image: true,
             venmoId: true
@@ -68,6 +70,9 @@ export default async function handler(req, res) {
       
       if (registration.status === 'WAITLISTED') {
         groupedRegistrations.waitlisted.push(registration);
+      } else if (registration.status === 'REBOUGHT') {
+        // Special case for rebuys - add to eliminated list for history, but don't count as current
+        groupedRegistrations.eliminated.push(registration);
       } else if (registration.status === 'CURRENT') {
         groupedRegistrations.current.push(registration);
       } else if (registration.status === 'ELIMINATED') {

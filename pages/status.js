@@ -376,12 +376,16 @@ export default function Status() {
   // Get initials for avatar
   const getInitials = (name) => {
     if (!name) return "?";
-    return name
+    
+    // Extract first and last initials from the name string
+    const initials = name
       .split(' ')
       .map(part => part[0])
       .join('')
       .toUpperCase()
       .substring(0, 2);
+      
+    return initials;
   };
 
   // Calculate payout amount
@@ -713,11 +717,17 @@ export default function Status() {
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={registration.user.image} alt={registration.user.name} />
                     <AvatarFallback className={colorClass}>
-                      {getInitials(registration.user.name)}
+                      {registration.user.firstName || registration.user.lastName ? 
+                        `${registration.user.firstName?.[0] || ''}${registration.user.lastName?.[0] || ''}`.toUpperCase() :
+                        getInitials(registration.user.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium">{registration.user.name}</p>
+                    <p className="text-sm font-medium">
+                      {(registration.user.firstName || registration.user.lastName) ? 
+                        `${registration.user.firstName || ''} ${registration.user.lastName || ''}`.trim() : 
+                        registration.user.name}
+                    </p>
                     {isAdmin && registration.user.venmoId && (
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
