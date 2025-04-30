@@ -25,13 +25,13 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Unauthorized - Admin access required" });
     }
 
-    const { registrationId, newStatus, isRebuy = false } = req.body;
+    const { registrationId, newStatus, playerStatus, isRebuy = false } = req.body;
 
     if (!registrationId || !newStatus) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    console.log(`Updating player status: ${registrationId} to ${newStatus} (isRebuy: ${isRebuy})`);
+    console.log(`Updating player status: ${registrationId} to ${newStatus}, playerStatus: ${playerStatus} (isRebuy: ${isRebuy})`);
 
     // Fetch the registration to update
     const registration = await prisma.registration.findUnique({
@@ -86,7 +86,10 @@ export default async function handler(req, res) {
           // Update player status to CURRENT
           await prisma.registration.update({
             where: { id: registrationId },
-            data: { status: "CURRENT" }
+            data: { 
+              status: "CURRENT",
+              playerStatus: "CURRENT"
+            }
           });
         } catch (error) {
           console.error("Error updating session during rebuy:", error);
@@ -132,7 +135,10 @@ export default async function handler(req, res) {
           // Update the registration status directly, no counters to update since they don't exist
           await prisma.registration.update({
             where: { id: registrationId },
-            data: { status: normalizedNewStatus }
+            data: { 
+              status: normalizedNewStatus,
+              ...(playerStatus && { playerStatus })
+            }
           });
           
           // If moving from non-current to current in a tournament, increment entries

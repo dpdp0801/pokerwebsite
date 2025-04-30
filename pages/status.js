@@ -530,41 +530,7 @@ export default function Status() {
     if (!isAdmin) return;
     
     try {
-      // For moving to waitlist, we need a different endpoint
-      if (newStatus === 'WAITLIST') {
-        // The API expects WAITLISTED not WAITLIST
-        const response = await fetch(`/api/player-status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            registrationId,
-            newStatus: 'WAITLISTED',  // Change to match expected API value
-            isRebuy: false
-          }),
-        });
-        
-        if (response.ok) {
-          toast({
-            title: "Status Updated",
-            description: "Player has been moved to waitlist",
-          });
-          
-          // Refresh the session data
-          await fetchSessionData();
-          return true;
-        } else {
-          const errorData = await response.json();
-          console.error("Error moving to waitlist:", errorData);
-          toast({
-            title: "Error",
-            description: errorData.message || "Failed to move player to waitlist",
-            variant: "destructive"
-          });
-          return false;
-        }
-      } else if (newStatus === 'ELIMINATED') {
+      if (newStatus === 'ELIMINATED') {
         const response = await fetch('/api/player-status', {
           method: 'PUT',
           headers: {
@@ -573,6 +539,7 @@ export default function Status() {
           body: JSON.stringify({
             registrationId,
             newStatus,
+            playerStatus: 'ELIMINATED',
             isRebuy
           }),
         });
@@ -596,6 +563,40 @@ export default function Status() {
           });
           return false;
         }
+      } else if (newStatus === 'WAITLIST') {
+        // The API expects WAITLISTED not WAITLIST
+        const response = await fetch(`/api/player-status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId,
+            newStatus: 'WAITLISTED',  // Change to match expected API value
+            playerStatus: 'REGISTERED',
+            isRebuy: false
+          }),
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Status Updated",
+            description: "Player has been moved to waitlist",
+          });
+          
+          // Refresh the session data
+          await fetchSessionData();
+          return true;
+        } else {
+          const errorData = await response.json();
+          console.error("Error moving to waitlist:", errorData);
+          toast({
+            title: "Error",
+            description: errorData.message || "Failed to move player to waitlist",
+            variant: "destructive"
+          });
+          return false;
+        }
       } else {
         // For other status changes use the standard endpoint
         const response = await fetch('/api/player-status', {
@@ -606,7 +607,9 @@ export default function Status() {
           body: JSON.stringify({
             registrationId,
             newStatus,
-            isRebuy
+            playerStatus: newStatus === 'CURRENT' ? 'CURRENT' : 
+                          newStatus === 'ITM' ? 'ITM' : 'REGISTERED',
+            isRebuy: isRebuy
           }),
         });
         
@@ -720,7 +723,7 @@ export default function Status() {
                     )}
                     {registration.buyInCount > 0 && (
                       <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                        {registration.buyInCount + 1} buy-ins
+                        {registration.buyInCount + 1} {registration.buyInCount === 0 ? 'buy-in' : 'buy-ins'}
                       </span>
                     )}
                   </div>

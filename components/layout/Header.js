@@ -81,7 +81,7 @@ export default function Header() {
                 onClick={() => setShowDropdown(!showDropdown)}
                 onMouseEnter={() => setShowDropdown(true)}
               >
-                Hello, {session.user?.name?.split(' ')[0] || 'User'}
+                Hello, {session.user?.firstName || session.user?.name?.split(' ')[0] || 'User'}
               </button>
               
               {showDropdown && (

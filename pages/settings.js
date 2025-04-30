@@ -19,6 +19,8 @@ export default function Settings() {
   // Form state
   const [settings, setSettings] = useState({
     name: '',
+    firstName: '',
+    lastName: '',
     venmoId: '',
   });
   
@@ -36,6 +38,8 @@ export default function Settings() {
       setSettings(prev => ({
         ...prev,
         name: session.user.name || '',
+        firstName: session.user.firstName || '',
+        lastName: session.user.lastName || '',
         venmoId: session.user.venmoId || ''
       }));
       
@@ -62,6 +66,8 @@ export default function Settings() {
         // Always use the API data to override session data
         setSettings({
           name: data.name || '',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
           venmoId: data.venmoId || '',
         });
       } else {
@@ -70,6 +76,8 @@ export default function Settings() {
         // Fall back to session data if API fails
         setSettings({
           name: session?.user?.name || '',
+          firstName: session?.user?.firstName || '',
+          lastName: session?.user?.lastName || '',
           venmoId: session?.user?.venmoId || '',
         });
       }
@@ -119,16 +127,22 @@ export default function Settings() {
       // Update the form with the server response data
       setSettings({
         name: updatedSettings.name || '',
-        venmoId: updatedSettings.venmoId || ''
+        firstName: updatedSettings.firstName || '',
+        lastName: updatedSettings.lastName || '',
+        venmoId: updatedSettings.venmoId || '',
       });
       
-      // Update session with new name if it was changed
-      if (settings.name !== session.user.name) {
+      // Update session with new name if first or last name was changed
+      if (settings.firstName !== session.user.firstName || 
+          settings.lastName !== session.user.lastName) {
+        const fullName = `${settings.firstName} ${settings.lastName}`.trim();
         await updateSession({
           ...session,
           user: {
             ...session.user,
-            name: settings.name
+            firstName: settings.firstName,
+            lastName: settings.lastName,
+            name: fullName || session.user.name
           }
         });
       }
@@ -205,16 +219,28 @@ export default function Settings() {
           ) : (
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Name</Label>
-                  <Input 
-                    id="name" 
-                    name="name"
-                    value={settings.name}
-                    onChange={handleChange}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input 
+                      id="firstName" 
+                      name="firstName"
+                      value={settings.firstName}
+                      onChange={handleChange}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input 
+                      id="lastName" 
+                      name="lastName"
+                      value={settings.lastName}
+                      onChange={handleChange}
+                      className="mt-1"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 col-span-2">
                     Your name as it will appear to other players.
                   </p>
                 </div>
