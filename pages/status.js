@@ -890,27 +890,6 @@ export default function Status() {
           </div>
           
           <div className="grid grid-cols-2 gap-4 mb-6 text-center">
-            {isTournament ? (
-              <>
-                <div>
-                  <p className="text-xl font-medium">${currentSession.buyIn}</p>
-                  <p className="text-muted-foreground">Buy-in</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-xl font-medium">${currentSession.smallBlind}/${currentSession.bigBlind}</p>
-                  <p className="text-muted-foreground">Blinds</p>
-                </div>
-                
-                <div>
-                  <p className="text-xl font-medium">${currentSession.minBuyIn}</p>
-                  <p className="text-muted-foreground">Min Buy-in</p>
-                </div>
-              </>
-            )}
-            
             <div>
               <div className="flex items-center justify-center gap-1">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -921,7 +900,12 @@ export default function Status() {
               <p className="text-muted-foreground">{isActive ? "Current Players" : "Registered Players"}</p>
             </div>
             
-            {isTournament ? (
+            <div>
+              <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
+              <p className="text-muted-foreground">Waitlisted</p>
+            </div>
+            
+            {isTournament && (
               <>
                 <div>
                   <p className="text-xl font-medium">{currentSession.totalEntries || 0}</p>
@@ -929,20 +913,10 @@ export default function Status() {
                 </div>
                 
                 <div>
-                  <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
-                  <p className="text-muted-foreground">Waitlisted</p>
-                </div>
-                
-                <div>
                   <p className="text-xl font-medium">{currentSession.eliminatedPlayersCount || 0}</p>
                   <p className="text-muted-foreground">Eliminated</p>
                 </div>
               </>
-            ) : (
-              <div>
-                <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
-                <p className="text-muted-foreground">Waitlisted</p>
-              </div>
             )}
           </div>
           
@@ -965,152 +939,193 @@ export default function Status() {
             <div className="border-t pt-4 mt-4">
               <h3 className="font-medium text-lg mb-3 text-center">Timer</h3>
               
-              {blindsLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <Clock className="h-5 w-5 animate-spin mr-2" />
-                  <p>Loading tournament information...</p>
+              <div className="text-center mb-6">
+                <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
+                {!blindStructureData ? (
+                  <div className="text-sm text-muted-foreground">Loading levels...</div>
+                ) : blindStructureData.currentLevel?.isBreak ? (
+                  <div className="text-sm text-muted-foreground">Break</div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Level {blindStructureData?.currentLevel?.level || 1}
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-center mb-4">
+                <div className="flex items-center justify-center space-x-3">
+                  {isAdmin && !blindsLoading && (
+                    <div className="flex items-center space-x-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={async () => {
+                          // Only allow the click if not currently processing
+                          if (!blindsLoading) {
+                            try {
+                              setBlindsLoading(true);
+                              await updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1));
+                            } finally {
+                              setBlindsLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel === 0}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        <span>Previous</span>
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={async () => {
+                          // Only allow the click if not currently processing
+                          if (!blindsLoading) {
+                            try {
+                              setBlindsLoading(true);
+                              await updateBlindLevel((currentSession.currentBlindLevel || 0) + 1);
+                            } finally {
+                              setBlindsLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel >= (blindStructureData?.totalLevels - 1)}
+                      >
+                        <span>Next</span>
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                  {blindsLoading && (
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm">Updating...</span>
+                    </div>
+                  )}
                 </div>
-              ) : blindStructureData ? (
-                <>
-                  {/* Timer Display */}
-                  <div className="text-center mb-6">
-                    <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
-                    {blindStructureData.currentLevel?.isBreak ? null : (
-                      <div className="text-sm text-muted-foreground">
-                        Level {blindStructureData.currentLevel?.level || 1}
+              </div>
+              
+              {!blindStructureData ? (
+                <div className="text-center py-4">
+                  <Clock className="h-5 w-5 animate-spin mx-auto" />
+                </div>
+              ) : blindStructureData.currentLevel?.isBreak ? (
+                <div className="bg-blue-50 p-4 rounded-md text-center mb-4">
+                  <h4 className="font-medium text-blue-800">
+                    {blindStructureData.currentLevel.breakName || 'Break'} - {blindStructureData.currentLevel.duration} minutes
+                  </h4>
+                  {blindStructureData.currentLevel.specialAction && (
+                    <p className="text-sm text-blue-700 mt-1">
+                      {blindStructureData.currentLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
+                      {blindStructureData.currentLevel.specialAction === 'CHIP_UP_5S' && 'Chip Up 5s'}
+                      {blindStructureData.currentLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
+                      {blindStructureData.currentLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S' && (
+                        <>Registration Closes<br />Chip Up 5s</>
+                      )}
+                    </p>
+                  )}
+
+                  {/* Always show next level information */}
+                  {nextLevel && !nextLevel.isBreak && (
+                    <div className="mt-4 p-3 bg-white rounded border">
+                      <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        <span>Next Level</span>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="text-center mb-4">
-                    <div className="flex items-center justify-center space-x-3">
-                      {isAdmin && (
-                        <div className="flex items-center space-x-1">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={async () => {
-                              // Only allow the click if not currently processing
-                              if (!blindsLoading) {
-                                try {
-                                  setBlindsLoading(true);
-                                  await updateBlindLevel(Math.max(0, (currentSession.currentBlindLevel || 0) - 1));
-                                } finally {
-                                  setBlindsLoading(false);
-                                }
-                              }
-                            }}
-                            disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel === 0}
-                          >
-                            <ArrowLeft className="h-4 w-4 mr-1" />
-                            <span>Previous</span>
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={async () => {
-                              // Only allow the click if not currently processing
-                              if (!blindsLoading) {
-                                try {
-                                  setBlindsLoading(true);
-                                  await updateBlindLevel((currentSession.currentBlindLevel || 0) + 1);
-                                } finally {
-                                  setBlindsLoading(false);
-                                }
-                              }
-                            }}
-                            disabled={blindsLoading || currentSession.currentBlindLevel === undefined || currentSession.currentBlindLevel >= (blindStructureData.totalLevels - 1)}
-                          >
-                            <span>Next</span>
-                            <ArrowRight className="h-4 w-4 ml-1" />
-                          </Button>
+                      <div className="grid grid-cols-3 gap-4 items-center">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">Small Blind</p>
+                          <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
                         </div>
-                      )}
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">Big Blind</p>
+                          <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">Ante</p>
+                          <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Current Level */}
+                  <div className="bg-background border rounded-md p-4">
+                    <div className="text-center font-medium text-base text-muted-foreground mb-2">
+                      Current Level
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 items-center my-3">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Small Blind</p>
+                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.smallBlind || '—'}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Big Blind</p>
+                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.bigBlind || '—'}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Ante</p>
+                        <p className="text-2xl font-bold">{blindStructureData.currentLevel?.ante || '—'}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  {blindStructureData.currentLevel?.isBreak ? (
-                    <div className="bg-blue-50 p-4 rounded-md text-center mb-4">
-                      <h4 className="font-medium text-blue-800">
-                        {blindStructureData.currentLevel.breakName || 'Break'} - {blindStructureData.currentLevel.duration} minutes
-                      </h4>
-                      {blindStructureData.currentLevel.specialAction && (
-                        <p className="text-sm text-blue-700 mt-1">
-                          {blindStructureData.currentLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
-                          {blindStructureData.currentLevel.specialAction === 'CHIP_UP_5S' && 'Chip Up 5s'}
-                          {blindStructureData.currentLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
-                          {blindStructureData.currentLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S' && (
-                            <>Registration Closes<br />Chip Up 5s</>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Current Level */}
-                      <div className="bg-background border rounded-md p-4">
-                        <div className="text-center font-medium text-base text-muted-foreground mb-2">
-                          Current Level
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 items-center my-3">
+
+                  {/* Always show next level */}
+                  {nextLevel ? (
+                    <div className="bg-background border rounded-md p-4">
+                      <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        <span>{nextLevel.isBreak ? `Next: ${nextLevel.breakName || 'Break'} - ${nextLevel.duration} min` : 'Next Level'}</span>
+                      </div>
+                      {!nextLevel.isBreak ? (
+                        <div className="grid grid-cols-3 gap-4 items-center my-2">
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Small Blind</p>
-                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.smallBlind || '—'}</p>
+                            <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Big Blind</p>
-                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.bigBlind || '—'}</p>
+                            <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">Ante</p>
-                            <p className="text-2xl font-bold">{blindStructureData.currentLevel?.ante || '—'}</p>
+                            <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
                           </div>
                         </div>
+                      ) : (
+                        <div className="text-center py-1 text-sm">
+                          {nextLevel.duration} minute {nextLevel.breakName || 'Break'}
+                          {nextLevel.specialAction && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {nextLevel.specialAction === 'CHIP_UP_1S' && 'Chip Up 1s'}
+                              {nextLevel.specialAction === 'CHIP_UP_5S' && 'Chip Up 5s'}
+                              {nextLevel.specialAction === 'REG_CLOSE' && 'Registration Closes'}
+                              {nextLevel.specialAction === 'REG_CLOSE_CHIP_UP_5S' && (
+                                <>Registration Closes, Chip Up 5s</>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-background border rounded-md p-4">
+                      <div className="text-center text-muted-foreground">
+                        Final Level
                       </div>
-
-                      {/* Next Level */}
-                      {nextLevel && !nextLevel.isBreak ? (
-                        <div className="bg-background border rounded-md p-4">
-                          <div className="text-center font-medium text-muted-foreground mb-2 flex items-center justify-center">
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                            <span>Next Level</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 items-center my-2">
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">Small Blind</p>
-                              <p className="text-xl font-medium">{nextLevel?.smallBlind || '—'}</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">Big Blind</p>
-                              <p className="text-xl font-medium">{nextLevel?.bigBlind || '—'}</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground">Ante</p>
-                              <p className="text-xl font-medium">{nextLevel?.ante || '—'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : nextLevel && nextLevel.isBreak ? (
-                        <div className="bg-background border rounded-md p-4">
-                          <div className="text-center font-medium text-muted-foreground flex items-center justify-center">
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                            <span>Next: {nextLevel.breakName} - {nextLevel.duration} min</span>
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
                   )}
-                  
-                  {isAdmin && (
-                    <div className="text-center mt-4">
-                      <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
-                        <span>View Full Structure</span>
-                      </Link>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-center text-muted-foreground">No timer information available</p>
+                </div>
+              )}
+              
+              {isAdmin && (
+                <div className="text-center mt-4">
+                  <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
+                    <span>View Full Structure</span>
+                  </Link>
+                </div>
               )}
             </div>
           )}
