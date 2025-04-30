@@ -342,257 +342,259 @@ export default function Status() {
             />
           )}
           
-          {/* Payout structure component */}
-          {isTournament && isActive && (
-            <PayoutStructure 
-              shouldShowPayouts={shouldShowPayouts(blindStructureData, currentSession)}
-              payoutStructure={payoutStructure} 
-              currentSession={currentSession}
-              isAdmin={isAdmin}
-            />
+          {/* In The Money Section with Empty Slots */}
+          {isTournament && (
+            <div className="mt-6">
+              <h3 className="font-medium text-lg mb-3">In The Money</h3>
+              
+              {(() => {
+                // Get number of payout positions
+                let payoutPositions = 0;
+                if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
+                  payoutPositions = Math.max(
+                    ...payoutStructure.tiers.map(tier => tier.position)
+                  );
+                }
+                
+                // If no payout structure available yet
+                if (payoutPositions === 0) {
+                  return (
+                    <p className="text-muted-foreground text-sm">Payout positions will appear once the structure is set</p>
+                  );
+                }
+                
+                // Create array of payout slots
+                const payoutSlots = Array.from({ length: payoutPositions }, (_, i) => {
+                  // Position in reverse order - start with position 1 at index 0
+                  const position = payoutPositions - i;
+                  
+                  // Find prize amount for this position
+                  let prize = 0;
+                  const tier = payoutStructure.tiers.find(t => t.position === position);
+                  if (tier) {
+                    const totalPrize = currentSession.buyIn * (currentSession.totalEntries || 0);
+                    prize = Math.floor(totalPrize * (tier.percentage / 100));
+                  }
+                  
+                  // Find if there's a player in this position
+                  // (Players are assigned from bottom up)
+                  const playersInITM = currentSession.registrations.itm || [];
+                  const itmCount = playersInITM.length;
+                  
+                  // Match player to this position if available
+                  // If we have 3 positions (1,2,3) and 1 player in ITM, that player goes to position 3
+                  // If we have 3 positions and 2 players in ITM, they go to positions 3 and 2
+                  let playerIndex = null;
+                  if (position > payoutPositions - itmCount) {
+                    // Calculate index in the ITM array
+                    playerIndex = itmCount - (payoutPositions - position) - 1;
+                  }
+                  
+                  // Return slot info with player if assigned
+                  return {
+                    position,
+                    prize,
+                    player: playerIndex !== null && playerIndex >= 0 ? playersInITM[playerIndex] : null
+                  };
+                });
+                
+                // Render slots
+                return (
+                  <div className="border rounded-md overflow-hidden">
+                    <ul className="divide-y">
+                      {payoutSlots
+                        .sort((a, b) => a.position - b.position) // Sort by position so 1st place is at the top
+                        .map((slot) => (
+                        <li key={`place-${slot.position}`} className="p-3 flex items-center justify-between">
+                          {/* Left side - Place and player info */}
+                          <div className="flex items-center space-x-3">
+                            {/* Place number */}
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                              {slot.position}
+                            </div>
+                            
+                            {slot.player ? (
+                              <>
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={slot.player.user?.image} alt={slot.player.user?.name} />
+                                  <AvatarFallback className="bg-blue-100 text-blue-800">
+                                    {slot.player.user?.firstName || slot.player.user?.lastName 
+                                      ? `${slot.player.user.firstName?.[0] || ''}${slot.player.user.lastName?.[0] || ''}`.toUpperCase() 
+                                      : getInitials(slot.player.user?.name || '')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {(slot.player.user?.firstName || slot.player.user?.lastName) 
+                                      ? `${slot.player.user.firstName || ''} ${slot.player.user.lastName || ''}`.trim() 
+                                      : slot.player.user?.name || 'Unknown Player'}
+                                  </p>
+                                  {slot.player.rebuys > 0 && (
+                                    <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                                      {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-muted-foreground text-sm ml-2">
+                                {slot.position === 1
+                                  ? "1st Place (Winner)"
+                                  : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
+                                - Not yet assigned
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Right side - Prize and action buttons */}
+                          <div className="flex items-center">
+                            {/* Prize amount */}
+                            <div className="mr-2 text-sm font-medium text-green-600">
+                              ${slot.prize}
+                            </div>
+                            
+                            {/* Return button (only for filled slots) */}
+                            {isAdmin && slot.player && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => updatePlayerStatus(slot.player.id, 'ELIMINATED')}
+                                title="Return player to eliminated players"
+                              >
+                                Return
+                              </Button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </div>
           )}
           
           {/* Participants lists - shown to all users, but only admins see action buttons */}
-            <div className="border-t pt-4">
-              <h3 className="font-medium text-lg mb-3">Participants</h3>
-              
-              <PlayerList 
-                players={currentSession.registrations.current}
-                title="Current Players"
-                emptyMessage="No active players currently at the table"
-                colorClass="bg-green-100 text-green-800"
-                isAdmin={isAdmin}
-                removePlayer={isAdmin ? removePlayer : null}
-                actions={isAdmin ? [
-                  {
-                    label: "Eliminate",
-                    variant: "outline",
-                    title: "Move player to eliminated",
-                    onClick: (registration) => {
-                      // Get payout positions from the payout structure
-                      let payoutPositions = 0;
-                      if (payoutStructure && payoutStructure.tiers) {
-                        // Find the max position from the tiers
-                        payoutPositions = Math.max(
-                          ...payoutStructure.tiers.map(tier => tier.position)
-                        );
-                      }
-                      
-                      // Get current number of players
-                      const currentPlayerCount = currentSession.currentPlayersCount;
-                      
-                      // Registration must be closed to use ITM
-                      const isRegistrationClosed = currentSession.registrationClosed;
-                      
-                      // Debug info
-                      console.log("Eliminate clicked:", {
-                        currentPlayerCount,
-                        payoutPositions,
-                        isRegistrationClosed
-                      });
-                      
-                      // If we've reached ITM criteria, place directly in ITM
-                      if (isRegistrationClosed && 
-                          payoutPositions > 0 && 
-                          currentPlayerCount <= payoutPositions) {
-                        console.log("Placing player in ITM");
-                        updatePlayerStatus(registration.id, 'ITM');
-                      } else {
-                        // Standard elimination
-                        updatePlayerStatus(registration.id, 'ELIMINATED');
-                      }
-                    }
-                  },
-                  {
-                    label: "Waitlist",
-                    variant: "outline",
-                    title: "Move player to waitlist",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
-                  },
-                  isTournament ? {
-                    label: "Buy-in",
-                    variant: "default",
-                    title: "Process a buy-in for this player",
-                    disabled: isSubmitting,
-                    onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
-                  } : null
-                ].filter(Boolean) : []}
-              />
-              
-              <PlayerList 
-                players={currentSession.registrations.waitlist}
-                title="Waitlist"
-                emptyMessage="No players on the waitlist"
-                colorClass="bg-yellow-100 text-yellow-800"
-                isAdmin={isAdmin}
-                removePlayer={isAdmin ? removePlayer : null}
-                actions={isAdmin ? [
-                  {
-                    label: "Seat",
-                    variant: "default",
-                    title: "Seat player from waitlist",
-                    onClick: (registration) => seatFromWaitlist(registration.id)
-                  }
-                ] : []}
-              />
-              
-              {isTournament && currentSession.registrations.eliminated && (
-                <PlayerList 
-                  players={currentSession.registrations.eliminated}
-                  title="Eliminated"
-                  emptyMessage="No eliminated players yet"
-                  colorClass="bg-red-100 text-red-800"
-                  isAdmin={isAdmin}
-                  removePlayer={isAdmin ? removePlayer : null}
-                  actions={isAdmin ? [
-                    {
-                      label: "Return",
-                      variant: "outline",
-                      title: "Return player to active players",
-                      onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
-                    },
-                    {
-                      label: "ITM",
-                      variant: "default",
-                      title: "Mark player as In The Money",
-                      onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
-                    }
-                  ] : []}
-                />
-              )}
-              
-              {/* In The Money Section with Empty Slots */}
-              {isTournament && (
-                <div>
-                  <h3 className="font-medium text-lg mb-3 mt-4">In The Money</h3>
-                  
-                  {(() => {
-                    // Get number of payout positions
+          <div className="border-t pt-4 mt-6">
+            <h3 className="font-medium text-lg mb-3">Participants</h3>
+            
+            <PlayerList 
+              players={currentSession.registrations.current}
+              title="Current Players"
+              emptyMessage="No active players currently at the table"
+              colorClass="bg-green-100 text-green-800"
+              isAdmin={isAdmin}
+              removePlayer={isAdmin ? removePlayer : null}
+              actions={isAdmin ? [
+                {
+                  label: "Eliminate",
+                  variant: "outline",
+                  title: "Move player to eliminated",
+                  onClick: (registration) => {
+                    // Get payout positions from the payout structure
                     let payoutPositions = 0;
-                    if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
+                    if (payoutStructure && payoutStructure.tiers) {
+                      // Find the max position from the tiers
                       payoutPositions = Math.max(
                         ...payoutStructure.tiers.map(tier => tier.position)
                       );
                     }
                     
-                    // If no payout structure available yet
-                    if (payoutPositions === 0) {
-                      return (
-                        <p className="text-muted-foreground text-sm">Payout positions will appear once the structure is set</p>
-                      );
-                    }
+                    // Get current number of players
+                    const currentPlayerCount = currentSession.currentPlayersCount;
                     
-                    // Create array of payout slots
-                    const payoutSlots = Array.from({ length: payoutPositions }, (_, i) => {
-                      // Position in reverse order - start with position 1 at index 0
-                      const position = payoutPositions - i;
-                      
-                      // Find prize amount for this position
-                      let prize = 0;
-                      const tier = payoutStructure.tiers.find(t => t.position === position);
-                      if (tier) {
-                        const totalPrize = currentSession.buyIn * (currentSession.totalEntries || 0);
-                        prize = Math.floor(totalPrize * (tier.percentage / 100));
-                      }
-                      
-                      // Find if there's a player in this position
-                      // (Players are assigned from bottom up)
-                      const playersInITM = currentSession.registrations.itm || [];
-                      const itmCount = playersInITM.length;
-                      
-                      // Match player to this position if available
-                      // If we have 3 positions (1,2,3) and 1 player in ITM, that player goes to position 3
-                      // If we have 3 positions and 2 players in ITM, they go to positions 3 and 2
-                      let playerIndex = null;
-                      if (position > payoutPositions - itmCount) {
-                        // Calculate index in the ITM array
-                        playerIndex = itmCount - (payoutPositions - position) - 1;
-                      }
-                      
-                      // Return slot info with player if assigned
-                      return {
-                        position,
-                        prize,
-                        player: playerIndex !== null && playerIndex >= 0 ? playersInITM[playerIndex] : null
-                      };
+                    // Registration must be closed to use ITM
+                    const isRegistrationClosed = currentSession.registrationClosed;
+                    
+                    // Debug info
+                    console.log("Eliminate clicked:", {
+                      currentPlayerCount,
+                      payoutPositions,
+                      isRegistrationClosed
                     });
                     
-                    // Render slots
-                    return (
-                      <div className="border rounded-md overflow-hidden">
-                        <ul className="divide-y">
-                          {payoutSlots
-                            .sort((a, b) => a.position - b.position) // Sort by position so 1st place is at the top
-                            .map((slot) => (
-                            <li key={`place-${slot.position}`} className="p-3 flex items-center justify-between">
-                              {/* Left side - Place and player info */}
-                              <div className="flex items-center space-x-3">
-                                {/* Place number */}
-                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
-                                  {slot.position}
-                                </div>
-                                
-                                {slot.player ? (
-                                  <>
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarImage src={slot.player.user?.image} alt={slot.player.user?.name} />
-                                      <AvatarFallback className="bg-blue-100 text-blue-800">
-                                        {slot.player.user?.firstName || slot.player.user?.lastName 
-                                          ? `${slot.player.user.firstName?.[0] || ''}${slot.player.user.lastName?.[0] || ''}`.toUpperCase() 
-                                          : getInitials(slot.player.user?.name || '')}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <p className="text-sm font-medium">
-                                        {(slot.player.user?.firstName || slot.player.user?.lastName) 
-                                          ? `${slot.player.user.firstName || ''} ${slot.player.user.lastName || ''}`.trim() 
-                                          : slot.player.user?.name || 'Unknown Player'}
-                                      </p>
-                                      {slot.player.rebuys > 0 && (
-                                        <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                                          {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="text-muted-foreground text-sm ml-2">
-                                    {slot.position === 1
-                                      ? "1st Place (Winner)"
-                                      : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                                    - Not yet assigned
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* Right side - Prize and action buttons */}
-                              <div className="flex items-center">
-                                {/* Prize amount */}
-                                <div className="mr-2 text-sm font-medium text-green-600">
-                                  ${slot.prize}
-                                </div>
-                                
-                                {/* Return button (only for filled slots) */}
-                                {isAdmin && slot.player && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => updatePlayerStatus(slot.player.id, 'ELIMINATED')}
-                                    title="Return player to eliminated players"
-                                  >
-                                    Return
-                                  </Button>
-                                )}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    // If we've reached ITM criteria, place directly in ITM
+                    if (isRegistrationClosed && 
+                        payoutPositions > 0 && 
+                        currentPlayerCount <= payoutPositions) {
+                      console.log("Placing player in ITM");
+                      updatePlayerStatus(registration.id, 'ITM');
+                    } else {
+                      // Standard elimination
+                      updatePlayerStatus(registration.id, 'ELIMINATED');
+                    }
+                  }
+                },
+                {
+                  label: "Waitlist",
+                  variant: "outline",
+                  title: "Move player to waitlist",
+                  onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
+                },
+                isTournament ? {
+                  label: "Buy-in",
+                  variant: "default",
+                  title: "Process a buy-in for this player",
+                  disabled: isSubmitting,
+                  onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
+                } : null
+              ].filter(Boolean) : []}
+            />
+            
+            <PlayerList 
+              players={currentSession.registrations.waitlist}
+              title="Waitlist"
+              emptyMessage="No players on the waitlist"
+              colorClass="bg-yellow-100 text-yellow-800"
+              isAdmin={isAdmin}
+              removePlayer={isAdmin ? removePlayer : null}
+              actions={isAdmin ? [
+                {
+                  label: "Seat",
+                  variant: "default",
+                  title: "Seat player from waitlist",
+                  onClick: (registration) => seatFromWaitlist(registration.id)
+                }
+              ] : []}
+            />
+            
+            {isTournament && currentSession.registrations.eliminated && (
+              <PlayerList 
+                players={currentSession.registrations.eliminated}
+                title="Eliminated"
+                emptyMessage="No eliminated players yet"
+                colorClass="bg-red-100 text-red-800"
+                isAdmin={isAdmin}
+                removePlayer={isAdmin ? removePlayer : null}
+                actions={isAdmin ? [
+                  {
+                    label: "Return",
+                    variant: "outline",
+                    title: "Return player to active players",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
+                  },
+                  {
+                    label: "ITM",
+                    variant: "default",
+                    title: "Mark player as In The Money",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
+                  }
+                ] : []}
+              />
+            )}
+          </div>
+          
+          {/* Payout structure component */}
+          {isTournament && isActive && (
+            <div className="mt-6">
+              <PayoutStructure 
+                shouldShowPayouts={shouldShowPayouts(blindStructureData, currentSession)}
+                payoutStructure={payoutStructure} 
+                currentSession={currentSession}
+                isAdmin={isAdmin}
+              />
             </div>
+          )}
         </CardContent>
       </Card>
       
