@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Users, AlertCircle, Play, CheckCircle } from "lucide-react";
+import { Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate, formatTimeOnly, shouldShowPayouts } from "@/lib/tournament-utils";
@@ -67,15 +67,14 @@ const getOrdinalSuffix = (num) => {
 export default function Status() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.isAdmin;
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [confirmMessage, setConfirmMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentBlindLevel, setCurrentBlindLevel] = useState(0);
   const [blindStructure, setBlindStructure] = useState([]);
   const [timeLeft, setTimeLeft] = useState(0);
-  const [sessionUpdating, setSessionUpdating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   // Check for admin role in multiple possible locations
@@ -113,51 +112,6 @@ export default function Status() {
   } = usePlayerService(fetchSessionData);
 
   const { toast } = useToast();
-        
-  // Function to update session status
-  const updateSessionStatus = async (newStatus) => {
-    setSessionUpdating(true);
-    try {
-      const response = await fetch('/api/admin/session/update-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId: sessionData.session.id,
-          status: newStatus
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update session status');
-      }
-
-      await fetchSessionData();
-      
-      const statusMessages = {
-        'ACTIVE': 'Session has been started successfully',
-        'FINISHED': 'Session has been marked as finished',
-        'CANCELLED': 'Session has been cancelled'
-      };
-      
-      toast.success(statusMessages[newStatus] || 'Session status updated successfully');
-    } catch (error) {
-      console.error('Error updating session status:', error);
-      toast.error(error.message || 'Failed to update session status');
-    } finally {
-      setSessionUpdating(false);
-      setConfirmOpen(false);
-    }
-  };
-
-  // Function to set up and show confirmation
-  const confirmSessionStatusChange = (status, message) => {
-    setConfirmMessage(message);
-    setConfirmAction(() => () => updateSessionStatus(status));
-    setConfirmOpen(true);
-  };
         
   // If active tournament, fetch blind structure and payout structure
   useEffect(() => {
@@ -243,63 +197,6 @@ export default function Status() {
     );
   };
 
-  // Add handler functions for session status changes near other handler functions
-  const handleStartSession = async () => {
-    setSessionUpdating(true);
-    try {
-      const response = await fetch(`/api/sessions/${sessionData.id}/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to start session');
-      }
-
-      await fetchSessionData();
-      toast.success('Session started successfully');
-    } catch (error) {
-      console.error('Error starting session:', error);
-      toast.error(error.message || 'Failed to start session');
-    } finally {
-      setSessionUpdating(false);
-    }
-  };
-
-  const handleFinishSession = async () => {
-    setSessionUpdating(true);
-    try {
-      const response = await fetch(`/api/sessions/${sessionData.id}/finish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to finish session');
-      }
-
-      await fetchSessionData();
-      toast.success('Session finished successfully');
-    } catch (error) {
-      console.error('Error finishing session:', error);
-      toast.error(error.message || 'Failed to finish session');
-    } finally {
-      setSessionUpdating(false);
-    }
-  };
-
-  const confirmSessionAction = (action, message) => {
-    setConfirmMessage(message);
-    setConfirmAction(() => action);
-    setConfirmOpen(true);
-  };
-
   return (
     <div className="container py-12 max-w-3xl">
       <Card>
@@ -365,45 +262,22 @@ export default function Status() {
           {/* Admin Panel */}
           {session?.user?.isAdmin && sessionData?.session && (
             <div className="space-y-4 mt-6">
-              {/* Session Status Controls */}
               <div>
-                <h3 className="text-lg font-medium">Session Status Controls</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  {/* Start Session Button - Show only if session is SCHEDULED */}
-                  {sessionData?.session?.status === "SCHEDULED" && (
+                <h3 className="text-lg font-medium">Admin Controls</h3>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
+                  {/* Close Registration Button */}
+                  {!currentSession.registrationClosed && (
                     <Button
-                      onClick={() => 
-                        confirmSessionAction(
-                          handleStartSession, 
-                          "Are you sure you want to start this session? This will mark the session as active."
-                        )
-                      }
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
+                          stopRegistration(currentSession.id);
+                        }
+                      }}
                       variant="outline"
                       size="sm"
-                      className="w-full bg-green-50 hover:bg-green-100 border-green-200"
-                      disabled={sessionUpdating}
+                      className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
-                      <Play className="mr-2 h-4 w-4 text-green-600" />
-                      Start Session
-                    </Button>
-                  )}
-                  
-                  {/* Finish Session Button - Show only if session is ACTIVE */}
-                  {sessionData?.session?.status === "ACTIVE" && (
-                    <Button
-                      onClick={() => 
-                        confirmSessionAction(
-                          handleFinishSession, 
-                          "Are you sure you want to finish this session? This will mark the session as complete."
-                        )
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200"
-                      disabled={sessionUpdating}
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4 text-blue-600" />
-                      Finish Session
+                      Close Registration
                     </Button>
                   )}
                 </div>
