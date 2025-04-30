@@ -96,14 +96,8 @@ export default function Header() {
                   ) : (
                     // Regular user dropdown items
                     <div>
-                      <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-gray-100">
-                        Account
-                      </Link>
                       <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
                         Settings
-                      </Link>
-                      <Link href="/record" className="block px-4 py-2 text-sm hover:bg-gray-100">
-                        Record
                       </Link>
                       <button 
                         onClick={() => signOut()} 

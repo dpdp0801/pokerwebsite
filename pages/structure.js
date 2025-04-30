@@ -105,10 +105,6 @@ export default function Structure() {
               <p className="text-muted-foreground">~4-5 hours</p>
             </div>
             <div>
-              <h3 className="font-medium">In the Money</h3>
-              <p className="text-muted-foreground">Varies based on number of entries</p>
-            </div>
-            <div className="md:col-span-2">
               <h3 className="font-medium">Re-entry Policy</h3>
               <p className="text-muted-foreground">Unlimited re-entries during registration period. If waitlist exists, eliminated players join the waitlist.</p>
             </div>

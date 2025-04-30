@@ -14,10 +14,8 @@ export default function Settings() {
   
   // Form state (mock data, would come from API in real implementation)
   const [settings, setSettings] = useState({
-    phoneNumber: "555-123-4567",
     venmoId: "@john-doe",
-    emailNotifications: true,
-    smsNotifications: false
+    emailNotifications: true
   });
   
   const handleChange = (e) => {
@@ -105,17 +103,6 @@ export default function Settings() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
-                  <Input 
-                    id="phoneNumber" 
-                    name="phoneNumber"
-                    value={settings.phoneNumber} 
-                    onChange={handleChange}
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
                   <Label htmlFor="venmoId">Venmo ID</Label>
                   <Input 
                     id="venmoId" 
@@ -147,22 +134,6 @@ export default function Settings() {
                       id="emailNotifications"
                       checked={settings.emailNotifications}
                       onCheckedChange={(checked) => handleSwitchChange('emailNotifications', checked)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="smsNotifications" className="cursor-pointer">
-                        SMS Notifications
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive text messages for game reminders.
-                      </p>
-                    </div>
-                    <Switch 
-                      id="smsNotifications"
-                      checked={settings.smsNotifications}
-                      onCheckedChange={(checked) => handleSwitchChange('smsNotifications', checked)}
                     />
                   </div>
                 </div>
