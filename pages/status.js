@@ -441,7 +441,6 @@ export default function Status() {
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
                                   : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                                - Not yet assigned
                               </div>
                             )}
                           </div>
@@ -585,10 +584,10 @@ export default function Status() {
           </div>
           
           {/* Payout structure component */}
-          {isTournament && isActive && (
+          {isTournament && (
             <div className="mt-6">
               <PayoutStructure 
-                shouldShowPayouts={shouldShowPayouts(blindStructureData, currentSession)}
+                shouldShowPayouts={true}
                 payoutStructure={payoutStructure} 
                 currentSession={currentSession}
                 isAdmin={isAdmin}
