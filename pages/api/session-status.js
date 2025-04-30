@@ -103,25 +103,8 @@ export default async function handler(req, res) {
       }
     });
     
-    // Update the session data with accurate counts if needed
-    if (activeSession.status === 'ACTIVE' && (
-        activeSession.currentPlayersCount !== currentPlayersCount
-    )) {
-      try {
-        await prisma.pokerSession.update({
-          where: { id: activeSession.id },
-          data: {
-            currentPlayersCount: uniquePlayerIds.size, // Use unique players count for current players
-            waitlistedPlayersCount: waitlistedPlayersCount,
-            eliminatedPlayersCount: eliminatedPlayersCount,
-            itmPlayersCount: itmPlayersCount,
-            // Don't set entries based on registered players - only increased by buy-ins
-          }
-        });
-      } catch (updateError) {
-        console.error("Error updating session counts:", updateError);
-      }
-    }
+    // Don't try to update the session directly - these fields don't exist in the schema
+    // Just use the calculated values in the response
     
     // Format response
     const response = {

@@ -10,8 +10,19 @@ export default async function handler(req, res) {
   try {
     // Ensure the user is authorized as an admin
     const session = await getServerSession(req, res, authOptions);
-    if (!session || !session.user || !session.user.isAdmin) {
-      return res.status(401).json({ message: "Unauthorized" });
+    if (!session) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    // Check for admin role in multiple possible locations
+    const isAdmin = 
+      session.user?.isAdmin === true || 
+      session.role === "ADMIN" || 
+      session.user?.role === "ADMIN";
+    
+    if (!isAdmin) {
+      console.log("Unauthorized access attempt:", session);
+      return res.status(401).json({ message: "Unauthorized - Admin access required" });
     }
 
     const { registrationId, newStatus, isRebuy = false } = req.body;

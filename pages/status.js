@@ -23,7 +23,11 @@ export default function Status() {
   const [timerInterval, setTimerInterval] = useState(null);
 
   const { data: session } = useSession();
-  const isAdmin = session?.role === "ADMIN";
+  // Check for admin role in multiple possible locations
+  const isAdmin = 
+    session?.user?.isAdmin === true || 
+    session?.role === "ADMIN" || 
+    session?.user?.role === "ADMIN";
   const router = useRouter();
   const { toast } = useToast();
 
