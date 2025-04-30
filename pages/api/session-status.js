@@ -29,13 +29,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ exists: false });
     }
     
-    // Get all registrations for this session
+    // Get all registrations for this session, including rebuys
     const registrations = await prisma.registration.findMany({
       where: {
-        sessionId: activeSession.id,
-        status: {
-          in: ['CONFIRMED', 'WAITLISTED']
-        }
+        sessionId: activeSession.id
       },
       include: {
         user: {
@@ -62,21 +59,22 @@ export default async function handler(req, res) {
     };
     
     registrations.forEach(registration => {
-      if (registration.status === 'WAITLISTED') {
+      if (registration.status === 'WAITLIST') {
         groupedRegistrations.waitlisted.push(registration);
-      } else if (registration.status === 'CONFIRMED') {
+      } else if (registration.status === 'CURRENT') {
+        groupedRegistrations.current.push(registration);
+      } else if (registration.status === 'ELIMINATED') {
+        groupedRegistrations.eliminated.push(registration);
+      } else if (registration.status === 'ITM') {
+        groupedRegistrations.inTheMoney.push(registration);
+      } else if (registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
         // For initial loading, move REGISTERED players to CURRENT if session is ACTIVE
-        if (registration.playerStatus === 'REGISTERED' && activeSession.status === 'ACTIVE') {
-          registration.playerStatus = 'CURRENT';
-          groupedRegistrations.current.push(registration);
-        } else if (registration.playerStatus === 'CURRENT') {
-          groupedRegistrations.current.push(registration);
-        } else if (registration.playerStatus === 'ELIMINATED') {
-          groupedRegistrations.eliminated.push(registration);
-        } else if (registration.playerStatus === 'ITM') {
-          groupedRegistrations.inTheMoney.push(registration);
+        if (activeSession.status === 'ACTIVE') {
+          groupedRegistrations.current.push({
+            ...registration,
+            status: 'CURRENT'
+          });
         } else {
-          // Default any unrecognized status to current as well
           groupedRegistrations.current.push(registration);
         }
       }
@@ -93,7 +91,17 @@ export default async function handler(req, res) {
     const waitlistedPlayersCount = groupedRegistrations.waitlisted.length;
     const eliminatedPlayersCount = groupedRegistrations.eliminated.length;
     const itmPlayersCount = groupedRegistrations.inTheMoney.length;
-    const registeredPlayersCount = registrations.filter(r => r.status === 'CONFIRMED').length;
+    const registeredPlayersCount = registrations.filter(r => 
+      r.status === 'CONFIRMED' || r.status === 'REGISTERED' || r.status === 'CURRENT'
+    ).length;
+    
+    // Count unique players (not counting rebuys)
+    const uniquePlayerIds = new Set();
+    registrations.forEach(reg => {
+      if (reg.status === 'CURRENT' || reg.status === 'CONFIRMED' || reg.status === 'REGISTERED') {
+        uniquePlayerIds.add(reg.userId);
+      }
+    });
     
     // Update the session data with accurate counts if needed
     if (activeSession.status === 'ACTIVE' && (
@@ -103,7 +111,7 @@ export default async function handler(req, res) {
         await prisma.pokerSession.update({
           where: { id: activeSession.id },
           data: {
-            currentPlayersCount: currentPlayersCount,
+            currentPlayersCount: uniquePlayerIds.size, // Use unique players count for current players
             waitlistedPlayersCount: waitlistedPlayersCount,
             eliminatedPlayersCount: eliminatedPlayersCount,
             itmPlayersCount: itmPlayersCount,
@@ -120,12 +128,12 @@ export default async function handler(req, res) {
       exists: true,
       session: {
         ...activeSession,
-        currentPlayersCount: currentPlayersCount,
+        currentPlayersCount: uniquePlayerIds.size,
         waitlistedPlayersCount: waitlistedPlayersCount,
         eliminatedPlayersCount: eliminatedPlayersCount,
         itmPlayersCount: itmPlayersCount,
         registeredPlayersCount: registeredPlayersCount,
-        totalEntries: activeSession.entries || 0, // Only use actual entries, not registeredPlayersCount
+        totalEntries: activeSession.totalEntries || activeSession.entries || 0,
         registrations: groupedRegistrations,
         userRegistration: userRegistration,
         registrationClosed: activeSession.registrationClosed || false

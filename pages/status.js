@@ -29,28 +29,28 @@ export default function Status() {
 
   // Fetch real session data
   useEffect(() => {
-    const fetchSessionData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/session-status');
-        const data = await response.json();
-        setSessionData(data);
-        
-        // If active tournament, fetch blind structure and payout structure
-        if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
-          fetchBlindStructure(data.session.id);
-          // Use entries if available, otherwise use registered players
-          fetchPayoutStructure(data.session.entries || data.session.registeredPlayers);
-        }
-      } catch (error) {
-        console.error('Error fetching session data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSessionData();
   }, []);
+
+  const fetchSessionData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/session-status');
+      const data = await response.json();
+      setSessionData(data);
+      
+      // If active tournament, fetch blind structure and payout structure
+      if (data.exists && data.session.type === 'TOURNAMENT' && data.session.status === 'ACTIVE') {
+        fetchBlindStructure(data.session.id);
+        // Use entries if available, otherwise use registered players
+        fetchPayoutStructure(data.session.entries || data.session.registeredPlayers);
+      }
+    } catch (error) {
+      console.error('Error fetching session data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Start timer for blind levels
   useEffect(() => {
@@ -498,19 +498,58 @@ export default function Status() {
     }
     
     // Count rebuys by user
-    const buyInCountByUser = players.reduce((counts, reg) => {
-      if (reg.isRebuy) {
-        counts[reg.userId] = (counts[reg.userId] || 0) + 1;
+    const buyInCountByUser = {};
+    
+    // First pass to identify all users
+    players.forEach(reg => {
+      if (!buyInCountByUser[reg.userId]) {
+        buyInCountByUser[reg.userId] = { 
+          count: 0,
+          mainRegistrationId: reg.isRebuy ? null : reg.id
+        };
       }
-      return counts;
-    }, {});
+      
+      // If this is the main entry (not a rebuy), store its ID
+      if (!reg.isRebuy && !buyInCountByUser[reg.userId].mainRegistrationId) {
+        buyInCountByUser[reg.userId].mainRegistrationId = reg.id;
+      }
+    });
+    
+    // Second pass to count rebuys
+    players.forEach(reg => {
+      if (reg.isRebuy) {
+        buyInCountByUser[reg.userId].count++;
+      }
+    });
+    
+    // Create unique player list (one entry per user)
+    const uniquePlayers = [];
+    const processedUsers = new Set();
+    
+    players.forEach(registration => {
+      if (!processedUsers.has(registration.userId)) {
+        // Find the main registration (non-rebuy) for this user if possible
+        const mainRegId = buyInCountByUser[registration.userId].mainRegistrationId;
+        const mainRegistration = mainRegId ? 
+                                 players.find(r => r.id === mainRegId) : 
+                                 registration;
+        
+        // Use the main registration for display, but include rebuy count
+        uniquePlayers.push({
+          ...mainRegistration,
+          buyInCount: buyInCountByUser[registration.userId].count
+        });
+        
+        processedUsers.add(registration.userId);
+      }
+    });
 
     return (
       <div className="mt-4">
         <h3 className="text-sm font-medium mb-2">{title}</h3>
         <div className="border rounded-md overflow-hidden">
           <ul className="divide-y">
-            {players.map((registration) => (
+            {uniquePlayers.map((registration) => (
               <li key={registration.id} className="p-3 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
@@ -524,16 +563,11 @@ export default function Status() {
                     {isAdmin && registration.user.venmoId && (
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
-                    <div className="flex space-x-2">
-                      {registration.isRebuy && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">1 buy-in</span>
-                      )}
-                      {buyInCountByUser[registration.user.id] > 0 && (
-                        <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                          {buyInCountByUser[registration.user.id] + 1} buy-ins
-                        </span>
-                      )}
-                    </div>
+                    {registration.buyInCount > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                        {registration.buyInCount + 1} buy-ins
+                      </span>
+                    )}
                   </div>
                 </div>
                 {isAdmin && (
@@ -647,6 +681,30 @@ export default function Status() {
     
     // By default, don't show payouts yet
     return false;
+  };
+
+  const handleBuyIn = async (registration) => {
+    if (confirm(`Confirm rebuy for ${registration.user.name}?`)) {
+      const response = await fetch('/api/player-status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          registrationId: registration.id,
+          newStatus: 'CURRENT',
+          isRebuy: true
+        }),
+      });
+
+      if (response.ok) {
+        await fetchSessionData();
+        toast.success(`Processed rebuy for ${registration.user.name}`);
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to process rebuy: ${errorData.message || 'Unknown error'}`);
+      }
+    }
   };
 
   return (
@@ -996,15 +1054,7 @@ export default function Status() {
                     label: "Buy-in",
                     variant: "default",
                     title: "Process a buy-in for this player",
-                    onClick: (registration) => {
-                      // Ask for confirmation
-                      const confirmed = window.confirm(
-                        `Process a buy-in for ${registration.user.name}? This will increase the total entries count.`
-                      );
-                      if (confirmed) {
-                        updatePlayerStatus(registration.id, 'CURRENT', true);
-                      }
-                    }
+                    onClick: handleBuyIn
                   } : null
                 ].filter(Boolean)}
               />
@@ -1066,15 +1116,7 @@ export default function Status() {
                     label: "Buy-in",
                     variant: "default",
                     title: "Process a buy-in for this player",
-                    onClick: (registration) => {
-                      // Ask for confirmation
-                      const confirmed = window.confirm(
-                        `Process a buy-in for ${registration.user.name}? This will increase the total entries count.`
-                      );
-                      if (confirmed) {
-                        updatePlayerStatus(registration.id, 'CURRENT', true);
-                      }
-                    }
+                    onClick: handleBuyIn
                   } : null
                 ].filter(Boolean)}
               />
