@@ -34,6 +34,14 @@ export default function Status() {
   // Fetch real session data
   useEffect(() => {
     fetchSessionData();
+    
+    // Set up polling to refresh data every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchSessionData();
+    }, 5000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   const fetchSessionData = async () => {
@@ -85,6 +93,22 @@ export default function Status() {
         seconds: initialSeconds
       });
       
+      // If timer is already at zero, don't start a new interval
+      if (initialMinutes <= 0 && initialSeconds <= 0 && isAdmin) {
+        // Auto-advance to the next level for admin
+        setTimeout(async () => {
+          try {
+            setBlindsLoading(true);
+            await updateBlindLevel((sessionData.session.currentBlindLevel || 0) + 1);
+          } catch (error) {
+            console.error("Error advancing to next level:", error);
+          } finally {
+            setBlindsLoading(false);
+          }
+        }, 500);
+        return;
+      }
+      
       // Start a new interval
       const interval = setInterval(() => {
         setTimer(prevTimer => {
@@ -99,6 +123,7 @@ export default function Status() {
           
           // Check if timer is finished
           if (newMinutes <= 0 && newSeconds <= 0) {
+            // Stop at 00:00
             newMinutes = 0;
             newSeconds = 0;
             
@@ -140,7 +165,12 @@ export default function Status() {
   // Format timer for display
   const formatTimer = () => {
     const { minutes, seconds } = timer;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    
+    // Prevent negative values
+    const displayMinutes = Math.max(0, minutes);
+    const displaySeconds = Math.max(0, seconds);
+    
+    return `${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
   };
 
   // Fetch blind structure for active tournament
@@ -199,6 +229,16 @@ export default function Status() {
     
     try {
       console.log(`Requesting level change to ${levelIndex}`);
+      
+      // Clear existing timer interval
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+      
+      // Set loading state first to prevent multiple clicks
+      setBlindsLoading(true);
+      
       const response = await fetch('/api/blinds/update-level', {
         method: 'PUT',
         headers: {
@@ -218,10 +258,11 @@ export default function Status() {
       const responseData = await response.json();
       console.log("API response:", responseData);
       
+      // Reset timer state to avoid negative numbers
+      setTimer({ minutes: 0, seconds: 0 }); 
+      
       // Refresh the session data and blind structure data
-      const updatedSessionResponse = await fetch('/api/session-status');
-      const updatedSessionData = await updatedSessionResponse.json();
-      setSessionData(updatedSessionData);
+      await fetchSessionData();
       
       // Refresh blind structure data
       await fetchBlindStructure(sessionData.session.id);
@@ -237,6 +278,8 @@ export default function Status() {
         description: error.message || "An error occurred while updating the blind level",
         variant: "destructive",
       });
+    } finally {
+      setBlindsLoading(false);
     }
   };
 
