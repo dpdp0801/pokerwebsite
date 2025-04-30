@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
-export default function Structure() {
+export default function Info() {
   const [loading, setLoading] = useState(true);
   const [blindStructure, setBlindStructure] = useState(null);
   const [payoutStructures, setPayoutStructures] = useState([]);
@@ -137,22 +137,6 @@ export default function Structure() {
       <h1 className="text-4xl font-bold mb-8 text-center">Tournament Structure</h1>
       
       <div className="space-y-8">
-        {/* Tournament/Cash Game Policies */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tournament/Cash Game Policies</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-lg font-medium">Pre-Registration</h3>
-              <ul className="list-disc pl-5 text-muted-foreground space-y-2 mt-2">
-                <li>Your reserved seat will be held for 30 minutes after the tournament start time.</li>
-                <li>If you haven't arrived within 30 minutes of start time, your seat will be removed.</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* General Tournament Info */}
         <Card>
           <CardHeader>

@@ -8,10 +8,10 @@ export default async function handler(req, res) {
     const session = await getServerSession(req, res, authOptions);
     
     // Find the active session
-    const activeSession = await prisma.session.findFirst({
+    const activeSession = await prisma.pokerSession.findFirst({
       where: {
         status: {
-          in: ['CREATED', 'ACTIVE']
+          in: ['NOT_STARTED', 'ACTIVE']
         },
         date: {
           lte: new Date(new Date().setHours(23, 59, 59, 999)) // Today or earlier
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
         activeSession.entries === 0 && registeredPlayersCount > 0
     )) {
       try {
-        await prisma.session.update({
+        await prisma.pokerSession.update({
           where: { id: activeSession.id },
           data: {
             currentPlayersCount: currentPlayersCount,

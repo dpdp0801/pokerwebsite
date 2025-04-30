@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from "react";
 
 const nav = [
   { href: "/status", label: "Status" },
-  { href: "/structure", label: "Structure" },
-  { href: "/policy", label: "Policy" },
+  { href: "/info", label: "Info" },
 ];
 
 export default function Header() {
