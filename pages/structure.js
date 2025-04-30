@@ -25,18 +25,33 @@ export default function Structure() {
         
         const data = await response.json();
         
-        // Process the levels to assign display numbers (skip breaks)
+        // Process the levels to assign display numbers and handle break descriptions
         let regularLevelCount = 0;
         let breakCount = 0;
         const processedLevels = data.structure.levels.map(level => {
           if (level.isBreak) {
             breakCount++;
-            // Add special text to the second break
-            const breakText = breakCount === 2 ? "Break (Chip up 5s - Registration Closes)" : "Break";
-            return { ...level, displayLevel: breakText };
+            // Add special text based on which break it is
+            let specialDescription = '';
+            
+            if (breakCount === 1) {
+              specialDescription = 'Chip up 1s';
+            } else if (breakCount === 2) {
+              specialDescription = 'Chip up 5s\nRegistration Closes';
+            }
+            
+            return { 
+              ...level, 
+              displayLevel: 'Break',
+              specialDescription
+            };
           } else {
             regularLevelCount++;
-            return { ...level, displayLevel: regularLevelCount };
+            return { 
+              ...level, 
+              displayLevel: regularLevelCount,
+              specialDescription: ''
+            };
           }
         });
         
@@ -164,6 +179,7 @@ export default function Structure() {
                       <th className="border p-2 text-left">Big Blind</th>
                       <th className="border p-2 text-left">Ante</th>
                       <th className="border p-2 text-left">Duration</th>
+                      <th className="border p-2 text-left">Special Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -174,6 +190,9 @@ export default function Structure() {
                         <td className="border p-2">{level.isBreak ? '-' : level.bigBlind}</td>
                         <td className="border p-2">{level.isBreak ? '-' : (level.ante || '-')}</td>
                         <td className="border p-2">{level.duration} mins</td>
+                        <td className="border p-2 whitespace-pre-line">
+                          {level.specialDescription ? level.specialDescription : '-'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

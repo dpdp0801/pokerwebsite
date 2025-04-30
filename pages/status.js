@@ -637,10 +637,11 @@ export default function Status() {
                   <Clock className="h-5 w-5 animate-spin mr-2" />
                   <p>Loading payout structure...</p>
                 </div>
-              ) : blindStructureData?.currentLevel?.specialAction === 'REG_CLOSE' || 
+              ) : (blindStructureData?.currentLevel?.isBreak || 
+                  blindStructureData?.currentLevel?.specialAction === 'REG_CLOSE' || 
                   (currentSession.currentBlindLevel !== undefined && 
-                  blindStructureData?.levels?.findIndex(l => l.specialAction === 'REG_CLOSE') < currentSession.currentBlindLevel) ? (
-                // Registration is closed, show payout structure
+                  blindStructureData?.levels?.findIndex(l => l.specialAction === 'REG_CLOSE') < currentSession.currentBlindLevel)) ? (
+                // Show payout structure during breaks or after registration closes
                 payoutStructure ? (
                   <>
                     <div className="mb-2 text-center text-sm text-muted-foreground">
@@ -651,7 +652,7 @@ export default function Status() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Position</TableHead>
+                            <TableHead>Place</TableHead>
                             <TableHead>Percentage</TableHead>
                             <TableHead>Payout</TableHead>
                           </TableRow>
@@ -682,9 +683,9 @@ export default function Status() {
                   <p className="text-center text-muted-foreground">No payout structure information available</p>
                 )
               ) : (
-                // Registration is still open
+                // Registration is still open and not in a break
                 <div className="text-center py-4">
-                  <p className="text-muted-foreground">Payouts will be posted after registration closes.</p>
+                  <p className="text-muted-foreground">Payouts will be displayed during breaks or after registration closes.</p>
                   {isAdmin && (
                     <div className="mt-2">
                       <Link href="/structure" className="text-sm text-primary hover:underline inline-flex items-center">
