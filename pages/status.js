@@ -521,7 +521,9 @@ export default function Status() {
                     return (
                       <div className="border rounded-md overflow-hidden">
                         <ul className="divide-y">
-                          {payoutSlots.map((slot) => (
+                          {payoutSlots
+                            .sort((a, b) => a.position - b.position) // Sort by position so 1st place is at the top
+                            .map((slot) => (
                             <li key={`place-${slot.position}`} className="p-3 flex items-center justify-between">
                               {/* Left side - Place and player info */}
                               <div className="flex items-center space-x-3">
