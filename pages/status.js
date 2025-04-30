@@ -309,38 +309,62 @@ export default function Status() {
     return null;
   };
 
-  // Add this function to manage player status transitions
+  // Update player status
   const updatePlayerStatus = async (registrationId, newStatus, isRebuy = false) => {
     if (!isAdmin) return;
     
     try {
-      const response = await fetch('/api/player-status', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          registrationId,
-          newStatus,
-          isRebuy
-        }),
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Status Updated",
-          description: `Player has been moved to ${newStatus.toLowerCase()}`,
+      // For moving to waitlist, we need a different endpoint
+      if (newStatus === 'WAITLIST') {
+        const response = await fetch(`/api/registration/${registrationId}/waitlist`, {
+          method: 'POST',
         });
         
-        // Refresh the session data
-        const updatedResponse = await fetch('/api/session-status');
-        const updatedData = await updatedResponse.json();
-        setSessionData(updatedData);
-        
-        return true;
+        if (response.ok) {
+          toast({
+            title: "Status Updated",
+            description: "Player has been moved to waitlist",
+          });
+          
+          // Refresh the session data
+          const updatedResponse = await fetch('/api/session-status');
+          const updatedData = await updatedResponse.json();
+          setSessionData(updatedData);
+          
+          return true;
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to move player to waitlist");
+        }
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update player status");
+        const response = await fetch('/api/player-status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId,
+            newStatus,
+            isRebuy
+          }),
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Status Updated",
+            description: `Player has been moved to ${newStatus.toLowerCase()}`,
+          });
+          
+          // Refresh the session data
+          const updatedResponse = await fetch('/api/session-status');
+          const updatedData = await updatedResponse.json();
+          setSessionData(updatedData);
+          
+          return true;
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to update player status");
+        }
       }
     } catch (err) {
       toast({
@@ -352,50 +376,7 @@ export default function Status() {
     }
   };
 
-  // Add this function to move all players from one status to another
-  const batchUpdatePlayerStatuses = async (fromStatus, toStatus) => {
-    if (!isAdmin || !sessionData.exists) return;
-    
-    try {
-      const response = await fetch('/api/player-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId: sessionData.session.id,
-          fromStatus,
-          toStatus
-        }),
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Status Updated",
-          description: `Players moved from ${fromStatus.toLowerCase()} to ${toStatus.toLowerCase()}`,
-        });
-        
-        // Refresh the session data
-        const updatedResponse = await fetch('/api/session-status');
-        const updatedData = await updatedResponse.json();
-        setSessionData(updatedData);
-        
-        return true;
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update player statuses");
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err.message || "An error occurred while updating player statuses",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  // Enhance the PlayerList component to handle player management
+  // Enhance the PlayerList component to display rebuy count
   const PlayerList = ({ players, title, emptyMessage, colorClass, actions = [] }) => {
     if (!players || players.length === 0) {
       return (
@@ -405,6 +386,14 @@ export default function Status() {
         </div>
       );
     }
+    
+    // Count rebuys by user
+    const rebuyCountByUser = players.reduce((counts, reg) => {
+      if (reg.isRebuy) {
+        counts[reg.userId] = (counts[reg.userId] || 0) + 1;
+      }
+      return counts;
+    }, {});
 
     return (
       <div className="mt-4">
@@ -422,9 +411,16 @@ export default function Status() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{registration.user.name}</p>
-                    {registration.isRebuy && (
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Rebuy</span>
-                    )}
+                    <div className="flex space-x-2">
+                      {registration.isRebuy && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Rebuy</span>
+                      )}
+                      {rebuyCountByUser[registration.user.id] > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                          {rebuyCountByUser[registration.user.id]} {rebuyCountByUser[registration.user.id] === 1 ? 'rebuy' : 'rebuys'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {isAdmin && (
@@ -635,9 +631,11 @@ export default function Status() {
                   {/* Timer Display */}
                   <div className="text-center mb-6">
                     <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Level {blindStructureData.currentLevel?.level || 1}
-                    </div>
+                    {blindStructureData.currentLevel?.isBreak ? null : (
+                      <div className="text-sm text-muted-foreground">
+                        Level {blindStructureData.currentLevel?.level || 1}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="text-center mb-4">
@@ -849,68 +847,6 @@ export default function Status() {
             <div className="border-t pt-4">
               <h3 className="font-medium text-lg mb-3">Participants</h3>
               
-              {isTournament && isActive && (
-                <div className="flex flex-wrap justify-center gap-2 mb-4">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => batchUpdatePlayerStatuses('REGISTERED', 'CURRENT')}
-                    disabled={currentSession.registrations.registered.length === 0}
-                  >
-                    Move All Registered → Current
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        "Are you sure? This will move all players from Current to Eliminated."
-                      );
-                      if (confirmed) batchUpdatePlayerStatuses('CURRENT', 'ELIMINATED');
-                    }}
-                    disabled={currentSession.registrations.current.length === 0}
-                  >
-                    Move All Current → Eliminated
-                  </Button>
-                  {currentSession.registrations.waitlisted.length > 0 && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => {
-                        const confirmed = window.confirm(
-                          "Are you sure? This will move all players from Waitlist to Registered."
-                        );
-                        if (confirmed) {
-                          fetch(`/api/registration/move-waitlist?sessionId=${currentSession.id}`, {
-                            method: 'POST'
-                          })
-                          .then(res => res.json())
-                          .then(data => {
-                            if (data.success) {
-                              toast({
-                                title: "Waitlist Processed",
-                                description: `${data.movedCount} players moved from waitlist to registered.`
-                              });
-                              // Refresh data
-                              fetchSessionData();
-                            }
-                          })
-                          .catch(err => {
-                            toast({
-                              title: "Error",
-                              description: "Failed to process waitlist",
-                              variant: "destructive"
-                            });
-                          });
-                        }
-                      }}
-                    >
-                      Move All Waitlist → Registered
-                    </Button>
-                  )}
-                </div>
-              )}
-              
               <PlayerList 
                 players={currentSession.registrations.current}
                 title="Current Players"
@@ -922,6 +858,12 @@ export default function Status() {
                     variant: "outline",
                     title: "Move player to eliminated",
                     onClick: (registration) => updatePlayerStatus(registration.id, 'ELIMINATED')
+                  },
+                  {
+                    label: "Waitlist",
+                    variant: "outline",
+                    title: "Move player to waitlist",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
                   },
                   isTournament ? {
                     label: "Rebuy",
@@ -964,30 +906,15 @@ export default function Status() {
               />
               
               <PlayerList 
-                players={currentSession.registrations.registered}
-                title="Registered Players"
-                emptyMessage="No players waiting to be seated"
-                colorClass="bg-blue-100 text-blue-800"
-                actions={[
-                  {
-                    label: "Seat",
-                    variant: "default",
-                    title: "Move player to current (seated at table)",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'CURRENT')
-                  }
-                ]}
-              />
-              
-              <PlayerList 
                 players={currentSession.registrations.waitlisted}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
                 colorClass="bg-yellow-100 text-yellow-800"
                 actions={[
                   {
-                    label: "Register",
+                    label: "Seat",
                     variant: "default",
-                    title: "Move player from waitlist to registered",
+                    title: "Move player from waitlist to current",
                     onClick: (registration) => {
                       fetch(`/api/registration/${registration.id}/confirm`, {
                         method: 'POST'
@@ -995,12 +922,12 @@ export default function Status() {
                       .then(res => res.json())
                       .then(data => {
                         if (data.success) {
+                          // Move to current immediately instead of registered
+                          updatePlayerStatus(registration.id, 'CURRENT');
                           toast({
-                            title: "Player Registered",
-                            description: `${registration.user.name} has been moved from waitlist to registered.`
+                            title: "Player Seated",
+                            description: `${registration.user.name} has been moved to current players.`
                           });
-                          // Refresh data
-                          fetchSessionData();
                         }
                       })
                       .catch(err => {

@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export default async function handler(req, res) {
   const session = await getServerSession(req, res, authOptions);
   
-  // Only admins can confirm waitlisted players
+  // Only admins can move players to waitlist
   if (!session || session.role !== 'ADMIN') {
     return res.status(403).json({ 
       success: false, 
@@ -46,59 +46,32 @@ export default async function handler(req, res) {
       });
     }
     
-    // Ensure the registration is waitlisted
-    if (registration.status !== 'WAITLISTED') {
+    // Ensure the registration is confirmed and current
+    if (registration.status !== 'CONFIRMED' || registration.playerStatus !== 'CURRENT') {
       return res.status(400).json({ 
         success: false, 
-        message: 'Registration is not in waitlist status' 
+        message: 'Player is not currently active' 
       });
     }
     
-    // Update the registration status to CONFIRMED and player status to CURRENT
+    // Update the registration status to WAITLISTED
     await prisma.registration.update({
       where: { id },
       data: {
-        status: 'CONFIRMED',
-        playerStatus: 'CURRENT' // Move directly to CURRENT
+        status: 'WAITLISTED'
       }
     });
-    
-    // If this is a tournament, update the entries count
-    if (registration.session.type === 'TOURNAMENT') {
-      // Check if this is the first time this player is at the table (not a rebuy)
-      const existingEntries = await prisma.registration.count({
-        where: {
-          sessionId: registration.sessionId,
-          userId: registration.userId,
-          status: 'CONFIRMED',
-          playerStatus: 'CURRENT',
-          isRebuy: false
-        }
-      });
-      
-      // If this is their first entry, increment the total entries
-      if (existingEntries === 0) {
-        await prisma.pokerSession.update({
-          where: { id: registration.sessionId },
-          data: {
-            entries: {
-              increment: 1
-            }
-          }
-        });
-      }
-    }
     
     return res.status(200).json({
       success: true,
-      message: 'Player moved from waitlist to current successfully'
+      message: 'Player moved to waitlist successfully'
     });
     
   } catch (error) {
-    console.error('Error confirming waitlisted player:', error);
+    console.error('Error moving player to waitlist:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Failed to confirm waitlisted player',
+      message: 'Failed to move player to waitlist',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

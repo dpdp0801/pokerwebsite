@@ -93,8 +93,46 @@ export default async function handler(req, res) {
             data: updateData
           });
 
-          // No need to update registrations since their relation to the session
-          // means they'll be filtered differently in the profile page based on session status
+          // Automatically move all REGISTERED players to CURRENT
+          if (pokerSession.type === "TOURNAMENT") {
+            // Find all confirmed registered players
+            const registeredPlayers = await prisma.registration.findMany({
+              where: {
+                sessionId: sessionId,
+                status: 'CONFIRMED',
+                playerStatus: 'REGISTERED'
+              }
+            });
+            
+            console.log(`Moving ${registeredPlayers.length} registered players to current status`);
+            
+            // Update all of them to CURRENT
+            if (registeredPlayers.length > 0) {
+              await prisma.registration.updateMany({
+                where: {
+                  sessionId: sessionId,
+                  status: 'CONFIRMED',
+                  playerStatus: 'REGISTERED'
+                },
+                data: {
+                  playerStatus: 'CURRENT'
+                }
+              });
+              
+              // Update entries count based on unique players (not rebuys)
+              const uniquePlayerCount = new Set(registeredPlayers.map(reg => reg.userId)).size;
+              console.log(`Setting initial entries to ${uniquePlayerCount} unique players`);
+              
+              await prisma.pokerSession.update({
+                where: {
+                  id: sessionId
+                },
+                data: {
+                  entries: uniquePlayerCount
+                }
+              });
+            }
+          }
         });
 
         return res.status(200).json({
