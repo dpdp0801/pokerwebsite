@@ -408,6 +408,41 @@ export default function Status() {
                     </Button>
                   )}
                 </div>
+                
+                {/* Debug Tools - Only visible to admins */}
+                <div className="mt-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-xs text-muted-foreground">Debug Tools</h4>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-xs"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/debug-session');
+                          if (res.ok) {
+                            const data = await res.json();
+                            toast.success("Debug data saved. Check console.");
+                            console.log("Session Debug Data:", data);
+                            // Open the debug data in a new tab
+                            window.open(`/debug/session-debug.json`, '_blank');
+                          } else {
+                            toast.error("Failed to save debug data");
+                          }
+                        } catch (error) {
+                          console.error("Debug error:", error);
+                          toast.error("Error generating debug data");
+                        }
+                      }}
+                    >
+                      Debug Session Data
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <p>waitlisted: {JSON.stringify(currentSession.registrations.waitlisted?.length)}</p>
+                    <p>waitlist: {JSON.stringify(currentSession.registrations.waitlist?.length)}</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

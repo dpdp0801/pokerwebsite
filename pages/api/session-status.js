@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     const groupedRegistrations = {
       current: [],
       eliminated: [],
-      waitlisted: [],
+      waitlist: [],
       inTheMoney: []
     };
     
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
       // Check for waitlisted players first - prioritize this check
       if (registration.status === 'WAITLISTED' || registration.playerStatus === 'WAITLISTED') {
         console.log(`→ Adding to WAITLIST: ${registration.user?.name}`);
-        groupedRegistrations.waitlisted.push(registration);
+        groupedRegistrations.waitlist.push(registration);
       } else if (registration.status === 'ELIMINATED' || registration.playerStatus === 'ELIMINATED') {
         console.log(`→ Adding to ELIMINATED: ${registration.user?.name}`);
         groupedRegistrations.eliminated.push(registration);
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
     });
     
     // Log group counts for debugging
-    console.log(`Grouped: Current: ${groupedRegistrations.current.length}, Waitlisted: ${groupedRegistrations.waitlisted.length}, Eliminated: ${groupedRegistrations.eliminated.length}, ITM: ${groupedRegistrations.inTheMoney.length}`);
+    console.log(`Grouped: Current: ${groupedRegistrations.current.length}, Waitlisted: ${groupedRegistrations.waitlist.length}, Eliminated: ${groupedRegistrations.eliminated.length}, ITM: ${groupedRegistrations.inTheMoney.length}`);
     
     // Format response
     const response = {
@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       session: {
         ...activeSession,
         currentPlayersCount: groupedRegistrations.current.length,
-        waitlistedPlayersCount: groupedRegistrations.waitlisted.length,
+        waitlistedPlayersCount: groupedRegistrations.waitlist.length,
         eliminatedPlayersCount: groupedRegistrations.eliminated.length,
         itmPlayersCount: groupedRegistrations.inTheMoney.length,
         totalEntries: activeSession.entries || 0,

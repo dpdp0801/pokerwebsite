@@ -37,7 +37,7 @@ export default function useSessionData() {
               // This prevents unnecessary re-renders
               registrations: {
                 current: data.session.registrations.current,
-                waitlisted: data.session.registrations.waitlisted,
+                waitlist: data.session.registrations.waitlist,
                 eliminated: data.session.registrations.eliminated,
                 inTheMoney: data.session.registrations.inTheMoney
               }
