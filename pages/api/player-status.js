@@ -77,6 +77,8 @@ export default async function handler(req, res) {
           }
         });
         
+        console.log(`Successfully incremented rebuys for registration ${registrationId}`);
+        
         // Update session entries count
         await prisma.pokerSession.update({
           where: { id: sessionId },
@@ -87,9 +89,12 @@ export default async function handler(req, res) {
           }
         });
         
+        console.log(`Successfully incremented session entries count for session ${sessionId}`);
+        
         return res.status(200).json({ 
           success: true, 
-          message: "Buy-in count incremented successfully" 
+          message: "Buy-in count incremented successfully",
+          newRebuyCount: (registration.rebuys || 0) + 1
         });
       } catch (error) {
         console.error("Error updating session entries:", error);

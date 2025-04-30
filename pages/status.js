@@ -685,9 +685,9 @@ export default function Status() {
                     {isAdmin && registration.user.venmoId && (
                       <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
                     )}
-                    {registration.rebuys > 0 && (
+                    {(registration.rebuys !== undefined && registration.rebuys >= 0) && (
                       <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                        {registration.rebuys} {registration.rebuys === 1 ? 'buy-in' : 'buy-ins'}
+                        {registration.rebuys + 1} {registration.rebuys === 0 ? 'buy-in' : 'buy-ins'}
                       </span>
                     )}
                   </div>
@@ -816,6 +816,8 @@ export default function Status() {
         // Disable buy-in button to prevent double clicks
         setIsSubmitting(true);
         
+        console.log(`Sending rebuy request for registration ${registration.id}`);
+        
         const response = await fetch('/api/player-status', {
           method: 'PUT',
           headers: {
@@ -823,8 +825,6 @@ export default function Status() {
           },
           body: JSON.stringify({
             registrationId: registration.id,
-            newStatus: 'CURRENT',
-            playerStatus: 'CURRENT',
             isRebuy: true
           }),
         });
@@ -833,20 +833,33 @@ export default function Status() {
         
         if (response.ok) {
           console.log("Rebuy processed successfully:", result);
+          toast({
+            title: "Rebuy Processed",
+            description: `Processed rebuy for ${registration.user.name}`,
+          });
+          
           // Give database more time to process the rebuy
           setTimeout(async () => {
+            console.log("Refreshing session data after rebuy");
             await fetchSessionData();
             setIsSubmitting(false);
-          }, 500);
-          toast.success(`Processed rebuy for ${registration.user.name}`);
+          }, 1000);
         } else {
           console.error("Error processing rebuy:", result);
-          toast.error(`Failed to process rebuy: ${result.message || 'Unknown error'}`);
+          toast({
+            title: "Error",
+            description: `Failed to process rebuy: ${result.message || 'Unknown error'}`,
+            variant: "destructive",
+          });
           setIsSubmitting(false);
         }
       } catch (error) {
         console.error("Exception in handleBuyIn:", error);
-        toast.error(`Error: ${error.message || 'Unknown error'}`);
+        toast({
+          title: "Error",
+          description: `Error: ${error.message || 'Unknown error'}`,
+          variant: "destructive",
+        });
         setIsSubmitting(false);
       }
     }
