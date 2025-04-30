@@ -147,6 +147,11 @@ export default function Status() {
       // Start a new interval
       const interval = setInterval(() => {
         setTimer(prevTimer => {
+          // If we're already at 0:00, don't update the timer - stay at 0:00
+          if (prevTimer.minutes === 0 && prevTimer.seconds === 0) {
+            return prevTimer;
+          }
+          
           // Calculate new time
           let newSeconds = prevTimer.seconds - 1;
           let newMinutes = prevTimer.minutes;
@@ -1282,10 +1287,22 @@ export default function Status() {
                 emptyMessage="No eliminated players"
                 colorClass="bg-red-100 text-red-800"
                 actions={[
+                  {
+                    label: "Seat",
+                    variant: "default",
+                    title: "Move player from eliminated to current",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'CURRENT')
+                  },
+                  {
+                    label: "Waitlist",
+                    variant: "outline",
+                    title: "Move player to waitlist",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
+                  },
                   isTournament ? {
                     label: "Buy-in",
                     variant: "default",
-                    title: "Process a buy-in for this player",
+                    title: "Process a rebuy for this player",
                     onClick: handleBuyIn
                   } : null
                 ].filter(Boolean)}
