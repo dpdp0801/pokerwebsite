@@ -1154,7 +1154,7 @@ export default function Status() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="w-1/3">Percentage</TableHead>
+                            <TableHead className="w-1/3">Place</TableHead>
                             {(payoutStructure.tiers || []).map((tier) => (
                               <TableHead key={tier.id} className="text-center">
                                 {tier.position}

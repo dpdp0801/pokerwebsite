@@ -15,24 +15,29 @@ export default async function handler(req, res) {
     
     // GET request - fetch user settings
     if (req.method === "GET") {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          name: true,
-          venmoId: true,
-          emailNotifications: true
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            name: true,
+            venmoId: true
+          }
+        });
+        
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
         }
-      });
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        
+        console.log("Retrieved user settings:", user);
+        
+        return res.status(200).json({
+          name: user.name || "",
+          venmoId: user.venmoId || ""
+        });
+      } catch (error) {
+        console.error("Error fetching user settings:", error);
+        return res.status(500).json({ message: "Error fetching user settings", error: error.message });
       }
-      
-      return res.status(200).json({
-        name: user.name || "",
-        venmoId: user.venmoId || "",
-        emailNotifications: user.emailNotifications !== null ? user.emailNotifications : true
-      });
     }
     
     // PUT request - update user settings
@@ -66,8 +71,7 @@ export default async function handler(req, res) {
         
         return res.status(200).json({
           name: updatedUser.name || "",
-          venmoId: updatedUser.venmoId || "",
-          emailNotifications: updatedUser.emailNotifications !== null ? updatedUser.emailNotifications : true
+          venmoId: updatedUser.venmoId || ""
         });
       } catch (dbError) {
         console.error("Database error updating user:", dbError);

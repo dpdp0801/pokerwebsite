@@ -47,21 +47,31 @@ export default function Settings() {
   const fetchUserSettings = async () => {
     try {
       setLoading(true);
+      console.log("Fetching user settings from API");
       const response = await fetch('/api/user/settings');
       
       if (response.ok) {
         const data = await response.json();
+        console.log("Received settings from API:", data);
         
         // If venmoId is empty, this might be a new user
         if (!data.venmoId) {
           setIsNewUser(true);
         }
         
-        setSettings(prev => ({
-          ...prev,
-          name: data.name || session?.user?.name || '',
+        // Always use the API data to override session data
+        setSettings({
+          name: data.name || '',
           venmoId: data.venmoId || '',
-        }));
+        });
+      } else {
+        const error = await response.json();
+        console.error("Error response from settings API:", error);
+        // Fall back to session data if API fails
+        setSettings({
+          name: session?.user?.name || '',
+          venmoId: session?.user?.venmoId || '',
+        });
       }
     } catch (error) {
       console.error('Error fetching user settings:', error);

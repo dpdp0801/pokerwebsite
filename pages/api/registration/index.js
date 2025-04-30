@@ -126,29 +126,6 @@ export default async function handler(req, res) {
         },
       });
       
-      // If this is a confirmed registration and the session is active,
-      // update the session's player counts but NOT entries (entries only updated on buy-in)
-      if (status === "CONFIRMED" && pokerSession.status === "ACTIVE") {
-        await prisma.pokerSession.update({
-          where: { id: sessionId },
-          data: {
-            currentPlayersCount: {
-              increment: 1
-            }
-            // No longer increment entries here since that's handled by buy-in
-          }
-        });
-      } else if (status === "WAITLISTED") {
-        await prisma.pokerSession.update({
-          where: { id: sessionId },
-          data: {
-            waitlistedPlayersCount: {
-              increment: 1
-            }
-          }
-        });
-      }
-
       return res.status(201).json({
         ...registration,
         wouldBeWaitlisted: isWaitlisted

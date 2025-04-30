@@ -71,14 +71,7 @@ export default async function handler(req, res) {
       
       // If player isn't already CURRENT, we need to update their status
       if (normalizedCurrentStatus !== "CURRENT") {
-        // Decrement counter for old status
-        if (normalizedCurrentStatus === "WAITLISTED") {
-          sessionUpdateData.waitlistCount = { decrement: 1 };
-        } else if (normalizedCurrentStatus === "ELIMINATED") {
-          // There's no counter for eliminated in the actual schema
-        } else if (normalizedCurrentStatus === "ITM") {
-          // There's no counter for ITM in the actual schema
-        }
+        // No specific counters maintained for WAITLISTED/ELIMINATED/ITM in the session table anymore
         
         // Increment current player count if it exists
         try {
@@ -120,9 +113,10 @@ export default async function handler(req, res) {
           data: {
             userId: registration.userId,
             sessionId: registration.sessionId,
-            status: "CURRENT",
-            isRebuy: true,
-            entryType: registration.entryType || "NORMAL"
+            buyInAmount: registration.buyInAmount, // reuse original buy-in amount
+            status: "CONFIRMED",
+            playerStatus: "CURRENT",
+            isRebuy: true
           }
         });
       } catch (error) {
