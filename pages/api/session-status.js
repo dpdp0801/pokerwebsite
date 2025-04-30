@@ -29,6 +29,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ exists: false });
     }
     
+    console.log(`Found active session: ${activeSession.title}`);
+    
     // Get all registrations for this session, including rebuys
     const registrations = await prisma.registration.findMany({
       where: {
@@ -50,6 +52,8 @@ export default async function handler(req, res) {
       }
     });
     
+    console.log(`Found ${registrations.length} registrations`);
+    
     // Group registrations by status
     const groupedRegistrations = {
       current: [],
@@ -59,7 +63,10 @@ export default async function handler(req, res) {
     };
     
     registrations.forEach(registration => {
-      if (registration.status === 'WAITLIST') {
+      // Log each registration for debugging
+      console.log(`Registration: ${registration.id}, Status: ${registration.status}, User: ${registration.user?.name}`);
+      
+      if (registration.status === 'WAITLISTED') {
         groupedRegistrations.waitlisted.push(registration);
       } else if (registration.status === 'CURRENT') {
         groupedRegistrations.current.push(registration);
@@ -68,8 +75,10 @@ export default async function handler(req, res) {
       } else if (registration.status === 'ITM') {
         groupedRegistrations.inTheMoney.push(registration);
       } else if (registration.status === 'CONFIRMED' || registration.status === 'REGISTERED') {
-        // For initial loading, move REGISTERED players to CURRENT if session is ACTIVE
+        // For initial loading, move CONFIRMED or REGISTERED players to CURRENT if session is ACTIVE
         if (activeSession.status === 'ACTIVE') {
+          // Only send a copy with updated status for display
+          // The actual database remains CONFIRMED/REGISTERED
           groupedRegistrations.current.push({
             ...registration,
             status: 'CURRENT'
@@ -86,15 +95,6 @@ export default async function handler(req, res) {
       userRegistration = registrations.find(reg => reg.userId === session.user.id);
     }
     
-    // Update counts
-    const currentPlayersCount = groupedRegistrations.current.length;
-    const waitlistedPlayersCount = groupedRegistrations.waitlisted.length;
-    const eliminatedPlayersCount = groupedRegistrations.eliminated.length;
-    const itmPlayersCount = groupedRegistrations.inTheMoney.length;
-    const registeredPlayersCount = registrations.filter(r => 
-      r.status === 'CONFIRMED' || r.status === 'REGISTERED' || r.status === 'CURRENT'
-    ).length;
-    
     // Count unique players (not counting rebuys)
     const uniquePlayerIds = new Set();
     registrations.forEach(reg => {
@@ -103,20 +103,19 @@ export default async function handler(req, res) {
       }
     });
     
-    // Don't try to update the session directly - these fields don't exist in the schema
-    // Just use the calculated values in the response
+    // Log group counts for debugging
+    console.log(`Grouped: Current: ${groupedRegistrations.current.length}, Waitlisted: ${groupedRegistrations.waitlisted.length}, Eliminated: ${groupedRegistrations.eliminated.length}, ITM: ${groupedRegistrations.inTheMoney.length}`);
     
     // Format response
     const response = {
       exists: true,
       session: {
         ...activeSession,
-        currentPlayersCount: uniquePlayerIds.size,
-        waitlistedPlayersCount: waitlistedPlayersCount,
-        eliminatedPlayersCount: eliminatedPlayersCount,
-        itmPlayersCount: itmPlayersCount,
-        registeredPlayersCount: registeredPlayersCount,
-        totalEntries: activeSession.totalEntries || activeSession.entries || 0,
+        currentPlayersCount: groupedRegistrations.current.length,
+        waitlistedPlayersCount: groupedRegistrations.waitlisted.length,
+        eliminatedPlayersCount: groupedRegistrations.eliminated.length,
+        itmPlayersCount: groupedRegistrations.inTheMoney.length,
+        totalEntries: activeSession.entries || 0,
         registrations: groupedRegistrations,
         userRegistration: userRegistration,
         registrationClosed: activeSession.registrationClosed || false
@@ -126,6 +125,6 @@ export default async function handler(req, res) {
     return res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching session status:", error);
-    return res.status(500).json({ error: "Failed to fetch session status" });
+    return res.status(500).json({ error: "Failed to fetch session status", message: error.message });
   }
 } 

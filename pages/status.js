@@ -418,8 +418,17 @@ export default function Status() {
     try {
       // For moving to waitlist, we need a different endpoint
       if (newStatus === 'WAITLIST') {
-        const response = await fetch(`/api/registration/${registrationId}/waitlist`, {
-          method: 'POST',
+        // The API expects WAITLISTED not WAITLIST
+        const response = await fetch(`/api/player-status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId,
+            newStatus: 'WAITLISTED',  // Change to match expected API value
+            isRebuy: false
+          }),
         });
         
         if (response.ok) {
@@ -429,28 +438,52 @@ export default function Status() {
           });
           
           // Refresh the session data
-          const updatedResponse = await fetch('/api/session-status');
-          const updatedData = await updatedResponse.json();
-          setSessionData(updatedData);
-          
+          await fetchSessionData();
           return true;
         } else {
           const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to move player to waitlist");
+          console.error("Error moving to waitlist:", errorData);
+          toast({
+            title: "Error",
+            description: errorData.message || "Failed to move player to waitlist",
+            variant: "destructive"
+          });
+          return false;
+        }
+      } else if (newStatus === 'ELIMINATED') {
+        const response = await fetch('/api/player-status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId,
+            newStatus,
+            isRebuy
+          }),
+        });
+        
+        if (response.ok) {
+          toast({
+            title: "Status Updated",
+            description: "Player has been eliminated",
+          });
+          
+          // Refresh the session data
+          await fetchSessionData();
+          return true;
+        } else {
+          const errorData = await response.json();
+          console.error("Error eliminating player:", errorData);
+          toast({
+            title: "Error",
+            description: errorData.message || "Failed to eliminate player",
+            variant: "destructive"
+          });
+          return false;
         }
       } else {
-        // We need to check if this is an elimination and if we should move to ITM instead
-        if (newStatus === 'ELIMINATED' && !isRebuy) {
-          // If we have payout structure and this would be an ITM player
-          const payoutPlaces = payoutStructure?.tiers?.length || 0;
-          
-          // If current players count equals payout places + 1, the next elimination goes to ITM
-          if (payoutPlaces > 0 && 
-              currentSession.registrations.current.length === payoutPlaces + 1) {
-            newStatus = 'ITM';
-          }
-        }
-        
+        // For other status changes use the standard endpoint
         const response = await fetch('/api/player-status', {
           method: 'PUT',
           headers: {
@@ -470,17 +503,21 @@ export default function Status() {
           });
           
           // Refresh the session data
-          const updatedResponse = await fetch('/api/session-status');
-          const updatedData = await updatedResponse.json();
-          setSessionData(updatedData);
-          
+          await fetchSessionData();
           return true;
         } else {
           const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to update player status");
+          console.error("Error updating status:", errorData);
+          toast({
+            title: "Error",
+            description: errorData.message || "Failed to update player status",
+            variant: "destructive"
+          });
+          return false;
         }
       }
     } catch (err) {
+      console.error("Exception in updatePlayerStatus:", err);
       toast({
         title: "Error",
         description: err.message || "An error occurred while updating the player status",
@@ -688,25 +725,37 @@ export default function Status() {
   };
 
   const handleBuyIn = async (registration) => {
+    if (!isAdmin) return;
+    
+    console.log(`Attempting rebuy for: ${registration.user.name}, ID: ${registration.id}`);
+    
     if (confirm(`Confirm rebuy for ${registration.user.name}?`)) {
-      const response = await fetch('/api/player-status', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          registrationId: registration.id,
-          newStatus: 'CURRENT',
-          isRebuy: true
-        }),
-      });
+      try {
+        const response = await fetch('/api/player-status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            registrationId: registration.id,
+            newStatus: 'CURRENT',
+            isRebuy: true
+          }),
+        });
 
-      if (response.ok) {
-        await fetchSessionData();
-        toast.success(`Processed rebuy for ${registration.user.name}`);
-      } else {
-        const errorData = await response.json();
-        toast.error(`Failed to process rebuy: ${errorData.message || 'Unknown error'}`);
+        const result = await response.json();
+        
+        if (response.ok) {
+          console.log("Rebuy processed successfully:", result);
+          await fetchSessionData();
+          toast.success(`Processed rebuy for ${registration.user.name}`);
+        } else {
+          console.error("Error processing rebuy:", result);
+          toast.error(`Failed to process rebuy: ${result.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error("Exception in handleBuyIn:", error);
+        toast.error(`Error: ${error.message || 'Unknown error'}`);
       }
     }
   };
