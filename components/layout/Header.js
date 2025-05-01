@@ -20,28 +20,37 @@ export default function Header() {
   
   // Handle new user redirect
   useEffect(() => {
-    // More robust check for new users:
-    // 1. Check for session.newUser flag (set by auth-options.js)
-    // 2. Check if user exists but lacks required profile data (venmoId)
+    // If we have a session, check if user needs to complete their profile
     if (session) {
-      // Check if explicitly marked as new user
-      const isNewUser = session.newUser === true;
+      console.log('Checking if user needs profile completion', {
+        newUser: session.newUser,
+        firstName: session.user?.firstName,
+        lastName: session.user?.lastName,
+        venmoId: session.user?.venmoId,
+        pathname: router.pathname
+      });
       
-      // Check if user is missing BOTH firstName/lastName AND venmoId
-      // This is more lenient than the previous check
-      const missingCriticalData = 
-        !session.user?.venmoId && 
-        (!session.user?.firstName || !session.user?.lastName);
+      // Definite case: session explicitly marked as new
+      if (session.newUser === true) {
+        console.log('New user flag detected, redirecting to settings');
+        if (router.pathname !== '/settings') {
+          router.push('/settings?new=true');
+        }
+        return;
+      }
       
-      // Redirect if new user flag is set OR if critical data is missing
-      // and we're not already on the settings page
-      if ((isNewUser || missingCriticalData) && router.pathname !== '/settings') {
-        console.log('Redirecting user to settings', { 
-          isNewUser, 
-          missingCriticalData,
-          firstName: session.user?.firstName,
-          lastName: session.user?.lastName,
-          venmoId: session.user?.venmoId
+      // Fallback: check profile data
+      // We'll be more strict here - if ANY of these are missing, redirect
+      const missingProfileData = 
+        !session.user?.venmoId || 
+        !session.user?.firstName || 
+        !session.user?.lastName;
+        
+      if (missingProfileData && router.pathname !== '/settings') {
+        console.log('Missing profile data detected, redirecting to settings', {
+          venmoId: !!session.user?.venmoId,
+          firstName: !!session.user?.firstName,
+          lastName: !!session.user?.lastName
         });
         router.push('/settings?new=true');
       }

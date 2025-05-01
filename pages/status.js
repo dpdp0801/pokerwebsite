@@ -123,7 +123,7 @@ export default function Status() {
 
   const { toast } = useToast();
         
-  // If active tournament, fetch blind structure and payout structure
+        // If active tournament, fetch blind structure and payout structure
   useEffect(() => {
     if (sessionData.exists && sessionData.session.type === 'TOURNAMENT' && sessionData.session.status === 'ACTIVE') {
       fetchBlindStructureIfNeeded(sessionData.session.id, sessionData.session.currentBlindLevel);
@@ -277,7 +277,7 @@ export default function Status() {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
                   {/* Close Registration Button */}
                   {!currentSession.registrationClosed && (
-                    <Button
+              <Button 
                       onClick={() => {
                         if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
                           stopRegistration(currentSession.id);
@@ -288,19 +288,19 @@ export default function Status() {
                       className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
                       Close Registration
-                    </Button>
-                  )}
-                </div>
-                
+              </Button>
+                    )}
+                  </div>
+                  
                 {/* Debug Tools - Only visible to admins */}
                 <div className="mt-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-xs text-muted-foreground">Debug Tools</h4>
-                    <Button 
+                          <Button 
                       variant="ghost" 
-                      size="sm"
+                            size="sm"
                       className="text-xs"
-                      onClick={async () => {
+                            onClick={async () => {
                         try {
                           const res = await fetch('/api/debug-session');
                           if (res.ok) {
@@ -319,14 +319,14 @@ export default function Status() {
                       }}
                     >
                       Debug Session Data
-                    </Button>
-                  </div>
+                          </Button>
+                        </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     <p>waitlisted: {JSON.stringify(currentSession.registrations.waitlisted?.length)}</p>
                     <p>waitlist: {JSON.stringify(currentSession.registrations.waitlist?.length)}</p>
                   </div>
-                </div>
-              </div>
+                          </div>
+                        </div>
             </div>
           )}
           
@@ -411,7 +411,7 @@ export default function Status() {
                             {/* Place number */}
                             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
                               {slot.position}
-                            </div>
+                </div>
                             
                             {slot.player ? (
                               <>
@@ -434,16 +434,16 @@ export default function Status() {
                                       {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
                                     </span>
                                   )}
-                                </div>
-                              </>
-                            ) : (
+                    </div>
+                  </>
+                ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
                                   : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                              </div>
-                            )}
-                          </div>
+                    </div>
+                  )}
+                </div>
                           
                           {/* Right side - Prize and action buttons */}
                           <div className="flex items-center">
@@ -475,20 +475,20 @@ export default function Status() {
           
           {/* Participants lists - shown to all users, but only admins see action buttons */}
           <div className="border-t pt-4 mt-6">
-            <h3 className="font-medium text-lg mb-3">Participants</h3>
-            
-            <PlayerList 
-              players={currentSession.registrations.current}
-              title="Current Players"
-              emptyMessage="No active players currently at the table"
-              colorClass="bg-green-100 text-green-800"
+              <h3 className="font-medium text-lg mb-3">Participants</h3>
+              
+              <PlayerList 
+                players={currentSession.registrations.current}
+                title="Current Players"
+                emptyMessage="No active players currently at the table"
+                colorClass="bg-green-100 text-green-800"
               isAdmin={isAdmin}
               removePlayer={isAdmin ? removePlayer : null}
               actions={isAdmin ? [
-                {
-                  label: "Eliminate",
-                  variant: "outline",
-                  title: "Move player to eliminated",
+                  {
+                    label: "Eliminate",
+                    variant: "outline",
+                    title: "Move player to eliminated",
                   onClick: (registration) => {
                     // Get payout positions from the payout structure
                     let payoutPositions = 0;
@@ -523,34 +523,34 @@ export default function Status() {
                       updatePlayerStatus(registration.id, 'ELIMINATED');
                     }
                   }
-                },
-                {
-                  label: "Waitlist",
-                  variant: "outline",
-                  title: "Move player to waitlist",
-                  onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
-                },
-                isTournament ? {
+                  },
+                  {
+                    label: "Waitlist",
+                    variant: "outline",
+                    title: "Move player to waitlist",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
+                  },
+                  isTournament ? {
                   label: "Buy-in",
-                  variant: "default",
+                    variant: "default",
                   title: "Process a buy-in for this player",
                   disabled: isSubmitting,
                   onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
-                } : null
+                  } : null
               ].filter(Boolean) : []}
-            />
-            
-            <PlayerList 
+              />
+              
+                <PlayerList 
               players={currentSession.registrations.waitlist}
-              title="Waitlist"
-              emptyMessage="No players on the waitlist"
-              colorClass="bg-yellow-100 text-yellow-800"
+                title="Waitlist"
+                emptyMessage="No players on the waitlist"
+                colorClass="bg-yellow-100 text-yellow-800"
               isAdmin={isAdmin}
               removePlayer={isAdmin ? removePlayer : null}
               actions={isAdmin ? [
-                {
-                  label: "Seat",
-                  variant: "default",
+                  {
+                    label: "Seat",
+                    variant: "default",
                   title: "Seat player from waitlist",
                   onClick: (registration) => seatFromWaitlist(registration.id)
                 }
