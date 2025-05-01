@@ -7,7 +7,8 @@
         "build": "prisma generate && next build",
         "start": "next start",
         "postinstall": "prisma generate",
-        "prisma:seed": "node prisma/seed.js"
+        "prisma:seed": "node prisma/seed.js",
+        "seed:structures": "node prisma/seed-structures.js"
     },
     "dependencies": {
         "@auth/prisma-adapter": "2.9.0",
