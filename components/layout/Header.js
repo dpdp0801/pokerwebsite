@@ -20,10 +20,23 @@ export default function Header() {
   
   // Handle new user redirect
   useEffect(() => {
-    // If the user is logged in and is marked as new
-    if (session && session.newUser) {
-      // Redirect to settings page with new user flag
-      router.push('/settings?new=true');
+    // More robust check for new users:
+    // 1. Check for session.newUser flag (set by auth-options.js)
+    // 2. Check if user exists but lacks required profile data (venmoId)
+    if (session) {
+      // Check if explicitly marked as new user
+      const isNewUser = session.newUser === true;
+      
+      // Check if user is missing required profile data
+      const missingProfileData = 
+        !session.user?.venmoId || 
+        (!session.user?.firstName && !session.user?.lastName);
+      
+      // Redirect if either condition is true, and we're not already on the settings page
+      if ((isNewUser || missingProfileData) && router.pathname !== '/settings') {
+        console.log('Redirecting new user to settings', { isNewUser, missingProfileData });
+        router.push('/settings?new=true');
+      }
     }
   }, [session, router]);
   
