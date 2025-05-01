@@ -3,115 +3,194 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useRouter } from 'next/router';
 
 export default function Info() {
   const [loading, setLoading] = useState(true);
   const [blindStructure, setBlindStructure] = useState(null);
   const [payoutStructures, setPayoutStructures] = useState([]);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
   const { data: session } = useSession();
-  const isAdmin = session?.role === "ADMIN";
+  const isAdmin = session?.user?.role === "ADMIN";
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setDebugInfo(null);
         
         // Fetch the blind structure
         console.log('Fetching blind structure data...');
-        const response = await fetch('/api/blinds/structure');
+        const debug = { 
+          blindStructure: { requestSent: true },
+          payoutStructures: {}
+        };
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('API Error:', errorData);
-          throw new Error(`Failed to load blind structure: ${errorData.message || 'Unknown error'}`);
-        }
-        
-        const data = await response.json();
-        console.log('Blind structure data received:', data);
-        
-        if (!data.structure) {
-          throw new Error('Invalid blind structure data: structure field is missing');
-        }
-
-        if (!Array.isArray(data.structure.levels)) {
-          throw new Error('Invalid blind structure data: levels array is missing');
-        }
-        
-        // Process the levels to assign display numbers and handle break descriptions
-        let regularLevelCount = 0;
-        let breakCount = 0;
-        const processedLevels = data.structure.levels.map(level => {
-          if (level.isBreak) {
-            breakCount++;
-            // Add special text based on which break it is
-            let specialDescription = '';
-            
-            if (level.specialAction) {
-              if (level.specialAction.includes('CHIP_UP_1S')) {
-                specialDescription += 'Chip up 1s\n';
-              }
-              if (level.specialAction.includes('CHIP_UP_5S')) {
-                specialDescription += 'Chip up 5s\n';
-              }
-              if (level.specialAction.includes('REG_CLOSE')) {
-                specialDescription += 'Registration Closes\n';
-              }
-            } else {
-              if (breakCount === 1) {
-                specialDescription = 'Chip up 1s';
-              } else if (breakCount === 2) {
-                specialDescription = 'Chip up 5s\nRegistration Closes';
-              }
+        try {
+          const response = await fetch('/api/blinds/structure');
+          debug.blindStructure.statusCode = response.status;
+          debug.blindStructure.statusText = response.statusText;
+          
+          if (!response.ok) {
+            let errorText = '';
+            try {
+              const errorData = await response.json();
+              debug.blindStructure.errorData = errorData;
+              errorText = errorData.message || 'Unknown error';
+            } catch (e) {
+              errorText = 'Failed to parse error response';
+              debug.blindStructure.parseError = e.message;
             }
-            
-            return { 
-              ...level, 
-              displayLevel: 'Break',
-              specialDescription
-            };
-          } else {
-            regularLevelCount++;
-            return { 
-              ...level, 
-              displayLevel: regularLevelCount,
-              specialDescription: ''
-            };
+            throw new Error(`Failed to load blind structure: ${errorText}`);
           }
-        });
-        
-        setBlindStructure({
-          ...data.structure,
-          levels: processedLevels
-        });
+          
+          const responseText = await response.text();
+          debug.blindStructure.responseText = responseText;
+          
+          let data;
+          try {
+            data = JSON.parse(responseText);
+            debug.blindStructure.dataParsed = true;
+          } catch (e) {
+            debug.blindStructure.parseError = e.message;
+            throw new Error(`Failed to parse blind structure data: ${e.message}`);
+          }
+          
+          debug.blindStructure.hasStructureField = !!data.structure;
+          
+          if (!data.structure) {
+            throw new Error('Invalid blind structure data: structure field is missing');
+          }
+
+          debug.blindStructure.hasLevelsArray = Array.isArray(data.structure.levels);
+          
+          if (!Array.isArray(data.structure.levels)) {
+            throw new Error('Invalid blind structure data: levels array is missing');
+          }
+          
+          debug.blindStructure.levelsCount = data.structure.levels.length;
+          
+          // Process the levels to assign display numbers and handle break descriptions
+          let regularLevelCount = 0;
+          let breakCount = 0;
+          const processedLevels = data.structure.levels.map(level => {
+            if (level.isBreak) {
+              breakCount++;
+              // Add special text based on which break it is
+              let specialDescription = '';
+              
+              if (level.specialAction) {
+                if (level.specialAction.includes('CHIP_UP_1S')) {
+                  specialDescription += 'Chip up 1s\n';
+                }
+                if (level.specialAction.includes('CHIP_UP_5S')) {
+                  specialDescription += 'Chip up 5s\n';
+                }
+                if (level.specialAction.includes('REG_CLOSE')) {
+                  specialDescription += 'Registration Closes\n';
+                }
+              } else {
+                if (breakCount === 1) {
+                  specialDescription = 'Chip up 1s';
+                } else if (breakCount === 2) {
+                  specialDescription = 'Chip up 5s\nRegistration Closes';
+                }
+              }
+              
+              return { 
+                ...level, 
+                displayLevel: level.breakName || 'Break',
+                specialDescription
+              };
+            } else {
+              regularLevelCount++;
+              return { 
+                ...level, 
+                displayLevel: regularLevelCount,
+                specialDescription: ''
+              };
+            }
+          });
+          
+          setBlindStructure({
+            ...data.structure,
+            levels: processedLevels
+          });
+        } catch (e) {
+          debug.blindStructure.error = e.message;
+          debug.blindStructure.stack = e.stack;
+          throw e;
+        }
         
         // Fetch all payout structures
+        debug.payoutStructures.requestSent = true;
         console.log('Fetching payout structures...');
-        const payoutResponse = await fetch('/api/payout-structures');
         
-        if (!payoutResponse.ok) {
-          const errorData = await payoutResponse.json();
-          throw new Error(`Failed to fetch payout structures: ${errorData.error || errorData.message || 'Unknown error'}`);
+        try {
+          const payoutResponse = await fetch('/api/payout-structures');
+          debug.payoutStructures.statusCode = payoutResponse.status;
+          debug.payoutStructures.statusText = payoutResponse.statusText;
+          
+          if (!payoutResponse.ok) {
+            let errorText = '';
+            try {
+              const errorData = await payoutResponse.json();
+              debug.payoutStructures.errorData = errorData;
+              errorText = errorData.error || errorData.message || 'Unknown error';
+            } catch (e) {
+              errorText = 'Failed to parse error response';
+              debug.payoutStructures.parseError = e.message;
+            }
+            throw new Error(`Failed to fetch payout structures: ${errorText}`);
+          }
+          
+          const payoutResponseText = await payoutResponse.text();
+          debug.payoutStructures.responseText = payoutResponseText;
+          
+          let payoutData;
+          try {
+            payoutData = JSON.parse(payoutResponseText);
+            debug.payoutStructures.dataParsed = true;
+          } catch (e) {
+            debug.payoutStructures.parseError = e.message;
+            throw new Error(`Failed to parse payout structures data: ${e.message}`);
+          }
+          
+          debug.payoutStructures.hasStructuresArray = Array.isArray(payoutData.structures);
+          
+          if (!payoutData.structures || !Array.isArray(payoutData.structures)) {
+            throw new Error('Invalid payout structure data: structures array is missing');
+          }
+          
+          debug.payoutStructures.structuresCount = payoutData.structures.length;
+          
+          setPayoutStructures(payoutData.structures);
+        } catch (e) {
+          debug.payoutStructures.error = e.message;
+          debug.payoutStructures.stack = e.stack;
+          // Don't throw here to display at least the blind structure if it loaded
+          console.error('Error fetching payout structures:', e);
         }
         
-        const payoutData = await payoutResponse.json();
-        console.log('Payout structures received:', payoutData);
-        
-        if (!payoutData.structures || !Array.isArray(payoutData.structures)) {
-          throw new Error('Invalid payout structure data: structures array is missing');
-        }
-        
-        setPayoutStructures(payoutData.structures);
       } catch (error) {
         console.error('Error fetching tournament structure data:', error);
         setError(`Failed to load tournament structure: ${error.message}`);
+        setDebugInfo(debug);
+        
+        // If we encountered an error loading data, redirect to static version
+        if (!isAdmin) {
+          console.log('Redirecting to static structure page...');
+          router.push('/structure');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [router, isAdmin]);
 
   if (loading) {
     return (
@@ -131,14 +210,26 @@ export default function Info() {
           <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
           <p>{error}</p>
           {isAdmin && (
-            <div className="mt-4 p-4 bg-gray-100 text-left rounded text-sm">
+            <div className="mt-4 p-4 bg-gray-100 text-left rounded text-sm overflow-auto max-h-96">
               <p className="font-bold">Admin Debug Information:</p>
               <p>Please check server logs for more details. Ensure that:</p>
-              <ul className="list-disc ml-5 mt-2">
+              <ul className="list-disc ml-5 mt-2 mb-4">
                 <li>The <code>/data</code> directory exists</li>
                 <li>The <code>/data/blindStructure.json</code> file exists and is valid JSON</li>
                 <li>The <code>/data/payoutStructures.json</code> file exists and is valid JSON</li>
               </ul>
+              
+              <div className="mt-4">
+                <p className="font-bold">Debug Data:</p>
+                <pre className="bg-gray-50 p-2 rounded text-xs mt-1 overflow-x-auto">
+                  {debugInfo ? JSON.stringify(debugInfo, null, 2) : 'No debug data available'}
+                </pre>
+              </div>
+              
+              <div className="mt-4">
+                <p className="font-bold">Static Alternative:</p>
+                <p>You can view the <a href="/structure" className="text-blue-500 underline">static structure page</a> which doesn't rely on API calls.</p>
+              </div>
             </div>
           )}
         </div>
@@ -152,6 +243,9 @@ export default function Info() {
         <div className="text-center py-12">
           <h2 className="text-xl font-bold text-red-500 mb-2">No blind structure available</h2>
           <p>The tournament blind structure could not be loaded.</p>
+          <div className="mt-4">
+            <a href="/structure" className="text-blue-500 underline">View static structure page</a>
+          </div>
         </div>
       </div>
     );
@@ -159,7 +253,7 @@ export default function Info() {
 
   // Create a more compact display of positions
   // Only show key places: 1st, 2nd, 3rd, and optionally 4th-9th if they exist
-  const displayPlaces = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(place => {
+  const displayPlaces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(place => {
     // Only include places that have payouts in at least one structure
     return payoutStructures.some(structure => 
       structure.tiers?.some(tier => tier.position === place)

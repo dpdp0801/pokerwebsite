@@ -1,123 +1,154 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+
+// Static blind structure data
+const BLIND_STRUCTURE = {
+  name: "Standard Structure",
+  description: "Standard tournament blind structure with 20-minute levels",
+  startingStack: 10000,
+  levels: [
+    { level: 1, duration: 20, smallBlind: 1, bigBlind: 2, ante: 2, isBreak: false, displayLevel: 1 },
+    { level: 2, duration: 20, smallBlind: 1, bigBlind: 3, ante: 3, isBreak: false, displayLevel: 2 },
+    { level: 3, duration: 20, smallBlind: 2, bigBlind: 4, ante: 4, isBreak: false, displayLevel: 3 },
+    { level: 4, duration: 20, smallBlind: 3, bigBlind: 6, ante: 6, isBreak: false, displayLevel: 4 },
+    { level: 5, duration: 10, isBreak: true, displayLevel: "B1", specialDescription: "Chip up 1s" },
+    { level: 6, duration: 20, smallBlind: 5, bigBlind: 10, ante: 10, isBreak: false, displayLevel: 5 },
+    { level: 7, duration: 20, smallBlind: 10, bigBlind: 15, ante: 15, isBreak: false, displayLevel: 6 },
+    { level: 8, duration: 20, smallBlind: 10, bigBlind: 20, ante: 20, isBreak: false, displayLevel: 7 },
+    { level: 9, duration: 20, smallBlind: 15, bigBlind: 30, ante: 30, isBreak: false, displayLevel: 8 },
+    { level: 10, duration: 10, isBreak: true, displayLevel: "B2*REG_CLOSE", specialDescription: "Chip up 5s\nRegistration Closes" },
+    { level: 11, duration: 20, smallBlind: 25, bigBlind: 50, ante: 50, isBreak: false, displayLevel: 9 },
+    { level: 12, duration: 20, smallBlind: 25, bigBlind: 75, ante: 75, isBreak: false, displayLevel: 10 },
+    { level: 13, duration: 20, smallBlind: 50, bigBlind: 100, ante: 100, isBreak: false, displayLevel: 11 },
+    { level: 14, duration: 20, smallBlind: 75, bigBlind: 150, ante: 150, isBreak: false, displayLevel: 12 },
+    { level: 15, duration: 10, isBreak: true, displayLevel: "B3", specialDescription: "" },
+    { level: 16, duration: 20, smallBlind: 100, bigBlind: 200, ante: 200, isBreak: false, displayLevel: 13 },
+    { level: 17, duration: 20, smallBlind: 150, bigBlind: 300, ante: 300, isBreak: false, displayLevel: 14 },
+    { level: 18, duration: 20, smallBlind: 200, bigBlind: 400, ante: 400, isBreak: false, displayLevel: 15 },
+    { level: 19, duration: 20, smallBlind: 300, bigBlind: 600, ante: 600, isBreak: false, displayLevel: 16 }
+  ]
+};
+
+// Static payout structure data
+const PAYOUT_STRUCTURES = [
+  {
+    id: "1",
+    name: "2-10 Players",
+    minEntries: 2,
+    maxEntries: 10,
+    tiers: [
+      { position: 1, percentage: 65 },
+      { position: 2, percentage: 35 }
+    ]
+  },
+  {
+    id: "2",
+    name: "11-20 Players",
+    minEntries: 11,
+    maxEntries: 20,
+    tiers: [
+      { position: 1, percentage: 50 },
+      { position: 2, percentage: 30 },
+      { position: 3, percentage: 20 }
+    ]
+  },
+  {
+    id: "3",
+    name: "21-30 Players",
+    minEntries: 21,
+    maxEntries: 30,
+    tiers: [
+      { position: 1, percentage: 40 },
+      { position: 2, percentage: 27 },
+      { position: 3, percentage: 18 },
+      { position: 4, percentage: 15 }
+    ]
+  },
+  {
+    id: "4",
+    name: "31-40 Players",
+    minEntries: 31,
+    maxEntries: 40,
+    tiers: [
+      { position: 1, percentage: 38 },
+      { position: 2, percentage: 24 },
+      { position: 3, percentage: 17 },
+      { position: 4, percentage: 12 },
+      { position: 5, percentage: 9 }
+    ]
+  },
+  {
+    id: "5",
+    name: "41-50 Players",
+    minEntries: 41,
+    maxEntries: 50,
+    tiers: [
+      { position: 1, percentage: 35 },
+      { position: 2, percentage: 22 },
+      { position: 3, percentage: 15 },
+      { position: 4, percentage: 11 },
+      { position: 5, percentage: 9 },
+      { position: 6, percentage: 8 }
+    ]
+  },
+  {
+    id: "6",
+    name: "51-60 Players",
+    minEntries: 51,
+    maxEntries: 60,
+    tiers: [
+      { position: 1, percentage: 32 },
+      { position: 2, percentage: 20 },
+      { position: 3, percentage: 14 },
+      { position: 4, percentage: 10 },
+      { position: 5, percentage: 8 },
+      { position: 6, percentage: 8 },
+      { position: 7, percentage: 8 }
+    ]
+  },
+  {
+    id: "7",
+    name: "61-75 Players",
+    minEntries: 61,
+    maxEntries: 75,
+    tiers: [
+      { position: 1, percentage: 30 },
+      { position: 2, percentage: 19 },
+      { position: 3, percentage: 13 },
+      { position: 4, percentage: 10 },
+      { position: 5, percentage: 8 },
+      { position: 6, percentage: 7 },
+      { position: 7, percentage: 7 },
+      { position: 8, percentage: 6 }
+    ]
+  },
+  {
+    id: "8",
+    name: "76-100 Players",
+    minEntries: 76,
+    maxEntries: 100,
+    tiers: [
+      { position: 1, percentage: 28 },
+      { position: 2, percentage: 17 },
+      { position: 3, percentage: 12 },
+      { position: 4, percentage: 9 },
+      { position: 5, percentage: 7 },
+      { position: 6, percentage: 6 },
+      { position: 7, percentage: 6 },
+      { position: 8, percentage: 5 },
+      { position: 9, percentage: 5 },
+      { position: 10, percentage: 5 }
+    ]
+  }
+];
 
 export default function Structure() {
-  const [loading, setLoading] = useState(true);
-  const [blindStructure, setBlindStructure] = useState(null);
-  const [payoutStructures, setPayoutStructures] = useState([]);
-  const [error, setError] = useState(null);
-  const { data: session } = useSession();
-  const isAdmin = session?.role === "ADMIN";
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        // Fetch the blind structure
-        const response = await fetch('/api/blinds/structure');
-        
-        if (!response.ok) {
-          throw new Error('Failed to load blind structure');
-        }
-        
-        const data = await response.json();
-        
-        // Process the levels to assign display numbers and handle break descriptions
-        let regularLevelCount = 0;
-        let breakCount = 0;
-        const processedLevels = data.structure.levels.map(level => {
-          if (level.isBreak) {
-            breakCount++;
-            // Add special text based on which break it is
-            let specialDescription = '';
-            
-            if (breakCount === 1) {
-              specialDescription = 'Chip up 1s';
-            } else if (breakCount === 2) {
-              specialDescription = 'Chip up 5s\nRegistration Closes';
-            }
-            
-            return { 
-              ...level, 
-              displayLevel: 'Break',
-              specialDescription
-            };
-          } else {
-            regularLevelCount++;
-            return { 
-              ...level, 
-              displayLevel: regularLevelCount,
-              specialDescription: ''
-            };
-          }
-        });
-        
-        setBlindStructure({
-          ...data.structure,
-          levels: processedLevels
-        });
-        
-        // Fetch all payout structures
-        const payoutResponse = await fetch('/api/payout-structures');
-        
-        if (!payoutResponse.ok) {
-          const errorData = await payoutResponse.json();
-          throw new Error(`Failed to fetch payout structures: ${errorData.error || errorData.message || 'Unknown error'}`);
-        }
-        
-        const payoutData = await payoutResponse.json();
-        setPayoutStructures(payoutData.structures);
-      } catch (error) {
-        console.error('Error fetching blind structure:', error);
-        setError('Failed to load blind structure. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container py-12 max-w-4xl">
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="ml-2">Loading tournament structure...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container py-12 max-w-4xl">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!blindStructure) {
-    return (
-      <div className="container py-12 max-w-4xl">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-bold text-red-500 mb-2">No blind structure available</h2>
-        </div>
-      </div>
-    );
-  }
-
   // Create a more compact display of positions
   // Only show key places: 1st, 2nd, 3rd, and optionally 4th-9th if they exist
-  const displayPlaces = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(place => {
+  const displayPlaces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(place => {
     // Only include places that have payouts in at least one structure
-    return payoutStructures.some(structure => 
+    return PAYOUT_STRUCTURES.some(structure => 
       structure.tiers?.some(tier => tier.position === place)
     );
   });
@@ -165,7 +196,7 @@ export default function Structure() {
             </div>
             <div>
               <h3 className="font-medium">Starting Stack</h3>
-              <p className="text-muted-foreground">{blindStructure?.startingStack.toLocaleString()} chips</p>
+              <p className="text-muted-foreground">{BLIND_STRUCTURE.startingStack.toLocaleString()} chips</p>
             </div>
             <div>
               <h3 className="font-medium">Target Duration</h3>
@@ -198,7 +229,7 @@ export default function Structure() {
                     </tr>
                   </thead>
                   <tbody>
-                    {blindStructure?.levels.map((level, index) => (
+                    {BLIND_STRUCTURE.levels.map((level, index) => (
                       <tr key={index} className={level.isBreak ? 'bg-accent/20' : ''}>
                         <td className="border p-2">{level.displayLevel}</td>
                         <td className="border p-2">{level.isBreak ? '-' : level.smallBlind}</td>
@@ -223,7 +254,7 @@ export default function Structure() {
             <CardTitle>Payout Structure</CardTitle>
           </CardHeader>
           <CardContent>
-            {payoutStructures.length > 0 ? (
+            {PAYOUT_STRUCTURES.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -235,9 +266,9 @@ export default function Structure() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payoutStructures.map((structure) => (
+                    {PAYOUT_STRUCTURES.map((structure) => (
                       <TableRow key={structure.id}>
-                        <TableCell className="font-medium">{structure.name.replace("Players", "Entries")}</TableCell>
+                        <TableCell className="font-medium">{structure.name}</TableCell>
                         {displayPlaces.map(place => {
                           const tier = structure.tiers?.find(t => t.position === place);
                           return (
