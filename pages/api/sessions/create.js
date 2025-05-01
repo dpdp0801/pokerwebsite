@@ -5,31 +5,6 @@ import { authOptions } from '@/lib/auth-utils';
 // Initialize Prisma client outside of the handler function to reuse connections
 const prisma = new PrismaClient();
 
-// Helper function to convert date to Pacific Time
-function convertToPacificTime(date, timeString) {
-  // Create a new date object from the date string
-  const inputDate = new Date(date);
-  
-  // Parse the time string (HH:MM format)
-  const [hours, minutes] = timeString.split(':').map(part => parseInt(part, 10));
-  
-  // Create a new date object with the proper date and time
-  const result = new Date(
-    inputDate.getFullYear(),
-    inputDate.getMonth(),
-    inputDate.getDate(),
-    hours,
-    minutes,
-    0
-  );
-  
-  console.log("Input date:", date);
-  console.log("Input time:", timeString);
-  console.log("Result datetime:", result.toISOString());
-  
-  return result;
-}
-
 export default async function handler(req, res) {
   console.log("API route /api/sessions/create called");
   
@@ -73,25 +48,17 @@ export default async function handler(req, res) {
       // Convert date and time strings to Date objects
       let sessionDate;
       try {
-        // First parse the date
-        sessionDate = new Date(date);
-        if (isNaN(sessionDate.getTime())) {
-          throw new Error("Invalid date format");
-        }
+        // Parse the date
+        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
+        const [hours, minutes] = time.split(':').map(n => parseInt(n, 10));
         
-        // Parse time - make sure it's in HH:MM format
-        const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-        if (!timePattern.test(time)) {
-          throw new Error("Invalid time format. Expected HH:MM");
-        }
+        // Create date with the user's exact input without timezone conversion
+        sessionDate = new Date(year, month - 1, day, hours, minutes, 0);
         
-        // Fixed: Use Pacific Time conversion
-        sessionDate = convertToPacificTime(date, time);
-        
-        console.log("Time parsed successfully in Pacific Time:", {
-          originalDate: date,
-          originalTime: time,
-          sessionDate: sessionDate.toISOString()
+        console.log("Time parsed:", {
+          date, time,
+          parsed: sessionDate.toISOString(),
+          localString: sessionDate.toString()
         });
       } catch (error) {
         console.error("Error parsing date/time:", error);

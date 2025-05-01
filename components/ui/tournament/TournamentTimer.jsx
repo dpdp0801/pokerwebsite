@@ -16,12 +16,7 @@ export default function TournamentTimer({
       
       {/* Timer Display - Always visible */}
       <div className="text-center mb-6">
-        <div className="text-5xl font-bold mb-1">{formatTimer()}</div>
-        <div className="text-sm text-muted-foreground">
-          {blindStructureData?.currentLevel?.isBreak 
-            ? "Break" 
-            : `Level ${blindStructureData?.currentLevel?.level || 1}`}
-        </div>
+        <div className="text-8xl font-bold mb-1">{formatTimer()}</div>
       </div>
       
       {/* Admin Controls */}
@@ -137,16 +132,16 @@ function LevelDisplay({ currentLevel }) {
       </div>
       <div className="grid grid-cols-3 gap-4 items-center my-3">
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Small Blind</p>
-          <p className="text-2xl font-bold">{currentLevel.smallBlind || '—'}</p>
+          <p className="text-xl text-muted-foreground">Small Blind</p>
+          <p className="text-6xl font-bold">{currentLevel.smallBlind || '—'}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Big Blind</p>
-          <p className="text-2xl font-bold">{currentLevel.bigBlind || '—'}</p>
+          <p className="text-xl text-muted-foreground">Big Blind</p>
+          <p className="text-6xl font-bold">{currentLevel.bigBlind || '—'}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Ante</p>
-          <p className="text-2xl font-bold">{currentLevel.ante || '—'}</p>
+          <p className="text-xl text-muted-foreground">Ante</p>
+          <p className="text-6xl font-bold">{currentLevel.ante || '—'}</p>
         </div>
       </div>
     </div>

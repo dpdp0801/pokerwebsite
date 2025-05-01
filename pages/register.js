@@ -463,23 +463,6 @@ export default function Register() {
               
               {selectedSession?.wouldBeWaitlisted && (
                 <div className="space-y-6 border rounded-md p-4">
-                  <div>
-                    <h3 className="font-medium text-lg mb-2">Waitlist Information</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Your position on the waitlist will be determined by the order of registration. If a spot becomes 
-                      available, we'll contact you via email with payment instructions.
-                    </p>
-                  </div>
-                  
-                  <div className="text-sm text-muted-foreground">
-                    <p className="mb-1 font-medium">Important Waitlist Information:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Check your email regularly for spot availability notifications</li>
-                      <li>You'll have 24 hours to respond and complete payment when a spot opens</li>
-                      <li>If you no longer wish to participate, please contact us to be removed from the waitlist</li>
-                    </ul>
-                  </div>
-                  
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <Button 
                       variant="destructive" 
