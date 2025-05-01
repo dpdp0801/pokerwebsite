@@ -16,14 +16,27 @@ export default function Info() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        
         // Fetch the blind structure
+        console.log('Fetching blind structure data...');
         const response = await fetch('/api/blinds/structure');
         
         if (!response.ok) {
-          throw new Error('Failed to load blind structure');
+          const errorData = await response.json();
+          console.error('API Error:', errorData);
+          throw new Error(`Failed to load blind structure: ${errorData.message || 'Unknown error'}`);
         }
         
         const data = await response.json();
+        console.log('Blind structure data received:', data);
+        
+        if (!data.structure) {
+          throw new Error('Invalid blind structure data: structure field is missing');
+        }
+
+        if (!Array.isArray(data.structure.levels)) {
+          throw new Error('Invalid blind structure data: levels array is missing');
+        }
         
         // Process the levels to assign display numbers and handle break descriptions
         let regularLevelCount = 0;
@@ -34,10 +47,22 @@ export default function Info() {
             // Add special text based on which break it is
             let specialDescription = '';
             
-            if (breakCount === 1) {
-              specialDescription = 'Chip up 1s';
-            } else if (breakCount === 2) {
-              specialDescription = 'Chip up 5s\nRegistration Closes';
+            if (level.specialAction) {
+              if (level.specialAction.includes('CHIP_UP_1S')) {
+                specialDescription += 'Chip up 1s\n';
+              }
+              if (level.specialAction.includes('CHIP_UP_5S')) {
+                specialDescription += 'Chip up 5s\n';
+              }
+              if (level.specialAction.includes('REG_CLOSE')) {
+                specialDescription += 'Registration Closes\n';
+              }
+            } else {
+              if (breakCount === 1) {
+                specialDescription = 'Chip up 1s';
+              } else if (breakCount === 2) {
+                specialDescription = 'Chip up 5s\nRegistration Closes';
+              }
             }
             
             return { 
@@ -61,6 +86,7 @@ export default function Info() {
         });
         
         // Fetch all payout structures
+        console.log('Fetching payout structures...');
         const payoutResponse = await fetch('/api/payout-structures');
         
         if (!payoutResponse.ok) {
@@ -69,10 +95,16 @@ export default function Info() {
         }
         
         const payoutData = await payoutResponse.json();
+        console.log('Payout structures received:', payoutData);
+        
+        if (!payoutData.structures || !Array.isArray(payoutData.structures)) {
+          throw new Error('Invalid payout structure data: structures array is missing');
+        }
+        
         setPayoutStructures(payoutData.structures);
       } catch (error) {
-        console.error('Error fetching blind structure:', error);
-        setError('Failed to load blind structure. Please try again later.');
+        console.error('Error fetching tournament structure data:', error);
+        setError(`Failed to load tournament structure: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -98,6 +130,17 @@ export default function Info() {
         <div className="text-center py-12">
           <h2 className="text-xl font-bold text-red-500 mb-2">Error</h2>
           <p>{error}</p>
+          {isAdmin && (
+            <div className="mt-4 p-4 bg-gray-100 text-left rounded text-sm">
+              <p className="font-bold">Admin Debug Information:</p>
+              <p>Please check server logs for more details. Ensure that:</p>
+              <ul className="list-disc ml-5 mt-2">
+                <li>The <code>/data</code> directory exists</li>
+                <li>The <code>/data/blindStructure.json</code> file exists and is valid JSON</li>
+                <li>The <code>/data/payoutStructures.json</code> file exists and is valid JSON</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -108,6 +151,7 @@ export default function Info() {
       <div className="container py-12 max-w-4xl">
         <div className="text-center py-12">
           <h2 className="text-xl font-bold text-red-500 mb-2">No blind structure available</h2>
+          <p>The tournament blind structure could not be loaded.</p>
         </div>
       </div>
     );
