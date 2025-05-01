@@ -36,6 +36,8 @@ import {
   Filter,
   User,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Custom hooks
 import useSessionData from "@/hooks/useSessionData";
@@ -85,6 +87,15 @@ export default function Status() {
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Cash game specific states
+  const [buyInDialogOpen, setBuyInDialogOpen] = useState(false);
+  const [cashOutDialogOpen, setCashOutDialogOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [buyInAmount, setBuyInAmount] = useState('');
+  const [cashOutAmount, setCashOutAmount] = useState('');
+  const [sessionUpdating, setSessionUpdating] = useState(false);
+  
   const router = useRouter();
 
   // Check for admin role in multiple possible locations
@@ -116,14 +127,16 @@ export default function Status() {
   const { 
     removePlayer, 
     updatePlayerStatus, 
-    handleBuyIn, 
+    handleBuyIn,
+    handleCashGameBuyIn,
+    handleCashOut,
     stopRegistration, 
     seatFromWaitlist 
   } = usePlayerService(fetchSessionData);
 
   const { toast } = useToast();
         
-        // If active tournament, fetch blind structure and payout structure
+  // If active tournament, fetch blind structure and payout structure
   useEffect(() => {
     if (sessionData.exists && sessionData.session.type === 'TOURNAMENT' && sessionData.session.status === 'ACTIVE') {
       fetchBlindStructureIfNeeded(sessionData.session.id, sessionData.session.currentBlindLevel);
@@ -171,8 +184,61 @@ export default function Status() {
   // Session exists
   const currentSession = sessionData.session;
   const isTournament = currentSession.type === 'TOURNAMENT';
+  const isCashGame = currentSession.type === 'CASH_GAME';
   const isActive = currentSession.status === 'ACTIVE';
   const isNotStarted = currentSession.status === 'NOT_STARTED';
+
+  // Handler for buy-in dialog
+  const openBuyInDialog = (player) => {
+    setSelectedPlayer(player);
+    setBuyInAmount('');
+    setBuyInDialogOpen(true);
+  };
+
+  // Handler for cash-out dialog
+  const openCashOutDialog = (player) => {
+    setSelectedPlayer(player);
+    setCashOutAmount('');
+    setCashOutDialogOpen(true);
+  };
+
+  // Handler for submitting a buy-in
+  const submitBuyIn = async () => {
+    if (!buyInAmount || buyInAmount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid buy-in amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSessionUpdating(true);
+    const success = await handleCashGameBuyIn(selectedPlayer, buyInAmount);
+    if (success) {
+      setBuyInDialogOpen(false);
+    }
+    setSessionUpdating(false);
+  };
+
+  // Handler for submitting a cash-out
+  const submitCashOut = async () => {
+    if (!cashOutAmount || cashOutAmount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid cash-out amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSessionUpdating(true);
+    const success = await handleCashOut(selectedPlayer, cashOutAmount);
+    if (success) {
+      setCashOutDialogOpen(false);
+    }
+    setSessionUpdating(false);
+  };
 
   // Add the confirmation dialog component
   const ConfirmationDialog = () => {
@@ -200,6 +266,98 @@ export default function Status() {
               disabled={sessionUpdating}
             >
               {sessionUpdating ? "Processing..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Buy-in Dialog Component
+  const BuyInDialog = () => {
+    return (
+      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Buy-In</DialogTitle>
+            <DialogDescription>
+              {selectedPlayer ? `Enter buy-in amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter buy-in amount'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="buyInAmount">Buy-In Amount ($)</Label>
+              <Input 
+                id="buyInAmount"
+                type="number"
+                min="1"
+                value={buyInAmount}
+                onChange={(e) => setBuyInAmount(e.target.value)}
+                placeholder="100"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBuyInDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitBuyIn}
+              disabled={sessionUpdating}
+            >
+              {sessionUpdating ? "Processing..." : "Confirm Buy-In"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Cash-out Dialog Component
+  const CashOutDialog = () => {
+    return (
+      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Process Cash-Out</DialogTitle>
+            <DialogDescription>
+              {selectedPlayer ? `Enter cash-out amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter cash-out amount'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cashOutAmount">Cash-Out Amount ($)</Label>
+              <Input 
+                id="cashOutAmount"
+                type="number"
+                min="0"
+                value={cashOutAmount}
+                onChange={(e) => setCashOutAmount(e.target.value)}
+                placeholder="150"
+              />
+            </div>
+            {selectedPlayer && (
+              <div className="text-sm rounded bg-muted p-2">
+                <p className="font-medium">Player Summary</p>
+                <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCashOutDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitCashOut}
+              disabled={sessionUpdating}
+            >
+              {sessionUpdating ? "Processing..." : "Confirm Cash-Out"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -277,7 +435,7 @@ export default function Status() {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
                   {/* Close Registration Button */}
                   {!currentSession.registrationClosed && (
-              <Button 
+                    <Button 
                       onClick={() => {
                         if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
                           stopRegistration(currentSession.id);
@@ -288,19 +446,19 @@ export default function Status() {
                       className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
                       Close Registration
-              </Button>
-                    )}
-                  </div>
+                    </Button>
+                  )}
+                </div>
                   
                 {/* Debug Tools - Only visible to admins */}
                 <div className="mt-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-xs text-muted-foreground">Debug Tools</h4>
-                          <Button 
+                    <Button 
                       variant="ghost" 
-                            size="sm"
+                      size="sm"
                       className="text-xs"
-                            onClick={async () => {
+                      onClick={async () => {
                         try {
                           const res = await fetch('/api/debug-session');
                           if (res.ok) {
@@ -319,14 +477,14 @@ export default function Status() {
                       }}
                     >
                       Debug Session Data
-                          </Button>
-                        </div>
+                    </Button>
+                  </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     <p>waitlisted: {JSON.stringify(currentSession.registrations.waitlisted?.length)}</p>
                     <p>waitlist: {JSON.stringify(currentSession.registrations.waitlist?.length)}</p>
                   </div>
-                          </div>
-                        </div>
+                </div>
+              </div>
             </div>
           )}
           
@@ -411,7 +569,7 @@ export default function Status() {
                             {/* Place number */}
                             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
                               {slot.position}
-                </div>
+                            </div>
                             
                             {slot.player ? (
                               <>
@@ -442,17 +600,17 @@ export default function Status() {
                                         <span className="ml-1">{slot.player.user.venmoId}</span>
                                       </span>
                                     )}
-                    </div>
-                    </div>
-                  </>
-                ) : (
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
                                   : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                    </div>
-                  )}
-                </div>
+                              </div>
+                            )}
+                          </div>
                           
                           {/* Right side - Prize and action buttons */}
                           <div className="flex items-center">
@@ -491,48 +649,49 @@ export default function Status() {
                 title="Current Players"
                 emptyMessage="No active players currently at the table"
                 colorClass="bg-green-100 text-green-800"
-              isAdmin={isAdmin}
-              removePlayer={isAdmin ? removePlayer : null}
-              actions={isAdmin ? [
-                  {
+                isAdmin={isAdmin}
+                removePlayer={isAdmin ? removePlayer : null}
+                isCashGame={isCashGame}
+                actions={isAdmin ? [
+                  ...(isTournament ? [{
                     label: "Eliminate",
                     variant: "outline",
                     title: "Move player to eliminated",
-                  onClick: (registration) => {
-                    // Get payout positions from the payout structure
-                    let payoutPositions = 0;
-                    if (payoutStructure && payoutStructure.tiers) {
-                      // Find the max position from the tiers
-                      payoutPositions = Math.max(
-                        ...payoutStructure.tiers.map(tier => tier.position)
-                      );
+                    onClick: (registration) => {
+                      // Get payout positions from the payout structure
+                      let payoutPositions = 0;
+                      if (payoutStructure && payoutStructure.tiers) {
+                        // Find the max position from the tiers
+                        payoutPositions = Math.max(
+                          ...payoutStructure.tiers.map(tier => tier.position)
+                        );
+                      }
+                      
+                      // Get current number of players
+                      const currentPlayerCount = currentSession.currentPlayersCount;
+                      
+                      // Registration must be closed to use ITM
+                      const isRegistrationClosed = currentSession.registrationClosed;
+                      
+                      // Debug info
+                      console.log("Eliminate clicked:", {
+                        currentPlayerCount,
+                        payoutPositions,
+                        isRegistrationClosed
+                      });
+                      
+                      // If we've reached ITM criteria, place directly in ITM
+                      if (isRegistrationClosed && 
+                          payoutPositions > 0 && 
+                          currentPlayerCount <= payoutPositions) {
+                        console.log("Placing player in ITM");
+                        updatePlayerStatus(registration.id, 'ITM');
+                      } else {
+                        // Standard elimination
+                        updatePlayerStatus(registration.id, 'ELIMINATED');
+                      }
                     }
-                    
-                    // Get current number of players
-                    const currentPlayerCount = currentSession.currentPlayersCount;
-                    
-                    // Registration must be closed to use ITM
-                    const isRegistrationClosed = currentSession.registrationClosed;
-                    
-                    // Debug info
-                    console.log("Eliminate clicked:", {
-                      currentPlayerCount,
-                      payoutPositions,
-                      isRegistrationClosed
-                    });
-                    
-                    // If we've reached ITM criteria, place directly in ITM
-                    if (isRegistrationClosed && 
-                        payoutPositions > 0 && 
-                        currentPlayerCount <= payoutPositions) {
-                      console.log("Placing player in ITM");
-                      updatePlayerStatus(registration.id, 'ITM');
-                    } else {
-                      // Standard elimination
-                      updatePlayerStatus(registration.id, 'ELIMINATED');
-                    }
-                  }
-                  },
+                  }] : []),
                   {
                     label: "Waitlist",
                     variant: "outline",
@@ -540,56 +699,106 @@ export default function Status() {
                     onClick: (registration) => updatePlayerStatus(registration.id, 'WAITLIST')
                   },
                   isTournament ? {
-                  label: "Buy-in",
+                    label: "Buy-in",
                     variant: "default",
-                  title: "Process a buy-in for this player",
-                  disabled: isSubmitting,
-                  onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
-                  } : null
-              ].filter(Boolean) : []}
+                    title: "Process a buy-in for this player",
+                    disabled: isSubmitting,
+                    onClick: (registration) => handleBuyIn(registration, setIsSubmitting)
+                  } : null,
+                  // Cash game specific buttons
+                  ...(isCashGame ? [
+                    {
+                      label: "Buy-in",
+                      variant: "default",
+                      title: "Add a buy-in for this player",
+                      onClick: (registration) => openBuyInDialog(registration)
+                    },
+                    {
+                      label: "Cash-out",
+                      variant: "outline",
+                      title: "Process cash-out for this player",
+                      onClick: (registration) => openCashOutDialog(registration)
+                    },
+                    {
+                      label: "Finish",
+                      variant: "outline",
+                      title: "Move player to finished players",
+                      onClick: (registration) => updatePlayerStatus(registration.id, 'FINISHED')
+                    }
+                  ] : [])
+                ].filter(Boolean) : []}
               />
               
-                <PlayerList 
-              players={currentSession.registrations.waitlist}
+              <PlayerList 
+                players={currentSession.registrations.waitlist}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
                 colorClass="bg-yellow-100 text-yellow-800"
-              isAdmin={isAdmin}
-              removePlayer={isAdmin ? removePlayer : null}
-              actions={isAdmin ? [
-                  {
-                    label: "Seat",
-                    variant: "default",
-                  title: "Seat player from waitlist",
-                  onClick: (registration) => seatFromWaitlist(registration.id)
-                }
-              ] : []}
-            />
-            
-            {isTournament && currentSession.registrations.eliminated && (
-              <PlayerList 
-                players={currentSession.registrations.eliminated}
-                title="Eliminated"
-                emptyMessage="No eliminated players yet"
-                colorClass="bg-red-100 text-red-800"
                 isAdmin={isAdmin}
+                isCashGame={isCashGame}
                 removePlayer={isAdmin ? removePlayer : null}
                 actions={isAdmin ? [
                   {
-                    label: "Return",
-                    variant: "outline",
-                    title: "Return player to active players",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
-                  },
-                  {
-                    label: "ITM",
+                    label: "Seat",
                     variant: "default",
-                    title: "Mark player as In The Money",
-                    onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
+                    title: "Seat player from waitlist",
+                    onClick: (registration) => seatFromWaitlist(registration.id)
                   }
                 ] : []}
               />
-            )}
+            
+              {isTournament && currentSession.registrations.eliminated && (
+                <PlayerList 
+                  players={currentSession.registrations.eliminated}
+                  title="Eliminated"
+                  emptyMessage="No eliminated players yet"
+                  colorClass="bg-red-100 text-red-800"
+                  isAdmin={isAdmin}
+                  isCashGame={isCashGame}
+                  removePlayer={isAdmin ? removePlayer : null}
+                  actions={isAdmin ? [
+                    {
+                      label: "Return",
+                      variant: "outline",
+                      title: "Return player to active players",
+                      onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
+                    },
+                    {
+                      label: "ITM",
+                      variant: "default",
+                      title: "Mark player as In The Money",
+                      onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
+                    }
+                  ] : []}
+                />
+              )}
+              
+              {/* Finished players section */}
+              {isCashGame && currentSession.registrations.finished && (
+                <PlayerList
+                  players={currentSession.registrations.finished}
+                  title="Finished Players"
+                  emptyMessage="No finished players yet"
+                  colorClass="bg-blue-100 text-blue-800"
+                  isAdmin={isAdmin}
+                  isCashGame={isCashGame}
+                  removePlayer={isAdmin ? removePlayer : null}
+                  actions={isAdmin ? [
+                    {
+                      label: "Return",
+                      variant: "outline",
+                      title: "Return player to active players",
+                      onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
+                    },
+                    {
+                      label: "Cash-out",
+                      variant: "default",
+                      title: "Update cash-out amount",
+                      onClick: (registration) => openCashOutDialog(registration)
+                    }
+                  ] : []}
+                />
+              )}
           </div>
           
           {/* Payout structure component */}
@@ -606,8 +815,10 @@ export default function Status() {
         </CardContent>
       </Card>
       
-      {/* Add the confirmation dialog */}
+      {/* Add the dialogs */}
       <ConfirmationDialog />
+      <BuyInDialog />
+      <CashOutDialog />
     </div>
   );
 } 

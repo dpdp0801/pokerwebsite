@@ -72,7 +72,7 @@ model Registration {
   sessionId     String
   buyInAmount   Int
   status        String       @default("PENDING") // PENDING, CONFIRMED, WAITLISTED, CANCELLED
-  playerStatus  String       @default("REGISTERED") // REGISTERED, CURRENT, ELIMINATED, ITM
+  playerStatus  String       @default("REGISTERED") // REGISTERED, CURRENT, ELIMINATED, ITM, FINISHED
   paymentCode   String?      @unique
   paymentStatus String       @default("UNPAID") // UNPAID, PAID, REFUNDED
   isRebuy       Boolean      @default(false)  // Whether this is a rebuy entry
@@ -80,6 +80,11 @@ model Registration {
   wasRegistered Boolean      @default(false)  // Whether this player pre-registered or walked in
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  
+  // Cash game specific fields
+  buyInTotal    Int          @default(0)  // Total amount player has bought in for (cash games)
+  cashOut       Int?         // Amount player cashed out with (cash games)
+  netProfit     Int?         // Net profit/loss for player (cashOut - buyInTotal)
   
   // relations
   user    User         @relation(fields: [userId], references: [id])

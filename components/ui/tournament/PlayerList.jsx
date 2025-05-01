@@ -25,6 +25,7 @@ export default function PlayerList({
   isAdmin,
   removePlayer,
   isITM = false,
+  isCashGame = false,
   getOrdinalSuffix = (n) => n // Default suffix function if not provided
 }) {
   if (!players || players.length === 0) {
@@ -66,14 +67,45 @@ export default function PlayerList({
                       `${registration.user.firstName || ''} ${registration.user.lastName || ''}`.trim() : 
                       registration.user.name}
                   </p>
-                  {isAdmin && registration.user.venmoId && (
-                    <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
-                  )}
-                  {registration.rebuys > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                      {registration.rebuys} {registration.rebuys === 1 ? 'buy-in' : 'buy-ins'}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {isAdmin && registration.user.venmoId && (
+                      <p className="text-xs text-muted-foreground">Venmo: {registration.user.venmoId}</p>
+                    )}
+                    
+                    {/* Tournament buy-ins display */}
+                    {!isCashGame && registration.rebuys > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                        {registration.rebuys} {registration.rebuys === 1 ? 'buy-in' : 'buy-ins'}
+                      </span>
+                    )}
+                    
+                    {/* Cash game buy-ins display */}
+                    {isCashGame && registration.buyInTotal > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full">
+                        Buy-in: ${registration.buyInTotal}
+                      </span>
+                    )}
+                    
+                    {/* Cash game cash-out display */}
+                    {isCashGame && registration.cashOut !== null && (
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                        Cash-out: ${registration.cashOut}
+                      </span>
+                    )}
+                    
+                    {/* Cash game profit/loss display */}
+                    {isCashGame && registration.netProfit !== null && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                        registration.netProfit >= 0 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {registration.netProfit >= 0 
+                          ? `+$${registration.netProfit}` 
+                          : `-$${Math.abs(registration.netProfit)}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               
