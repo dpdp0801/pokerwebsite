@@ -18,6 +18,7 @@ export default function Home() {
   const [showSignInDialog, setShowSignInDialog] = useState(false);
   const [sessionExists, setSessionExists] = useState(false);
   const [sessionData, setSessionData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -39,8 +40,12 @@ export default function Home() {
     // Make the API call to check session status
     const checkSessionStatus = async () => {
       try {
+        setIsLoading(true);
+        console.log("Fetching session status from API");
         const response = await fetch('/api/session-status');
         const data = await response.json();
+        
+        console.log("Session data received:", data);
         setSessionExists(data.exists);
         setSessionData(data.exists ? data.session : null);
       } catch (error) {
@@ -48,6 +53,8 @@ export default function Home() {
         // If there's an error, assume no session exists
         setSessionExists(false);
         setSessionData(null);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -57,8 +64,13 @@ export default function Home() {
   // Format date from ISO string
   const formatEventDate = (dateString) => {
     if (!dateString) return '';
+    
+    // Convert to local timezone (browser's timezone)
     const date = new Date(dateString);
+    
+    // Format the date
     return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
       month: 'short', 
       day: 'numeric'
     });
@@ -67,7 +79,11 @@ export default function Home() {
   // Format time from ISO string
   const formatEventTime = (dateString) => {
     if (!dateString) return '';
+    
+    // Convert to local timezone (browser's timezone)
     const date = new Date(dateString);
+    
+    // Format the time
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
@@ -95,10 +111,13 @@ export default function Home() {
   const getSessionTitle = () => {
     if (!sessionData) return '';
     
-    if (sessionData.type === 'MTT' || sessionData.type === 'TOURNAMENT') {
+    // Normalize session type to uppercase for consistent comparison
+    const sessionType = sessionData.type?.toUpperCase();
+    
+    if (sessionType === 'MTT' || sessionType === 'TOURNAMENT') {
       return `$${sessionData.buyIn} NLH 9-Max Tournament`;
     } else {
-      // Cash game - use the smallBlind/bigBlind values that were extracted in the API
+      // Cash game - use the smallBlind/bigBlind values
       const smallBlind = sessionData.smallBlind || 0.25;
       const bigBlind = sessionData.bigBlind || 0.5;
       return `$${smallBlind}/$${bigBlind} NLH 9-Max Cash Game`;
@@ -236,7 +255,10 @@ export default function Home() {
   return (
     <>
       <section className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center text-center px-4 -mt-16">
-        {sessionExists && sessionData ? (
+        {isLoading ? (
+          // Loading state
+          <p className="text-muted-foreground">Loading session data...</p>
+        ) : sessionExists && sessionData ? (
           // Content when session exists
           <>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight uppercase">
@@ -366,13 +388,11 @@ export default function Home() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
+              <Label htmlFor="location">Location</Label>
               <Input 
-                id="buyIn" 
-                type="number" 
-                min="1"
-                value={newSession.buyIn}
-                onChange={(e) => setNewSession({...newSession, buyIn: Number(e.target.value)})}
+                id="location" 
+                value={newSession.location}
+                onChange={(e) => setNewSession({...newSession, location: e.target.value})}
               />
             </div>
             
@@ -387,6 +407,19 @@ export default function Home() {
               />
             </div>
             
+            {newSession.type === "mtt" && (
+              <div className="space-y-2">
+                <Label htmlFor="buyIn">Buy-in Amount ($)</Label>
+                <Input 
+                  id="buyIn" 
+                  type="number" 
+                  min="1"
+                  value={newSession.buyIn}
+                  onChange={(e) => setNewSession({...newSession, buyIn: Number(e.target.value)})}
+                />
+              </div>
+            )}
+            
             {newSession.type === "cash" && (
               <>
                 <div className="space-y-2">
@@ -395,6 +428,7 @@ export default function Home() {
                     id="bigBlind" 
                     type="number" 
                     min="0"
+                    step="0.25"
                     value={newSession.bigBlind}
                     onChange={(e) => setNewSession({...newSession, bigBlind: Number(e.target.value)})}
                   />
@@ -406,6 +440,7 @@ export default function Home() {
                     id="smallBlind" 
                     type="number" 
                     min="0"
+                    step="0.25"
                     value={newSession.smallBlind}
                     onChange={(e) => setNewSession({...newSession, smallBlind: Number(e.target.value)})}
                   />
