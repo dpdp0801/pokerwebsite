@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getAllPayoutStructures } from '@/lib/structures';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -8,42 +6,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    const structures = await prisma.payoutStructure.findMany({
-      include: {
-        tiers: {
-          orderBy: {
-            position: 'asc'
-          }
-        }
-      },
-      orderBy: {
-        minEntries: 'asc'
-      }
-    });
+    const structures = getAllPayoutStructures();
+
+    // Add IDs to each structure to maintain compatibility with database approach
+    const structuresWithIds = structures.map((structure, index) => ({
+      ...structure,
+      id: `file-structure-${index + 1}`
+    }));
 
     return res.status(200).json({
       message: 'Payout structures fetched successfully',
-      structures: structures || []
+      structures: structuresWithIds || []
     });
   } catch (error) {
     console.error('Error fetching payout structures:', error);
     
-    // Check for specific Prisma errors
-    const errorMessage = error.message || 'Error fetching payout structures';
-    const isPrismaError = error.code && error.code.startsWith('P');
-    
-    if (isPrismaError) {
-      if (error.code === 'P2021') {
-        return res.status(500).json({
-          message: 'Database table not found. You may need to run "npx prisma db push" to create the tables.',
-          error: errorMessage
-        });
-      }
-    }
-    
     return res.status(500).json({
       message: 'Error fetching payout structures',
-      error: errorMessage
+      error: error.message || 'Unknown error'
     });
   }
 } 

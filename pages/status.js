@@ -435,7 +435,7 @@ export default function Status() {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
                   {/* Close Registration Button */}
                   {!currentSession.registrationClosed && (
-                    <Button 
+              <Button 
                       onClick={() => {
                         if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
                           stopRegistration(currentSession.id);
@@ -446,19 +446,19 @@ export default function Status() {
                       className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
                       Close Registration
-                    </Button>
-                  )}
-                </div>
+              </Button>
+                    )}
+                  </div>
                   
                 {/* Debug Tools - Only visible to admins */}
                 <div className="mt-4">
                   <div className="flex justify-between items-center">
                     <h4 className="text-xs text-muted-foreground">Debug Tools</h4>
-                    <Button 
+                          <Button 
                       variant="ghost" 
-                      size="sm"
+                            size="sm"
                       className="text-xs"
-                      onClick={async () => {
+                            onClick={async () => {
                         try {
                           const res = await fetch('/api/debug-session');
                           if (res.ok) {
@@ -477,17 +477,17 @@ export default function Status() {
                       }}
                     >
                       Debug Session Data
-                    </Button>
-                  </div>
+                          </Button>
+                        </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     <p>waitlisted: {JSON.stringify(currentSession.registrations.waitlisted?.length)}</p>
                     <p>waitlist: {JSON.stringify(currentSession.registrations.waitlist?.length)}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
+                    </div>
+                    </div>
+                  )}
+                  
           {/* Tournament timer component */}
           {isTournament && isActive && (
             <TournamentTimer
@@ -569,7 +569,7 @@ export default function Status() {
                             {/* Place number */}
                             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
                               {slot.position}
-                            </div>
+                </div>
                             
                             {slot.player ? (
                               <>
@@ -601,16 +601,16 @@ export default function Status() {
                                       </span>
                                     )}
                                   </div>
-                                </div>
-                              </>
-                            ) : (
+                    </div>
+                  </>
+                ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
                                   : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                              </div>
-                            )}
-                          </div>
+                    </div>
+                  )}
+                </div>
                           
                           {/* Right side - Prize and action buttons */}
                           <div className="flex items-center">
@@ -729,7 +729,7 @@ export default function Status() {
                 ].filter(Boolean) : []}
               />
               
-              <PlayerList 
+                <PlayerList 
                 players={currentSession.registrations.waitlist}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
@@ -748,11 +748,11 @@ export default function Status() {
               />
             
               {isTournament && currentSession.registrations.eliminated && (
-                <PlayerList 
-                  players={currentSession.registrations.eliminated}
+              <PlayerList 
+                players={currentSession.registrations.eliminated}
                   title="Eliminated"
                   emptyMessage="No eliminated players yet"
-                  colorClass="bg-red-100 text-red-800"
+                colorClass="bg-red-100 text-red-800"
                   isAdmin={isAdmin}
                   isCashGame={isCashGame}
                   removePlayer={isAdmin ? removePlayer : null}
@@ -765,7 +765,7 @@ export default function Status() {
                     },
                     {
                       label: "ITM",
-                      variant: "default",
+                    variant: "default",
                       title: "Mark player as In The Money",
                       onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
                     }

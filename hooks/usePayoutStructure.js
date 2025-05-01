@@ -18,7 +18,8 @@ export default function usePayoutStructure() {
     }
     
     try {
-      // Don't set loading state to avoid UI flicker
+      setPayoutLoading(true);
+      // Ensure playerCount is a valid number
       const entryCount = Math.max(playerCount || 0, 0);
       const response = await fetch(`/api/payout-structures/get-by-entries?entries=${entryCount}`);
       
@@ -27,8 +28,10 @@ export default function usePayoutStructure() {
       }
       
       const data = await response.json();
+      
+      // The file-based API returns the structure in a different format
       setPayoutStructure({
-        ...data,
+        ...data.structure,
         playerCount // Store the player count for future comparisons
       });
     } catch (error) {
@@ -42,6 +45,8 @@ export default function usePayoutStructure() {
         tiers: [],
         playerCount
       });
+    } finally {
+      setPayoutLoading(false);
     }
   };
 

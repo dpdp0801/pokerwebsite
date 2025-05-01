@@ -22,7 +22,7 @@ export default function useBlindStructure(sessionData, fetchSessionData) {
     }
     
     try {
-      // Don't set loading state to avoid UI flicker
+      setBlindsLoading(true);
       const response = await fetch(`/api/blinds/current?sessionId=${sessionId}`);
       
       if (!response.ok) {
@@ -34,10 +34,11 @@ export default function useBlindStructure(sessionData, fetchSessionData) {
       setBlindStructureData({
         ...data,
         sessionId, // Store the sessionId for future comparisons
-        currentLevelIndex: currentLevel // Store the current level for future comparisons
       });
     } catch (error) {
       console.error('Error fetching blind structure:', error);
+    } finally {
+      setBlindsLoading(false);
     }
   };
 
