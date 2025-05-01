@@ -1297,35 +1297,6 @@ export default function AdminDashboard() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Admin Tools</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 border rounded-md shadow-sm flex justify-between items-center">
-                <div>
-                  <h3 className="font-medium">Database Setup</h3>
-                  <p className="text-sm text-gray-500">Initialize tournament structures and tables</p>
-                </div>
-                <Link href="/admin/setup-database">
-                  <Button size="sm" variant="outline">Setup Database</Button>
-                </Link>
-              </div>
-              
-              <div className="p-4 border rounded-md shadow-sm flex justify-between items-center">
-                <div>
-                  <h3 className="font-medium">Tournament Structures</h3>
-                  <p className="text-sm text-gray-500">View and manage blind levels and payout structures</p>
-                </div>
-                <Link href="/admin/seed-structures">
-                  <Button size="sm" variant="outline">Manage Structures</Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </ErrorBoundary>
   );

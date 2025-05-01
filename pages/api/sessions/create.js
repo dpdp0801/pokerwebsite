@@ -7,50 +7,25 @@ const prisma = new PrismaClient();
 
 // Helper function to convert date to Pacific Time
 function convertToPacificTime(date, timeString) {
-  // Create a new date object
-  const pacificDate = new Date(date);
+  // Create a new date object from the date string
+  const inputDate = new Date(date);
   
   // Parse the time string (HH:MM format)
   const [hours, minutes] = timeString.split(':').map(part => parseInt(part, 10));
   
-  // Set the hours and minutes in local time
-  pacificDate.setHours(hours, minutes, 0, 0);
+  // Create a new date object with the proper date and time
+  const result = new Date(
+    inputDate.getFullYear(),
+    inputDate.getMonth(),
+    inputDate.getDate(),
+    hours,
+    minutes,
+    0
+  );
   
-  // Create a formatter that will output in Pacific Time
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-  
-  // Format the date and parse it back to ensure Pacific Time
-  const pacificTimeStr = formatter.format(pacificDate);
-  console.log("Pacific Time String:", pacificTimeStr);
-  
-  // Parse parts from the formatted string
-  const parts = pacificTimeStr.match(/(\d+)\/(\d+)\/(\d+),\s+(\d+):(\d+):(\d+)/);
-  if (!parts) {
-    throw new Error("Invalid date format after conversion");
-  }
-  
-  // Extract components from regex match [full, month, day, year, hour, minute, second]
-  const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JS
-  const day = parseInt(parts[2], 10);
-  const year = parseInt(parts[3], 10);
-  const hour = parseInt(parts[4], 10);
-  const minute = parseInt(parts[5], 10);
-  const second = parseInt(parts[6], 10);
-  
-  // Create a new date object explicitly in Pacific Time
-  const result = new Date(Date.UTC(year, month, day, hour, minute, second));
-  
-  console.log("Original Date:", pacificDate.toISOString());
-  console.log("Pacific Time Result:", result.toISOString());
+  console.log("Input date:", date);
+  console.log("Input time:", timeString);
+  console.log("Result datetime:", result.toISOString());
   
   return result;
 }

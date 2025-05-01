@@ -34,13 +34,25 @@ export default async function handler(req, res) {
     // Sort levels by level number to ensure correct order
     const sortedLevels = [...blindStructure.levels].sort((a, b) => a.level - b.level);
     
+    // Get the current level data
+    const currentLevel = sortedLevels[currentLevelIndex] || null;
+    
+    // Get session with level start time
+    const sessionWithTime = await prisma.pokerSession.findUnique({
+      where: { id: sessionId },
+      select: { levelStartTime: true, status: true }
+    });
+    
     return res.status(200).json({
       id: 'file-based-structure',
       name: blindStructure.name,
       description: blindStructure.description,
       startingStack: blindStructure.startingStack,
       levels: sortedLevels,
-      currentLevelIndex
+      currentLevelIndex,
+      currentLevel,
+      levelStartTime: sessionWithTime?.levelStartTime || null,
+      sessionStatus: sessionWithTime?.status || 'NOT_STARTED'
     });
   } catch (error) {
     console.error('Error fetching current blind level:', error);
