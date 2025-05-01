@@ -1,7 +1,7 @@
 import { getBlindStructure } from '@/lib/structures';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { authOptions } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     // Check for admin authentication
     const session = await getServerSession(req, res, authOptions);
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || session.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 

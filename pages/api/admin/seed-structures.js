@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { authOptions } from '@/lib/auth-utils';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     // Check for admin authentication
     const session = await getServerSession(req, res, authOptions);
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || session.role !== 'ADMIN') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -27,20 +27,20 @@ export default async function handler(req, res) {
         levels: {
           create: [
             { level: 1, duration: 20, smallBlind: 1, bigBlind: 2, ante: 2, isBreak: false },
-            { level: 2, duration: 20, smallBlind: 1, bigBlind: 3, ante: 3, isBreak: false },
+            { level: 2, duration: 20, smallBlind: 2, bigBlind: 3, ante: 3, isBreak: false },
             { level: 3, duration: 20, smallBlind: 2, bigBlind: 4, ante: 4, isBreak: false },
             { level: 4, duration: 20, smallBlind: 3, bigBlind: 6, ante: 6, isBreak: false },
-            { level: 5, duration: 10, isBreak: true, breakName: "Break 1", specialAction: "CHIP_UP_1S" },
+            { level: 5, duration: 10, isBreak: true, breakName: "Break", specialAction: "CHIP_UP_1S" },
             { level: 6, duration: 20, smallBlind: 5, bigBlind: 10, ante: 10, isBreak: false },
             { level: 7, duration: 20, smallBlind: 10, bigBlind: 15, ante: 15, isBreak: false },
             { level: 8, duration: 20, smallBlind: 10, bigBlind: 20, ante: 20, isBreak: false },
             { level: 9, duration: 20, smallBlind: 15, bigBlind: 30, ante: 30, isBreak: false },
-            { level: 10, duration: 10, isBreak: true, breakName: "Break 2", specialAction: "CHIP_UP_5S,REG_CLOSE" },
-            { level: 11, duration: 20, smallBlind: 25, bigBlind: 50, ante: 50, isBreak: false },
+            { level: 10, duration: 10, isBreak: true, breakName: "Break", specialAction: "CHIP_UP_5S,REG_CLOSE" },
+            { level: 11, duration: 20, smallBlind: 50, bigBlind: 50, ante: 50, isBreak: false },
             { level: 12, duration: 20, smallBlind: 25, bigBlind: 75, ante: 75, isBreak: false },
             { level: 13, duration: 20, smallBlind: 50, bigBlind: 100, ante: 100, isBreak: false },
             { level: 14, duration: 20, smallBlind: 75, bigBlind: 150, ante: 150, isBreak: false },
-            { level: 15, duration: 10, isBreak: true, breakName: "Break 3" },
+            { level: 15, duration: 10, isBreak: true, breakName: "Break" },
             { level: 16, duration: 20, smallBlind: 100, bigBlind: 200, ante: 200, isBreak: false },
             { level: 17, duration: 20, smallBlind: 150, bigBlind: 300, ante: 300, isBreak: false },
             { level: 18, duration: 20, smallBlind: 200, bigBlind: 400, ante: 400, isBreak: false },
