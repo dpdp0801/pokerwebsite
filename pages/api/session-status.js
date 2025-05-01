@@ -7,29 +7,33 @@ export default async function handler(req, res) {
     // Get current user session
     const session = await getServerSession(req, res, authOptions);
     
-    // Find the active session
+    // Current date in Pacific Time
+    const now = new Date();
+    const pacificNow = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+    console.log("Current Pacific Time:", pacificNow.toISOString());
+    
+    // Fixed query: Find the active session with simplified date logic
+    // Just check for status NOT_STARTED or ACTIVE
     const activeSession = await prisma.pokerSession.findFirst({
       where: {
         status: {
           in: ['NOT_STARTED', 'ACTIVE']
-        },
-        date: {
-          lte: new Date(new Date().setHours(23, 59, 59, 999)) // Today or earlier
-        },
-        startTime: {
-          lte: new Date(new Date().setHours(23, 59, 59, 999)) // Today or earlier
         }
       },
-      orderBy: {
-        date: 'desc'
-      }
+      orderBy: [
+        { status: 'asc' }, // NOT_STARTED comes before ACTIVE
+        { date: 'asc' } // Earlier date comes first
+      ]
     });
     
     if (!activeSession) {
+      console.log("No active sessions found");
       return res.status(200).json({ exists: false });
     }
     
     console.log(`Found active session: ${activeSession.title}`);
+    console.log(`Session date: ${new Date(activeSession.date).toISOString()}`);
+    console.log(`Session start time: ${new Date(activeSession.startTime).toISOString()}`);
     
     // Get all registrations for this session, including rebuys
     const registrations = await prisma.registration.findMany({

@@ -23,8 +23,10 @@ export default function Settings() {
     venmoId: '',
   });
   
-  // Get isNewUser directly from the URL query parameter
-  const isNewUser = router.query.new === 'true';
+  // Determine if user is new based on URL parameter OR incomplete profile
+  const isProfileIncomplete = !settings.firstName || !settings.lastName || !settings.venmoId;
+  // Fix: Improved logic for determining if user is new
+  const isNewUser = (router.query.new === 'true') || (isProfileIncomplete && router.query.new !== 'false');
   
   // Fetch user settings when session is available
   useEffect(() => {
@@ -146,10 +148,10 @@ export default function Settings() {
         description: "Your profile settings have been updated.",
       });
       
-      // Remove new parameter from URL if it exists
-      if (router.query.new === 'true') {
-        console.log("Removing new=true from URL after saving");
-        router.replace('/settings', undefined, { shallow: true });
+      // Always set new=false in URL after saving if profile is now complete
+      if (settings.firstName && settings.lastName && settings.venmoId) {
+        console.log("Setting new=false in URL after saving");
+        router.replace('/settings?new=false', undefined, { shallow: true });
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -180,7 +182,7 @@ export default function Settings() {
     <div className="container py-12 max-w-xl">
       <h1 className="text-4xl font-bold mb-8 text-center">Settings</h1>
       
-      {/* Only show welcome message if new=true is in the URL */}
+      {/* Show welcome message if new user (URL param or incomplete profile) */}
       {isNewUser && (
         <Card className="mb-6 border-yellow-200 bg-yellow-50">
           <CardContent className="py-6">
@@ -221,6 +223,7 @@ export default function Settings() {
                       value={settings.firstName}
                       onChange={handleChange}
                       className="mt-1"
+                      required
                     />
                   </div>
                   <div>
@@ -231,6 +234,7 @@ export default function Settings() {
                       value={settings.lastName}
                       onChange={handleChange}
                       className="mt-1"
+                      required
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 col-span-2">
@@ -260,6 +264,7 @@ export default function Settings() {
                     onChange={handleChange}
                     className="mt-1"
                     placeholder="@your-venmo-id"
+                    required
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Your Venmo ID is used for payments and prizes.
