@@ -442,10 +442,10 @@ export default function Status() {
                                         <span className="ml-1">{slot.player.user.venmoId}</span>
                                       </span>
                                     )}
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
+                    </div>
+                    </div>
+                  </>
+                ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"

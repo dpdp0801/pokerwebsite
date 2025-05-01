@@ -48,6 +48,7 @@ export default async function handler(req, res) {
       // Convert date and time strings to Date objects
       let sessionDate;
       try {
+        // First parse the date
         sessionDate = new Date(date);
         if (isNaN(sessionDate.getTime())) {
           throw new Error("Invalid date format");
@@ -59,8 +60,24 @@ export default async function handler(req, res) {
           throw new Error("Invalid time format. Expected HH:MM");
         }
         
+        // Extract hours and minutes with proper parsing
         const [hours, minutes] = time.split(':');
-        sessionDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        const parsedHours = parseInt(hours, 10);
+        const parsedMinutes = parseInt(minutes, 10);
+        
+        // Set the hours and minutes, ensuring we use a fresh Date object
+        sessionDate = new Date(sessionDate);
+        sessionDate.setHours(parsedHours);
+        sessionDate.setMinutes(parsedMinutes);
+        sessionDate.setSeconds(0);
+        sessionDate.setMilliseconds(0);
+        
+        console.log("Time parsed successfully:", {
+          originalTime: time,
+          parsedHours,
+          parsedMinutes,
+          sessionDate: sessionDate.toISOString()
+        });
       } catch (error) {
         console.error("Error parsing date/time:", error);
         return res.status(400).json({ 

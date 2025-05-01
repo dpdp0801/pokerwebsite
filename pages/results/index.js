@@ -177,7 +177,7 @@ export default function Results() {
                         
                         <div className="flex items-center mt-3 text-sm">
                           <Users className="h-4 w-4 text-muted-foreground mr-1.5" />
-                          <span>{session._count?.registrations || 0} players</span>
+                          <span>{session.totalEntries || 0} entries</span>
                         </div>
                       </div>
                       

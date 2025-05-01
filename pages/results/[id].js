@@ -233,11 +233,6 @@ export default function PastSessionDetails() {
                   <p className="text-xl font-medium">{pastSession.totalEntries || 0}</p>
                   <p className="text-muted-foreground">Total Entries</p>
                 </div>
-                
-                <div>
-                  <p className="text-xl font-medium">{pastSession.eliminatedPlayersCount || 0}</p>
-                  <p className="text-muted-foreground">Eliminated</p>
-                </div>
               </>
             )}
           </div>

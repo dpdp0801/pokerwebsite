@@ -419,14 +419,8 @@ export default function Register() {
               
               {/* Cash Game Policy */}
               {selectedSession && selectedSession.type === "CASH_GAME" && !selectedSession.wouldBeWaitlisted && (
-                <div className="border rounded-md p-3 bg-blue-50 border-blue-200">
-                  <p className="text-sm font-medium text-blue-800 mb-1">Cash Game Rules</p>
-                  <ul className="text-xs text-blue-700 list-disc list-inside space-y-1">
-                    <li>Minimum buy-in of ${selectedSession.minBuyIn} to secure your spot</li>
-                    <li>Players must arrive within 30 minutes of start time</li>
-                    <li>Late players will be moved to the waitlist</li>
-                    <li>No refunds for no-shows</li>
-                  </ul>
+                <div>
+                  {/* Intentionally empty div for spacing */}
                 </div>
               )}
 
