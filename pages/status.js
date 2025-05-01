@@ -429,14 +429,23 @@ export default function Status() {
                                       ? `${slot.player.user.firstName || ''} ${slot.player.user.lastName || ''}`.trim() 
                                       : slot.player.user?.name || 'Unknown Player'}
                                   </p>
-                                  {slot.player.rebuys > 0 && (
-                                    <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                                      {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
-                                    </span>
-                                  )}
-                    </div>
-                  </>
-                ) : (
+                                  <div className="flex flex-col gap-1">
+                                    {slot.player.rebuys > 0 && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                                        {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
+                                      </span>
+                                    )}
+                                    {/* Display Venmo ID for admins */}
+                                    {isAdmin && slot.player.user?.venmoId && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                                        <span className="font-medium">Venmo:</span> 
+                                        <span className="ml-1">{slot.player.user.venmoId}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
