@@ -13,7 +13,6 @@ export default function Settings() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isNewUser, setIsNewUser] = useState(false);
   const router = useRouter();
   
   // Form state
@@ -24,12 +23,8 @@ export default function Settings() {
     venmoId: '',
   });
   
-  // Check for new user param in URL
-  useEffect(() => {
-    if (router.query.new === 'true') {
-      setIsNewUser(true);
-    }
-  }, [router.query]);
+  // Get isNewUser directly from the URL query parameter
+  const isNewUser = router.query.new === 'true';
   
   // Fetch user settings when session is available
   useEffect(() => {
@@ -57,11 +52,6 @@ export default function Settings() {
       if (response.ok) {
         const data = await response.json();
         console.log("Received settings from API:", data);
-        
-        // If venmoId is empty, this might be a new user
-        if (!data.venmoId) {
-          setIsNewUser(true);
-        }
         
         // Always use the API data to override session data
         setSettings({
@@ -156,11 +146,9 @@ export default function Settings() {
         description: "Your profile settings have been updated.",
       });
       
-      // No longer a new user after saving
-      setIsNewUser(false);
-      
-      // Remove new parameter from URL
-      if (router.query.new) {
+      // Remove new parameter from URL if it exists
+      if (router.query.new === 'true') {
+        console.log("Removing new=true from URL after saving");
         router.replace('/settings', undefined, { shallow: true });
       }
     } catch (error) {
@@ -192,6 +180,7 @@ export default function Settings() {
     <div className="container py-12 max-w-xl">
       <h1 className="text-4xl font-bold mb-8 text-center">Settings</h1>
       
+      {/* Only show welcome message if new=true is in the URL */}
       {isNewUser && (
         <Card className="mb-6 border-yellow-200 bg-yellow-50">
           <CardContent className="py-6">
