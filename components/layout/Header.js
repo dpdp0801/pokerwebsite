@@ -27,14 +27,22 @@ export default function Header() {
       // Check if explicitly marked as new user
       const isNewUser = session.newUser === true;
       
-      // Check if user is missing required profile data
-      const missingProfileData = 
-        !session.user?.venmoId || 
-        (!session.user?.firstName && !session.user?.lastName);
+      // Check if user is missing BOTH firstName/lastName AND venmoId
+      // This is more lenient than the previous check
+      const missingCriticalData = 
+        !session.user?.venmoId && 
+        (!session.user?.firstName || !session.user?.lastName);
       
-      // Redirect if either condition is true, and we're not already on the settings page
-      if ((isNewUser || missingProfileData) && router.pathname !== '/settings') {
-        console.log('Redirecting new user to settings', { isNewUser, missingProfileData });
+      // Redirect if new user flag is set OR if critical data is missing
+      // and we're not already on the settings page
+      if ((isNewUser || missingCriticalData) && router.pathname !== '/settings') {
+        console.log('Redirecting user to settings', { 
+          isNewUser, 
+          missingCriticalData,
+          firstName: session.user?.firstName,
+          lastName: session.user?.lastName,
+          venmoId: session.user?.venmoId
+        });
         router.push('/settings?new=true');
       }
     }

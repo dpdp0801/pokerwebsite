@@ -134,7 +134,8 @@ export default function Settings() {
       
       // Update session with new name if first or last name was changed
       if (settings.firstName !== session.user.firstName || 
-          settings.lastName !== session.user.lastName) {
+          settings.lastName !== session.user.lastName ||
+          session.newUser) {
         const fullName = `${settings.firstName} ${settings.lastName}`.trim();
         await updateSession({
           ...session,
@@ -142,8 +143,11 @@ export default function Settings() {
             ...session.user,
             firstName: settings.firstName,
             lastName: settings.lastName,
+            venmoId: settings.venmoId,
             name: fullName || session.user.name
-          }
+          },
+          // Clear the newUser flag
+          newUser: false
         });
       }
       
