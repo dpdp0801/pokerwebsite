@@ -1,9 +1,22 @@
-import { getBlindStructure } from '@/lib/structures';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-utils';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
+
+// Get blind structure from JSON file
+function getBlindStructure() {
+  try {
+    const dataPath = path.join(process.cwd(), 'data', 'blindStructure.json');
+    const fileData = fs.readFileSync(dataPath, 'utf8');
+    return JSON.parse(fileData);
+  } catch (error) {
+    console.error('Error reading blind structure:', error);
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'PUT') {

@@ -6,16 +6,16 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-// Fallback function to get blind structure from JSON file if database fails
-async function getFallbackBlindStructure() {
+// Get blind structure from JSON file
+async function getBlindStructure() {
   try {
     const dataPath = path.join(process.cwd(), 'data', 'blindStructure.json');
     const fileData = fs.readFileSync(dataPath, 'utf8');
     const blindStructure = JSON.parse(fileData);
-    console.log('Using fallback blind structure from JSON file');
+    console.log('Using blind structure from JSON file');
     return blindStructure;
   } catch (err) {
-    console.error('Error reading fallback blind structure:', err);
+    console.error('Error reading blind structure:', err);
     return null;
   }
 }
@@ -73,42 +73,10 @@ export default async function handler(req, res) {
           
           // For tournaments, find the first non-break level to start with
           if (pokerSession.type === "TOURNAMENT") {
-            let blindStructureData = null;
+            let blindStructureData = await getBlindStructure();
             let firstLevelIndex = 0;
             
-            try {
-              // Try to get blind structure from database
-              const dbBlindStructure = await prisma.blindStructure.findFirst({
-                include: {
-                  levels: {
-                    orderBy: {
-                      level: 'asc' // Sort by level number for correct order
-                    }
-                  },
-                },
-              });
-              
-              if (dbBlindStructure && dbBlindStructure.levels && dbBlindStructure.levels.length > 0) {
-                blindStructureData = dbBlindStructure;
-                console.log('Found blind structure in database');
-              }
-            } catch (error) {
-              console.error('Error fetching blind structure from database:', error);
-              // The error is expected if the table doesn't exist yet
-            }
-            
-            // If no blind structure in database, try fallback from JSON file
-            if (!blindStructureData) {
-              const fallbackStructure = await getFallbackBlindStructure();
-              if (fallbackStructure && fallbackStructure.levels) {
-                blindStructureData = {
-                  levels: fallbackStructure.levels
-                };
-                console.log('Using fallback blind structure from file');
-              }
-            }
-            
-            if (blindStructureData) {
+            if (blindStructureData && blindStructureData.levels) {
               // Find the index of the first non-break level
               firstLevelIndex = blindStructureData.levels.findIndex(level => !level.isBreak);
               
