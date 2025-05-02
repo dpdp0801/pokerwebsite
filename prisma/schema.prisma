@@ -1,6 +1,6 @@
 // Updated schema with all required NextAuth tables
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
