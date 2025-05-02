@@ -53,64 +53,62 @@ export default async function handler(req, res) {
 
     try {
       const user = await prisma.user.findUnique({
-        where: {
-          email: session.user.email,
-        },
+        where: { email: session.user.email },
       });
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
+      if (!user) return res.status(404).json({ error: "User not found" });
 
       // Check if the session exists and is open for registration
       const pokerSession = await prisma.pokerSession.findUnique({
-        where: {
-          id: sessionId,
-        },
+        where: { id: sessionId },
+        select: { 
+          id: true, 
+          status: true, 
+          maxPlayers: true, 
+          type: true 
+        } // Select only needed fields
       });
-
-      if (!pokerSession) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-
-      // Allow registration for ACTIVE and NOT_STARTED sessions
+      if (!pokerSession) return res.status(404).json({ error: "Session not found" });
       if (pokerSession.status !== "NOT_STARTED" && pokerSession.status !== "ACTIVE") {
         return res.status(400).json({ error: "Session is not open for registration" });
       }
 
-      // Generate a unique payment code
-      const userIdPart = user.id.substring(0, 3).toUpperCase();
-      const timestamp = new Date().getTime().toString().substring(9, 13);
-      const paymentCode = `CP-${userIdPart}-${pokerSession.type.substring(0, 1)}${timestamp}`;
-
-      // Check if user is already registered
+      // Check if user is already registered (and not cancelled)
       const existingRegistration = await prisma.registration.findFirst({
         where: {
           userId: user.id,
           sessionId: sessionId,
+          NOT: { status: 'CANCELLED' } // Ensure they aren't just cancelled
         },
       });
-
       if (existingRegistration) {
         return res.status(400).json({ error: "You are already registered for this session" });
       }
 
-      // Count current registrations
-      const registrationCount = await prisma.registration.count({
+      // Count current *active* (confirmed) registrations to check against maxPlayers
+      const activeRegistrationCount = await prisma.registration.count({
         where: {
           sessionId: sessionId,
+          // Count players who are confirmed and either currently playing or registered to play
           status: "CONFIRMED",
+          playerStatus: { in: ['CURRENT', 'REGISTERED'] } 
         },
       });
+      console.log(`Session ${sessionId}: Max Players = ${pokerSession.maxPlayers}, Current Active Count = ${activeRegistrationCount}`);
 
-      // Check if session is full
-      const isWaitlisted = pokerSession.maxPlayers && registrationCount >= pokerSession.maxPlayers;
-      const status = isWaitlisted ? "WAITLISTED" : "CONFIRMED";
-      
-      // Set correct player status based on session status
+      // Determine status based on count and max players
+      const isWaitlisted = pokerSession.maxPlayers && activeRegistrationCount >= pokerSession.maxPlayers;
+      const registrationStatus = isWaitlisted ? "WAITLISTED" : "CONFIRMED";
       const playerStatus = isWaitlisted 
-        ? "REGISTERED" 
+        ? "WAITLISTED" // If waitlisted, playerStatus should also be Waitlisted
         : (pokerSession.status === "ACTIVE" ? "CURRENT" : "REGISTERED");
+      const paymentStatus = isWaitlisted ? "NOT_REQUIRED_YET" : "UNPAID";
+      
+      console.log(`Determined registration status: isWaitlisted=${isWaitlisted}, registrationStatus=${registrationStatus}, playerStatus=${playerStatus}`);
+
+      // Generate a unique payment code (keep existing logic)
+      const userIdPart = user.id.substring(0, 3).toUpperCase();
+      const timestamp = new Date().getTime().toString().substring(9, 13);
+      const paymentCode = `CP-${userIdPart}-${pokerSession.type.substring(0, 1)}${timestamp}`;
 
       // Create registration
       const registration = await prisma.registration.create({
@@ -118,17 +116,19 @@ export default async function handler(req, res) {
           userId: user.id,
           sessionId: sessionId,
           buyInAmount: buyInAmount,
-          status: status,
-          playerStatus: playerStatus,
+          status: registrationStatus, // Use determined status
+          playerStatus: playerStatus, // Use determined status
           paymentCode: paymentCode,
-          paymentStatus: isWaitlisted ? "NOT_REQUIRED_YET" : "UNPAID",
+          paymentStatus: paymentStatus,
           wasRegistered: true
         },
       });
       
+      console.log(`Registration created with ID: ${registration.id}, Status: ${registrationStatus}, PlayerStatus: ${playerStatus}`);
+      
       return res.status(201).json({
         ...registration,
-        wouldBeWaitlisted: isWaitlisted
+        wouldBeWaitlisted: isWaitlisted // Keep this flag for frontend feedback if needed
       });
     } catch (error) {
       console.error("Error creating registration:", error);

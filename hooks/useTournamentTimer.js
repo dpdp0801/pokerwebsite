@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatTimerDisplay } from '@/lib/tournament-utils';
+import { formatTimerDisplay, getNextLevel } from '@/lib/tournament-utils';
 
 export default function useTournamentTimer(
   blindStructureData, 
@@ -10,62 +10,80 @@ export default function useTournamentTimer(
   const [timer, setTimer] = useState({ minutes: 0, seconds: 0 });
   const [timerInterval, setTimerInterval] = useState(null);
   const [blindsLoading, setBlindsLoading] = useState(false);
-  const hasAdvancedLevelRef = useRef(false); // Track if advance was triggered for the current level
-  const currentLevelIndexRef = useRef(null); // Track the level index this timer instance is for
+  const [displayedLevelIndex, setDisplayedLevelIndex] = useState(sessionData?.session?.currentBlindLevel ?? 0);
+  const hasAdvancedLevelRef = useRef(false);
+  const currentLevelIndexRef = useRef(sessionData?.session?.currentBlindLevel ?? 0);
 
   // Format timer for display
   const formatTimer = () => formatTimerDisplay(timer.minutes, timer.seconds);
 
-  // Start timer for blind levels
+  // Update displayedLevelIndex when sessionData changes externally
   useEffect(() => {
-    // *** Add checks for sessionData existence ***
+    const serverLevelIndex = sessionData?.session?.currentBlindLevel ?? 0;
+    if (serverLevelIndex !== displayedLevelIndex) {
+        console.log(`[Timer] Server level index (${serverLevelIndex}) differs from display index (${displayedLevelIndex}). Syncing display.`);
+        setDisplayedLevelIndex(serverLevelIndex);
+        currentLevelIndexRef.current = serverLevelIndex; // Sync ref as well
+        hasAdvancedLevelRef.current = false; // Reset advance lock when server confirms level change
+    }
+  }, [sessionData?.session?.currentBlindLevel]);
+
+  // Start/manage timer based on displayedLevelIndex
+  useEffect(() => {
     if (!sessionData || !sessionData.exists || !sessionData.session) {
-        // If no valid session data, clear any existing interval and do nothing
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            setTimerInterval(null);
-        }
-        setTimer({ minutes: 0, seconds: 0 }); // Reset timer display
+        if (timerInterval) clearInterval(timerInterval); setTimerInterval(null);
+        setTimer({ minutes: 0, seconds: 0 });
         return; 
     }
-    
-    // Reset advance tracker when the level index changes externally
-    // Now safe to access currentBlindLevel because of the check above
-    if (sessionData.session.currentBlindLevel !== currentLevelIndexRef.current) {
-      console.log(`[Timer] Level index changed externally (${currentLevelIndexRef.current} -> ${sessionData.session.currentBlindLevel}). Resetting advance tracker.`);
-      hasAdvancedLevelRef.current = false;
-      currentLevelIndexRef.current = sessionData.session.currentBlindLevel;
-    }
-    
-    // Proceed only if session is ACTIVE and we have blind structure info
-    if (blindStructureData?.currentLevel && sessionData.session.status === 'ACTIVE') {
-      // Clear any existing interval before setting up a new one
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        setTimerInterval(null); // Ensure state is updated
-      }
-      
-      const currentLevelIndex = sessionData.session.currentBlindLevel ?? 0;
-      currentLevelIndexRef.current = currentLevelIndex; // Store current level
 
-      const levelDuration = blindStructureData.currentLevel.duration;
-      const startTime = sessionData.session.levelStartTime 
+    // Use displayedLevelIndex to get the level details for the timer
+    const levelForTimer = blindStructureData?.levels?.[displayedLevelIndex];
+    
+    // Check if the displayed level exists and session is active
+    if (levelForTimer && sessionData.session.status === 'ACTIVE') {
+       
+      if (timerInterval) clearInterval(timerInterval); setTimerInterval(null);
+      
+      const serverLevelIndex = sessionData.session.currentBlindLevel ?? 0;
+      const isSyncedWithServer = displayedLevelIndex === serverLevelIndex;
+      currentLevelIndexRef.current = serverLevelIndex; // Keep ref synced to server state
+      const levelDuration = levelForTimer.duration;
+      let startTime = sessionData.session.levelStartTime 
         ? new Date(sessionData.session.levelStartTime)
         : new Date();
+      
+      // If displayed level is AHEAD of server level, estimate start time
+      if (!isSyncedWithServer && displayedLevelIndex > serverLevelIndex) {
+         console.log("[Timer] Display level is ahead of server. Estimating start time for display timer.");
+         // Find the *previous* level's duration to estimate when this level *should* have started
+         const prevLevelIndex = displayedLevelIndex - 1;
+         const prevLevel = blindStructureData?.levels?.[prevLevelIndex];
+         if (prevLevel && sessionData.session.levelStartTime) {
+            const prevLevelDurationMs = (prevLevel.duration || 0) * 60 * 1000;
+            startTime = new Date(sessionData.session.levelStartTime.getTime() + prevLevelDurationMs);
+         } else {
+            // Fallback if we can't estimate: just use current time (timer will likely be full duration)
+            startTime = new Date(); 
+         }
+      } else if (!sessionData.session.levelStartTime) {
+          // If server start time is missing, use now
+          startTime = new Date();
+      }
 
       const now = new Date();
       const elapsedSeconds = Math.floor((now - startTime) / 1000);
       const totalSeconds = levelDuration * 60;
       let remainingSeconds = totalSeconds - elapsedSeconds;
-
-      // --- Initial Check --- 
-      if (remainingSeconds <= 0 && isAdmin && !hasAdvancedLevelRef.current) {
-        console.log(`[Timer] Initial time is already <= 0 for level ${currentLevelIndex}. Attempting advance.`);
-        hasAdvancedLevelRef.current = true; // Mark as attempted
+      
+      // --- Initial Check for Admin Auto-Advance --- 
+      // Only advance if synced with server and timer is already 0
+      if (isSyncedWithServer && remainingSeconds <= 0 && isAdmin && !hasAdvancedLevelRef.current) {
+        console.log(`[Timer] Initial time is already <= 0 for synced level ${displayedLevelIndex}. Attempting admin advance.`);
+        hasAdvancedLevelRef.current = true; 
         setTimeout(async () => {
           try {
             setBlindsLoading(true);
-            await updateBlindLevel(currentLevelIndex + 1);
+            await updateBlindLevel(displayedLevelIndex + 1);
           } catch (error) {
             console.error("[Timer] Error advancing level on initial load:", error);
             hasAdvancedLevelRef.current = false; 
@@ -78,10 +96,7 @@ export default function useTournamentTimer(
       }
       
       remainingSeconds = Math.max(0, remainingSeconds);
-      const initialMinutes = Math.floor(remainingSeconds / 60);
-      const initialSeconds = remainingSeconds % 60;
-      
-      setTimer({ minutes: initialMinutes, seconds: initialSeconds });
+      setTimer({ minutes: Math.floor(remainingSeconds / 60), seconds: remainingSeconds % 60 });
 
       // --- Interval Logic --- 
       const interval = setInterval(() => {
@@ -90,30 +105,42 @@ export default function useTournamentTimer(
           let newSeconds = prevTimer.seconds;
 
           if (newMinutes === 0 && newSeconds === 0) {
-            clearInterval(interval);
-            setTimerInterval(null);
+            clearInterval(interval); setTimerInterval(null);
             return prevTimer; 
           }
 
           newSeconds--;
-          if (newSeconds < 0) {
-            newSeconds = 59;
-            newMinutes--;
-          }
+          if (newSeconds < 0) { newSeconds = 59; newMinutes--; }
           
           if (newMinutes <= 0 && newSeconds <= 0) {
-            newMinutes = 0;
-            newSeconds = 0;
-            clearInterval(interval); 
-            setTimerInterval(null);
+            newMinutes = 0; newSeconds = 0;
+            clearInterval(interval); setTimerInterval(null);
 
-            if (isAdmin && !hasAdvancedLevelRef.current && !blindsLoading) {
-               console.log(`[Timer] Interval timer hit 0 for level ${currentLevelIndexRef.current}. Attempting advance.`);
+            // Find the *next* level details based on the *current displayed* level
+            const nextLevelIndex = displayedLevelIndex + 1;
+            const nextLevel = blindStructureData?.levels?.[nextLevelIndex];
+
+            if (nextLevel) {
+              console.log(`[Timer] Interval hit 0 for display level ${displayedLevelIndex}. Advancing display to level ${nextLevelIndex}.`);
+              // Optimistically advance the DISPLAYED level
+              setDisplayedLevelIndex(nextLevelIndex);
+              // Immediately set timer for the next level
+              const nextDuration = nextLevel.duration || 0;
+              setTimer({ minutes: nextDuration, seconds: 0 });
+            } else {
+               console.log(`[Timer] Interval hit 0 for display level ${displayedLevelIndex}, but no next level found.`);
+               // Keep timer at 0 if no next level
+            }
+            
+            // Admin still needs to trigger the actual backend update
+            if (isAdmin && !hasAdvancedLevelRef.current && !blindsLoading && isSyncedWithServer) {
+               console.log(`[Timer] Admin detected timer end for synced level ${displayedLevelIndex}. Attempting backend advance.`);
                hasAdvancedLevelRef.current = true; 
                setTimeout(async () => {
                  try {
                    setBlindsLoading(true);
-                   await updateBlindLevel((currentLevelIndexRef.current || 0) + 1);
+                   // Update based on the level that just ENDED (which is the displayedLevelIndex)
+                   await updateBlindLevel(displayedLevelIndex + 1); 
                  } catch (error) {
                    console.error("[Timer] Error advancing level from interval:", error);
                    hasAdvancedLevelRef.current = false; 
@@ -129,20 +156,16 @@ export default function useTournamentTimer(
       
       setTimerInterval(interval);
       
-      return () => {
-        if (interval) {
-          clearInterval(interval);
-        }
-      };
+      return () => { if (interval) clearInterval(interval); };
+      
     } else { 
-      // If session not ACTIVE or no blind data, ensure timer is cleared/reset
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        setTimerInterval(null);
-      }
+      // If session not ACTIVE or no level data for displayed index, clear timer
+      if (timerInterval) clearInterval(timerInterval); setTimerInterval(null);
       setTimer({ minutes: 0, seconds: 0 });
     } 
-  }, [blindStructureData, sessionData, isAdmin, updateBlindLevel]);
+    // Depend on displayedLevelIndex to restart timer when it changes optimistically
+  }, [blindStructureData, sessionData, isAdmin, updateBlindLevel, displayedLevelIndex]);
 
-  return { timer, formatTimer, blindsLoading, setBlindsLoading };
+  // Return the displayed level index for the UI to use
+  return { timer, formatTimer, blindsLoading, setBlindsLoading, displayedLevelIndex };
 } 

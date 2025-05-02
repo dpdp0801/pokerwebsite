@@ -109,13 +109,18 @@ export default function Status() {
   const { 
     blindStructureData, 
     fetchBlindStructureIfNeeded,
-    updateBlindLevel
+    updateBlindLevel,
+    displayedLevelIndex
   } = useBlindStructure(sessionData, fetchSessionData);
   
+  // Use displayedLevelIndex to get the *current* structure level for display
+  const displayedStructureLevel = blindStructureData?.levels?.[displayedLevelIndex];
+  
+  // Pass displayed level details to TournamentTimer
   const { timer, formatTimer, blindsLoading, setBlindsLoading } = useTournamentTimer(
-    blindStructureData, 
+    { ...blindStructureData, currentLevel: displayedStructureLevel, currentLevelIndex: displayedLevelIndex },
     sessionData, 
-    isAdmin,
+    isAdminRole,
     updateBlindLevel
   );
   
@@ -505,8 +510,8 @@ export default function Status() {
           {isTournament && isActive && (
             <TournamentTimer
               formatTimer={formatTimer}
-              blindStructureData={blindStructureData}
-              isAdmin={isAdmin}
+              blindStructureData={{ ...blindStructureData, currentLevel: displayedStructureLevel, currentLevelIndex: displayedLevelIndex }}
+              isAdmin={isAdminRole}
               blindsLoading={blindsLoading}
               currentSession={currentSession}
               updateBlindLevel={updateBlindLevel}
