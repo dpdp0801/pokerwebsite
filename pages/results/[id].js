@@ -231,12 +231,6 @@ export default function PastSessionDetails() {
   
   return (
     <div className="container py-12 max-w-3xl">
-      <div className="mb-6">
-        <Link href="/results">
-          <Button variant="ghost" size="sm">← Back to Results</Button>
-        </Link>
-      </div>
-      
       <Card>
         <CardHeader>
           <CardTitle className="text-center flex items-center justify-center gap-2">
