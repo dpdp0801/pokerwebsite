@@ -59,34 +59,31 @@ export default async function handler(req, res) {
         const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
         const [hours, minutes] = time.split(':').map(n => parseInt(n, 10));
         
-        // Create date object using the specific date and time
-        // This assumes the server's local timezone is appropriate or consistent
-        // If dealing with multiple timezones, use UTC or a library like date-fns-tz
-        startTimeDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+        // Create a Date object representing the UTC date and time
+        startTimeDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
 
         if (isNaN(startTimeDate.getTime())) {
              throw new Error('Invalid date or time resulted in NaN.');
         }
         
-        console.log(`Parsed date ${date} and time ${time} into startTimeDate:`, 
-                     startTimeDate.toISOString(), 
-                     "Local string:", startTimeDate.toString());
+        console.log(`Parsed date ${date} and time ${time} into UTC startTimeDate:`, 
+                     startTimeDate.toISOString(), // ISO string is always UTC (Z)
+                     "getTime() value:", startTimeDate.getTime());
       } catch (error) {
-        console.error("Error parsing date/time:", error);
+        console.error("Error parsing date/time into UTC:", error);
         return res.status(400).json({ 
           success: false, 
           message: `Invalid date or time format. Use YYYY-MM-DD and HH:MM. Error: ${error.message}` 
         });
       }
       
-      // Set the 'date' field (used for sorting/display) to the start of the day 
-      // in the *same timezone* as the startTimeDate for consistency.
-      const dateOnly = new Date(startTimeDate);
-      dateOnly.setHours(0, 0, 0, 0);
+      // Set the 'date' field (used for sorting/display) to the start of the day in UTC.
+      const dateOnly = new Date(startTimeDate.toISOString()); // Create from UTC string
+      dateOnly.setUTCHours(0, 0, 0, 0); // Set hours to 0 in UTC
       
-      console.log("Setting date field (for sorting/display) to:", 
+      console.log("Setting date field (for sorting/display) to UTC midnight:", 
                    dateOnly.toISOString(),
-                   "Local string:", dateOnly.toString());
+                   "getTime() value:", dateOnly.getTime());
 
       // Validate specific fields based on type
       if (type.toUpperCase() === 'TOURNAMENT' && !buyIn) {
