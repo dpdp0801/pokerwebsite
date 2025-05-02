@@ -140,7 +140,8 @@ export default async function handler(req, res) {
            sessionStatus: sessionData.status || 'NOT_STARTED'
         }
       };
-      console.log(`Returning successful payload for session ${sessionId}`);
+      // Log the exact payload before sending
+      console.log(`[GET /api/sessions/${sessionId}] Returning payload:`, JSON.stringify(responsePayload, null, 2)); 
       return res.status(200).json(responsePayload);
 
     } catch (error) {
