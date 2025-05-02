@@ -16,11 +16,11 @@ export default async function handler(req, res) {
             { status: 'NOT_STARTED' },
           ],
         },
-        orderBy: {
-          // Prioritize ACTIVE sessions, then by creation date
-          status: 'asc', // ACTIVE comes before NOT_STARTED alphabetically
-          createdAt: 'desc',
-        },
+        orderBy: [
+          // Wrap the order conditions in an array
+          { status: 'asc' }, 
+          { createdAt: 'desc' }
+        ],
         select: {
           id: true, // Only need the ID initially
           status: true, // Include status for logging/debugging
