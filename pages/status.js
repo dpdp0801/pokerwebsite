@@ -289,10 +289,17 @@ export default function Status() {
               <Label htmlFor="buyInAmount">Buy-In Amount ($)</Label>
               <Input 
                 id="buyInAmount"
-                type="number"
-                min="1"
+                type="text"
+                pattern="[0-9]*"
+                inputMode="numeric"
                 value={buyInAmount}
-                onChange={(e) => setBuyInAmount(e.target.value)}
+                onBlur={(e) => setBuyInAmount(e.target.value)}
+                onChange={(e) => {
+                  // Only accept numbers
+                  if (/^\d*$/.test(e.target.value)) {
+                    setBuyInAmount(e.target.value);
+                  }
+                }}
                 placeholder="100"
               />
             </div>
@@ -332,10 +339,17 @@ export default function Status() {
               <Label htmlFor="cashOutAmount">Cash-Out Amount ($)</Label>
               <Input 
                 id="cashOutAmount"
-                type="number"
-                min="0"
+                type="text"
+                pattern="[0-9]*"
+                inputMode="numeric"
                 value={cashOutAmount}
-                onChange={(e) => setCashOutAmount(e.target.value)}
+                onBlur={(e) => setCashOutAmount(e.target.value)}
+                onChange={(e) => {
+                  // Only accept numbers
+                  if (/^\d*$/.test(e.target.value)) {
+                    setCashOutAmount(e.target.value);
+                  }
+                }}
                 placeholder="150"
               />
             </div>

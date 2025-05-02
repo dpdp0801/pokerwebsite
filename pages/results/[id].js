@@ -120,6 +120,37 @@ export default function PastSessionDetails() {
     fetchPastSession();
   }, [id, status, router, toast]);
   
+  // Fetch eliminated players with API if needed
+  useEffect(() => {
+    if (!id || !pastSession || status !== "authenticated") return;
+    
+    // Only proceed if we need to fetch eliminated players
+    if (!pastSession.registrations.eliminated || pastSession.registrations.eliminated.length === 0) {
+      const fetchEliminatedPlayers = async () => {
+        try {
+          const response = await fetch(`/api/sessions/players?sessionId=${id}&status=ELIMINATED`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setPastSession(prev => ({
+                ...prev,
+                registrations: {
+                  ...prev.registrations,
+                  eliminated: data.players || []
+                }
+              }));
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching eliminated players:", error);
+        }
+      };
+      
+      fetchEliminatedPlayers();
+    }
+  }, [id, pastSession, status]);
+  
   // Loading state
   if (loading) {
     return (
@@ -209,31 +240,11 @@ export default function PastSessionDetails() {
           </div>
           
           {/* Session statistics overview */}
-          <div className="grid grid-cols-2 gap-4 mb-6 text-center">
-            <div>
-              <div className="flex items-center justify-center gap-1">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xl font-medium">
-                  {pastSession.currentPlayersCount}/{pastSession.maxPlayers}
-                </p>
-              </div>
-              <p className="text-muted-foreground">Players</p>
-            </div>
-            
-            {pastSession.waitlistedPlayersCount > 0 && (
-              <div>
-                <p className="text-xl font-medium">{pastSession.waitlistedPlayersCount}</p>
-                <p className="text-muted-foreground">Waitlisted</p>
-              </div>
-            )}
-            
+          <div className="grid grid-cols-1 gap-4 mb-6 text-center">
             {isTournament && (
-              <>
-                <div>
-                  <p className="text-xl font-medium">{pastSession.totalEntries || 0}</p>
-                  <p className="text-muted-foreground">Total Entries</p>
-                </div>
-              </>
+              <div>
+                <p className="text-2xl font-medium">{pastSession.totalEntries || pastSession.registrations?.itm?.length || 0} entries</p>
+              </div>
             )}
           </div>
           

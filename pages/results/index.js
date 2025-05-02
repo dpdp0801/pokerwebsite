@@ -175,9 +175,9 @@ export default function Results() {
                           )}
                         </div>
                         
-                        <div className="flex items-center mt-3 text-sm">
+                        <div className="flex items-center mt-3 text-sm justify-center">
                           <Users className="h-4 w-4 text-muted-foreground mr-1.5" />
-                          <span>{session.totalEntries || 0} entries</span>
+                          <span className="font-medium">{session.totalEntries || 0} entries</span>
                         </div>
                       </div>
                       

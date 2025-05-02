@@ -12,7 +12,7 @@ export default function TournamentTimer({
 }) {
   return (
     <div className="border-t pt-4 mt-4">
-      <h3 className="font-medium text-lg mb-3 text-center">Timer</h3>
+      <h3 className="font-bold text-2xl mb-3 text-center">Timer</h3>
       
       {/* Timer Display - Always visible */}
       <div className="text-center mb-6">
@@ -127,20 +127,20 @@ function LevelDisplay({ currentLevel }) {
   return (
     <div className="bg-background border rounded-md p-4">
       {/* Current Level */}
-      <div className="text-center font-medium text-base text-muted-foreground mb-2">
+      <div className="text-center font-bold text-xl text-muted-foreground mb-2">
         Current Level: {currentLevel.level || 1}
       </div>
       <div className="grid grid-cols-3 gap-4 items-center my-3">
         <div className="text-center">
-          <p className="text-xl text-muted-foreground">Small Blind</p>
+          <p className="text-2xl font-bold text-muted-foreground">SB</p>
           <p className="text-6xl font-bold">{currentLevel.smallBlind || '—'}</p>
         </div>
         <div className="text-center">
-          <p className="text-xl text-muted-foreground">Big Blind</p>
+          <p className="text-2xl font-bold text-muted-foreground">BB</p>
           <p className="text-6xl font-bold">{currentLevel.bigBlind || '—'}</p>
         </div>
         <div className="text-center">
-          <p className="text-xl text-muted-foreground">Ante</p>
+          <p className="text-2xl font-bold text-muted-foreground">Ante</p>
           <p className="text-6xl font-bold">{currentLevel.ante || '—'}</p>
         </div>
       </div>
