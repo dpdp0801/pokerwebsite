@@ -99,30 +99,34 @@ export default function Status() {
   const router = useRouter();
 
   // Check for admin role in multiple possible locations
-  const isAdminRole = 
-    session?.user?.isAdmin === true || 
-    session?.role === "ADMIN" || 
-    session?.user?.role === "ADMIN";
+  const isAdminRole = session?.user?.role === "ADMIN";
   
   // Custom hooks for all data and functionality
   const { loading: sessionLoading, sessionData, fetchSessionData } = useSessionData();
   const { 
     blindStructureData, 
-    fetchBlindStructureIfNeeded,
-    updateBlindLevel,
-    displayedLevelIndex
+    serverLevelIndex,
+    updateBlindLevel
   } = useBlindStructure(sessionData, fetchSessionData);
   
-  // Use displayedLevelIndex to get the *current* structure level for display
-  const displayedStructureLevel = blindStructureData?.levels?.[displayedLevelIndex];
-  
-  // Pass displayed level details to TournamentTimer
-  const { timer, formatTimer, blindsLoading, setBlindsLoading } = useTournamentTimer(
-    { ...blindStructureData, currentLevel: displayedStructureLevel, currentLevelIndex: displayedLevelIndex },
-    sessionData, 
+  // Pass server index and specific session details to timer hook
+  const { 
+    timer, 
+    formatTimer, 
+    blindsLoading, 
+    setBlindsLoading,
+    displayedLevelIndex
+  } = useTournamentTimer(
+    blindStructureData,
+    serverLevelIndex,
+    sessionData?.session?.levelStartTime,
+    sessionData?.session?.status,
     isAdminRole,
     updateBlindLevel
   );
+  
+  // Determine the level details to display based on the timer hook's index
+  const displayedStructureLevel = blindStructureData?.levels?.[displayedLevelIndex];
   
   const { 
     payoutStructure,
@@ -180,7 +184,9 @@ export default function Status() {
   console.log('[Status Page Render] Raw sessionData.blindInfo:', sessionData?.blindInfo);
   // Log the derived structure data passed to Timer
   console.log('[Status Page Render] Derived blindStructureData for Timer:', blindStructureData);
+  console.log('[Status Page Render] Server Level Index:', serverLevelIndex);
   console.log('[Status Page Render] Displayed Level Index:', displayedLevelIndex);
+  console.log('[Status Page Render] Displayed Structure Level:', displayedStructureLevel);
   // Log payout structure from its hook
   console.log('[Status Page Render] Payout Structure:', payoutStructure);
 
@@ -557,9 +563,14 @@ export default function Status() {
               <h3 className="font-medium text-lg mb-3">In The Money</h3>
               
               {(() => {
+                // Ensure payoutStructure is checked for null before accessing tiers
+                if (!payoutStructure) {
+                  return <p className="text-muted-foreground text-sm">Loading payout data...</p>;
+                }
+                
                 // Get number of payout positions
                 let payoutPositions = 0;
-                if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
+                if (payoutStructure.tiers && payoutStructure.tiers.length > 0) {
                   payoutPositions = Math.max(
                     ...payoutStructure.tiers.map(tier => tier.position)
                   );
@@ -859,7 +870,7 @@ export default function Status() {
                 shouldShowPayouts={true}
                 payoutStructure={payoutStructure} 
                 currentSession={currentSession}
-                isAdmin={isAdmin}
+                isAdmin={isAdminRole}
               />
             </div>
           )}
