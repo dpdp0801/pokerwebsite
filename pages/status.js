@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -125,8 +125,11 @@ export default function Status() {
     updateBlindLevel
   );
   
-  // Determine the level details to display based on the timer hook's index
-  const displayedStructureLevel = blindStructureData?.levels?.[displayedLevelIndex];
+  // Memoize the displayed structure level to prevent unnecessary recalculations
+  const displayedStructureLevel = useMemo(() => 
+    blindStructureData?.levels?.[displayedLevelIndex],
+    [blindStructureData, displayedLevelIndex]
+  );
   
   const { 
     payoutStructure,
@@ -155,32 +158,33 @@ export default function Status() {
     if (sessionExists && sessionDetails?.type === 'TOURNAMENT' && sessionDetails?.status === 'ACTIVE') {
       // Calculate entry count, ensuring we handle null/undefined safely
       const entryCount = sessionDetails.entries ?? 0;
-      console.log(`[Status Page Effect] Conditions met. Calling fetchPayoutStructureIfNeeded with count: ${entryCount}`);
+      
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Status Page Effect] Calling fetchPayoutStructureIfNeeded with count: ${entryCount}`);
+      }
+      
       fetchPayoutStructureIfNeeded(entryCount);
-    } else {
-       console.log(`[Status Page Effect] Conditions not met. Session Exists: ${sessionExists}, Type: ${sessionDetails?.type}, Status: ${sessionDetails?.status}`);
     }
-    // Dependencies: Run when session existence, type, status, or entry count changes.
   }, [
        sessionData?.exists, 
        sessionData?.session?.type, 
        sessionData?.session?.status, 
-       sessionData?.session?.entries, // Use the specific 'entries' field 
-       fetchPayoutStructureIfNeeded // Include the function itself as a dependency
+       sessionData?.session?.entries,
+       fetchPayoutStructureIfNeeded
      ]);
 
-  // Log the state right before rendering
-  console.log('[Status Page Render] Loading:', sessionLoading);
-  console.log('[Status Page Render] Session Exists:', sessionData?.exists);
-  // Log blind info received from useSessionData hook
-  console.log('[Status Page Render] Raw sessionData.blindInfo:', sessionData?.blindInfo);
-  // Log the derived structure data passed to Timer
-  console.log('[Status Page Render] Derived blindStructureData for Timer:', blindStructureData);
-  console.log('[Status Page Render] Server Level Index:', serverLevelIndex);
-  console.log('[Status Page Render] Displayed Level Index:', displayedLevelIndex);
-  console.log('[Status Page Render] Displayed Structure Level:', displayedStructureLevel);
-  // Log payout structure from its hook
-  console.log('[Status Page Render] Payout Structure:', payoutStructure);
+  // Only log in development to reduce performance impact
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Status Page Render] Loading:', sessionLoading);
+    console.log('[Status Page Render] Session Exists:', sessionData?.exists);
+    console.log('[Status Page Render] Raw sessionData.blindInfo:', sessionData?.blindInfo);
+    console.log('[Status Page Render] Derived blindStructureData for Timer:', blindStructureData);
+    console.log('[Status Page Render] Server Level Index:', serverLevelIndex);
+    console.log('[Status Page Render] Displayed Level Index:', displayedLevelIndex);
+    console.log('[Status Page Render] Displayed Structure Level:', displayedStructureLevel);
+    console.log('[Status Page Render] Payout Structure:', payoutStructure);
+  }
 
   // Loading state
   if (sessionLoading) {
