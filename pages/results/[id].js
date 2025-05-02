@@ -270,6 +270,17 @@ export default function PastSessionDetails() {
                       // Infer place from order if not stored explicitly
                       const place = player.place || (idx + 1);
                       
+                      // Calculate prize amount based on payout structure and buy-in
+                      let prizeAmount = null;
+                      if (payoutStructure && payoutStructure.tiers && pastSession.buyIn) {
+                        const tier = payoutStructure.tiers.find(t => t.position === place);
+                        if (tier) {
+                          const totalEntries = pastSession.totalEntries || pastSession.entries || 0;
+                          const totalPrize = pastSession.buyIn * totalEntries;
+                          prizeAmount = Math.floor(totalPrize * (tier.percentage / 100));
+                        }
+                      }
+                      
                       return (
                         <li key={`place-${place}-${player.id}`} className="p-3 flex items-center justify-between">
                           {/* Left side - Place and player info */}
@@ -311,9 +322,9 @@ export default function PastSessionDetails() {
                           </div>
                           
                           {/* Right side - Prize amount if available */}
-                          {player.prize && (
+                          {(player.prize || prizeAmount) && (
                             <div className="text-sm font-medium text-green-600">
-                              ${player.prize}
+                              ${player.prize || prizeAmount}
                             </div>
                           )}
                         </li>
