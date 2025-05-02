@@ -588,7 +588,7 @@ export default function Status() {
                   let prize = 0;
                   const tier = payoutStructure.tiers.find(t => t.position === position);
                   if (tier) {
-                    const totalPrize = currentSession.buyIn * (currentSession.totalEntries || 0);
+                    const totalPrize = currentSession.buyIn * (currentSession.entries || 0);
                     prize = Math.floor(totalPrize * (tier.percentage / 100));
                   }
                   

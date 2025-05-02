@@ -19,6 +19,13 @@ export default function PayoutStructure({
   currentSession, 
   isAdmin 
 }) {
+  // Get the entry count safely: try entries first, fall back to totalEntries if available
+  const entryCount = currentSession?.entries || currentSession?.totalEntries || 0;
+  // Make sure buyIn is a number, default to 0
+  const buyIn = currentSession?.buyIn || 0;
+  // Calculate total prize pool
+  const totalPrizePool = buyIn * entryCount;
+
   return (
     <div className="border-t pt-4 mt-4">
       <h3 className="font-medium text-lg mb-3 text-center flex items-center justify-center">
@@ -29,8 +36,8 @@ export default function PayoutStructure({
       {payoutStructure ? (
         <>
           <div className="mb-2 text-center text-sm text-muted-foreground">
-            Based on {currentSession.totalEntries || 0} entries - 
-            Total Prize Pool: ${(currentSession.buyIn * (currentSession.totalEntries || 0)).toLocaleString()}
+            Based on {entryCount} entries - 
+            Total Prize Pool: ${totalPrizePool.toLocaleString()}
           </div>
           <div className="border rounded-md overflow-hidden mb-4">
             <Table>
@@ -61,8 +68,8 @@ export default function PayoutStructure({
                         <TableCell key={tier.id} className="text-center font-medium">
                           ${calculatePayout(
                             tier.percentage, 
-                            currentSession.buyIn, 
-                            currentSession.totalEntries || currentSession.registeredPlayers || 0
+                            buyIn, 
+                            entryCount
                           )}
                         </TableCell>
                       ))}
