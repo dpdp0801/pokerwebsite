@@ -610,8 +610,8 @@ export default function AdminDashboard() {
   
   // Format time for display using the utility
   const formatSessionTime = (session) => {
-      // Use the utility, passing both timeString and startTime
-      return formatUtilTime(session?.startTime, session?.timeString);
+      // Use the utility, passing only startTime
+      return formatUtilTime(session?.startTime);
   };
   
   // Get status badge color

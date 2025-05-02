@@ -432,7 +432,7 @@ export default function Status() {
             </span>
           </CardTitle>
           <CardDescription className="text-center">
-            {formatDate(currentSession.date)} at {formatTimeOnly(currentSession.startTime, currentSession.timeString)}
+            {formatDate(currentSession.date)} at {formatTimeOnly(currentSession.startTime)}
           </CardDescription>
         </CardHeader>
         <CardContent>
