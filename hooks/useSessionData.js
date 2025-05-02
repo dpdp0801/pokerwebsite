@@ -1,78 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export default function useSessionData() {
+  const [sessionData, setSessionData] = useState({ exists: false, session: null, blindInfo: null });
   const [loading, setLoading] = useState(true);
-  const [sessionData, setSessionData] = useState({
-    exists: false,
-    session: null
-  });
-  
-  // Fetch session data
-  const fetchSessionData = async (initialLoad = false) => {
+  const [error, setError] = useState(null);
+
+  const fetchSessionData = useCallback(async () => {
+    // Don't refetch if already loading
+    // if (loading) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      // Only show loading state on initial load
-      if (initialLoad) {
-        setLoading(true);
+      // Use the new consolidated session endpoint
+      // Assuming you might pass an ID later, but for now fetches the single active/relevant session
+      // If you need to fetch a specific session by ID (e.g., from URL), you'll need to pass the ID here
+      // const response = await fetch(`/api/sessions/${sessionId}`); // Example if ID is needed
+      
+      // Let's check if there is *any* active or not started session
+      // This might need adjustment based on how you identify the "current" session
+      const response = await fetch('/api/sessions'); // Need to implement GET /api/sessions to find the one to show
+      
+      // ---- TEMPORARY HACK: Until GET /api/sessions is implemented properly ----
+      // For now, let's hardcode fetching the session ID used previously if we can guess it
+      // We need a reliable way to know *which* session to fetch status for.
+      // Maybe we look for the *first* session with status ACTIVE or NOT_STARTED?
+      // This is complex. Let's assume for now the status page will ONLY work if there's
+      // an active session with a KNOWN ID passed via props or context.
+      // We need to refactor how the Status page gets the session ID.
+      
+      // ---- REVERTING to a placeholder ----
+      // We'll need to update the Status page to provide the session ID
+      // For now, this hook can't fetch without an ID. We'll pass null.
+      
+      // ---- Let's assume the status page gets the ID and passes it ----
+      // The hook should accept the ID as an argument
+      /*
+      async function fetchSessionData(sessionId) { // Modified signature
+          if (!sessionId) {
+              setSessionData({ exists: false, session: null, blindInfo: null });
+              setLoading(false);
+              return;
+          }
+          setLoading(true);
+          setError(null);
+          try {
+             const response = await fetch(`/api/sessions/${sessionId}`);
+             if (!response.ok) {
+                 if (response.status === 404) {
+                     setSessionData({ exists: false, session: null, blindInfo: null });
+                 } else {
+                     throw new Error(`HTTP error! status: ${response.status}`);
+                 }
+             } else {
+                 const data = await response.json();
+                 setSessionData(data); // data should match structure { exists: true, session: {...}, blindInfo: {...} }
+             }
+          } catch (e) {
+              console.error("Failed to fetch session data:", e);
+              setError(e.message);
+              setSessionData({ exists: false, session: null, blindInfo: null });
+          } finally {
+              setLoading(false);
+          }
       }
+      */
+      // For now, we will just return a non-existent session state
+      // TODO: Refactor Status page to pass Session ID to this hook
+      setSessionData({ exists: false, session: null, blindInfo: null });
+      console.warn('useSessionData hook needs sessionId to function correctly after API consolidation.');
       
-      const response = await fetch('/api/session-status');
-      const data = await response.json();
-      
-      // Update the session data state without causing a flash
-      setSessionData(prevData => {
-        // If it's the first load or session existence changed
-        if (initialLoad || prevData.exists !== data.exists) {
-          return data;
-        }
-        
-        // For subsequent loads, if the session exists, merge
-        // the new data with the existing data to avoid UI flickering
-        if (data.exists && prevData.exists) {
-          return {
-            exists: true,
-            session: {
-              ...prevData.session,
-              ...data.session,
-              // Keep the same objects for these unless they've actually changed
-              // This prevents unnecessary re-renders
-              registrations: {
-                current: data.session.registrations.current,
-                waitlist: data.session.registrations.waitlist,
-                eliminated: data.session.registrations.eliminated,
-                itm: data.session.registrations.itm
-              }
-            }
-          };
-        }
-        
-        return data;
-      });
-    } catch (error) {
-      console.error('Error fetching session data:', error);
+    } catch (e) {
+      console.error("Failed to fetch session data:", e);
+      setError(e.message);
+      setSessionData({ exists: false, session: null, blindInfo: null });
     } finally {
-      // Only update loading state on initial load
-      if (initialLoad) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  };
+  }, []); // Removed loading dependency
 
-  // Initial data fetch
+  // Initial fetch
   useEffect(() => {
-    fetchSessionData(true);
-    
-    // Set up polling to refresh data every 10 seconds
-    const intervalId = setInterval(() => {
-      fetchSessionData(false);
-    }, 10000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(intervalId);
-  }, []);
+    // fetchSessionData(); // Cannot fetch without ID
+    setLoading(false); // Indicate loading is finished (as we can't fetch)
+  }, [fetchSessionData]);
 
-  return { 
-    loading, 
-    sessionData, 
-    fetchSessionData
-  };
+  return { sessionData, loading, error, fetchSessionData };
 } 

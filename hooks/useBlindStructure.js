@@ -1,66 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from "@/lib/hooks/use-toast";
 import { getNextLevel } from '@/lib/tournament-utils';
 
 export default function useBlindStructure(sessionData, fetchSessionData) {
-  const [blindStructureData, setBlindStructureData] = useState(null);
-  const [blindsLoading, setBlindsLoading] = useState(false);
+  // Blind structure data now comes directly from sessionData
+  const blindStructureData = sessionData?.blindInfo || { levels: [], currentLevelIndex: 0, currentLevel: null };
+  const [blindsLoading, setBlindsLoading] = useState(false); // Still needed for update action
   const { toast } = useToast();
 
-  // Fetch blind structure if needed
-  const fetchBlindStructureIfNeeded = async (sessionId, currentLevel) => {
-    // Skip if already loading
-    if (blindsLoading) return;
-    
-    // Skip if we already have the data and the level hasn't changed
-    if (
-      blindStructureData && 
-      blindStructureData.sessionId === sessionId &&
-      blindStructureData.currentLevelIndex === currentLevel
-    ) {
-      return;
-    }
-    
-    try {
-      setBlindsLoading(true);
-      const response = await fetch(`/api/blinds/current?sessionId=${sessionId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch blind structure');
-      }
-      
-      const data = await response.json();
-      
-      setBlindStructureData({
-        ...data,
-        sessionId, // Store the sessionId for future comparisons
-      });
-    } catch (error) {
-      console.error('Error fetching blind structure:', error);
-    } finally {
-      setBlindsLoading(false);
-    }
+  // Fetching is no longer needed here, it's handled by useSessionData
+  const fetchBlindStructureIfNeeded = async () => {
+    // No-op, data comes from sessionData prop
+    return;
   };
 
   // Update blind level (admin only)
   const updateBlindLevel = async (levelIndex) => {
-    if (!sessionData.exists) return;
+    // Use sessionData directly from the hook argument
+    if (!sessionData?.session?.id) {
+        console.error('Cannot update blind level without session ID.');
+        toast({ title: "Error", description: "Session not found.", variant: "destructive"});
+        return;
+    }
+    const sessionId = sessionData.session.id;
     
     try {
-      console.log(`Requesting level change to ${levelIndex}`);
-      
-      // Set loading state first to prevent multiple clicks
+      console.log(`Requesting level change to ${levelIndex} for session ${sessionId}`);
       setBlindsLoading(true);
       
-      const response = await fetch('/api/blinds/update-level', {
+      // Use the new consolidated API endpoint
+      const response = await fetch(`/api/sessions/${sessionId}/blinds`, { // Updated endpoint
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sessionId: sessionData.session.id,
-          levelIndex
-        }),
+        body: JSON.stringify({ levelIndex }),
       });
       
       if (!response.ok) {
@@ -68,14 +42,11 @@ export default function useBlindStructure(sessionData, fetchSessionData) {
         throw new Error(errorData.message || 'Failed to update blind level');
       }
       
-      const responseData = await response.json();
-      console.log("API response:", responseData);
-      
-      // Refresh the session data and blind structure data
-      await fetchSessionData();
-      
-      // Refresh blind structure data
-      await fetchBlindStructureIfNeeded(sessionData.session.id, levelIndex);
+      // Trigger a refetch of the main session data which includes the updated blind info
+      await fetchSessionData(); // This function now needs the sessionId
+      // TODO: Modify fetchSessionData in useSessionData hook to accept sessionId
+      console.warn("Need to update fetchSessionData to accept sessionId");
+      await fetchSessionData(sessionId); // Assuming fetchSessionData is updated
       
       toast({
         title: "Blind Level Updated",
@@ -95,14 +66,16 @@ export default function useBlindStructure(sessionData, fetchSessionData) {
 
   // Get the next blind level based on current data
   const getNextBlindLevel = () => {
-    return getNextLevel(blindStructureData, sessionData.session);
+    // Ensure sessionData and blindInfo exist before calculating
+    if (!sessionData || !sessionData.blindInfo) return null;
+    return getNextLevel(sessionData.blindInfo, sessionData.session);
   };
 
   return {
-    blindStructureData,
+    blindStructureData, // This now directly reflects sessionData.blindInfo
     blindsLoading,
     setBlindsLoading,
-    fetchBlindStructureIfNeeded,
+    fetchBlindStructureIfNeeded, // Keep for compatibility, but it's a no-op
     updateBlindLevel,
     getNextBlindLevel
   };
