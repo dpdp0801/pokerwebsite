@@ -136,6 +136,8 @@ export default function Status() {
 
   const { toast } = useToast();
         
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   // If active tournament, fetch blind structure and payout structure
   useEffect(() => {
     if (sessionData.exists && sessionData.session.type === 'TOURNAMENT' && sessionData.session.status === 'ACTIVE') {
@@ -273,7 +275,7 @@ export default function Status() {
     );
   };
 
-  // Buy-in Dialog Component
+  // Buy-in Dialog Component with simpler approach
   const BuyInDialog = () => {
     // Use local state for input value
     const [inputValue, setInputValue] = useState('');
@@ -290,33 +292,35 @@ export default function Status() {
         setBuyInDialogOpen(open);
         if (!open) setInputValue('');
       }}>
-        <DialogContent>
+        <DialogContent className="p-4">
           <DialogHeader>
             <DialogTitle>Add Buy-In</DialogTitle>
             <DialogDescription>
               {selectedPlayer ? `Enter buy-in amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter buy-in amount'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="buyInAmount">Buy-In Amount ($)</Label>
-              <Input 
-                id="buyInAmount"
-                type="text"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                value={inputValue}
-                onChange={(e) => {
-                  // Only accept numbers
-                  const newValue = e.target.value;
-                  if (/^\d*$/.test(newValue)) {
-                    setInputValue(newValue);
-                  }
-                }}
-                placeholder="100"
-              />
-            </div>
+          
+          {/* Simple HTML input */}
+          <div className="my-4">
+            <label htmlFor="simpleInput" className="block mb-2 font-medium text-base">Buy-In Amount ($):</label>
+            <input
+              id="simpleInput"
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              value={inputValue}
+              onChange={(e) => {
+                // Only accept numbers
+                const newValue = e.target.value;
+                if (/^\d*$/.test(newValue)) {
+                  setInputValue(newValue);
+                }
+              }}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="100"
+            />
           </div>
+          
           <DialogFooter>
             <Button
               variant="outline"
@@ -326,7 +330,7 @@ export default function Status() {
             </Button>
             <Button
               onClick={() => {
-                if (inputValue && parseInt(inputValue) > 0) {
+                if (inputValue && parseInt(inputValue) >= 0) {
                   setBuyInAmount(inputValue);
                   setTimeout(() => submitBuyIn(), 0);
                 } else {
@@ -347,7 +351,7 @@ export default function Status() {
     );
   };
 
-  // Cash-out Dialog Component
+  // Cash-out Dialog Component with simpler approach
   const CashOutDialog = () => {
     // Use local state for input value
     const [inputValue, setInputValue] = useState('');
@@ -364,39 +368,42 @@ export default function Status() {
         setCashOutDialogOpen(open);
         if (!open) setInputValue('');
       }}>
-        <DialogContent>
+        <DialogContent className="p-4">
           <DialogHeader>
             <DialogTitle>Process Cash-Out</DialogTitle>
             <DialogDescription>
               {selectedPlayer ? `Enter cash-out amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter cash-out amount'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="cashOutAmount">Cash-Out Amount ($)</Label>
-              <Input 
-                id="cashOutAmount"
-                type="text"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                value={inputValue}
-                onChange={(e) => {
-                  // Only accept numbers
-                  const newValue = e.target.value;
-                  if (/^\d*$/.test(newValue)) {
-                    setInputValue(newValue);
-                  }
-                }}
-                placeholder="150"
-              />
-            </div>
-            {selectedPlayer && (
-              <div className="text-sm rounded bg-muted p-2">
-                <p className="font-medium">Player Summary</p>
-                <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
-              </div>
-            )}
+          
+          {/* Simple HTML input */}
+          <div className="my-4">
+            <label htmlFor="simpleInputCashOut" className="block mb-2 font-medium text-base">Cash-Out Amount ($):</label>
+            <input
+              id="simpleInputCashOut"
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              value={inputValue}
+              onChange={(e) => {
+                // Only accept numbers
+                const newValue = e.target.value;
+                if (/^\d*$/.test(newValue)) {
+                  setInputValue(newValue);
+                }
+              }}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="150"
+            />
           </div>
+          
+          {selectedPlayer && (
+            <div className="text-sm rounded bg-muted p-2 mb-4">
+              <p className="font-medium">Player Summary</p>
+              <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
+            </div>
+          )}
+          
           <DialogFooter>
             <Button
               variant="outline"
@@ -406,7 +413,7 @@ export default function Status() {
             </Button>
             <Button
               onClick={() => {
-                if (inputValue && parseInt(inputValue) > 0) {
+                if (inputValue && parseInt(inputValue) >= 0) {
                   setCashOutAmount(inputValue);
                   setTimeout(() => submitCashOut(), 0);
                 } else {
@@ -503,7 +510,7 @@ export default function Status() {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
                   {/* Close Registration Button */}
                   {!currentSession.registrationClosed && (
-              <Button 
+                    <Button 
                       onClick={() => {
                         if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
                           stopRegistration(currentSession.id);
@@ -514,48 +521,13 @@ export default function Status() {
                       className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
                       Close Registration
-              </Button>
-                    )}
-                  </div>
-                  
-                {/* Debug Tools - Only visible to admins */}
-                <div className="mt-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-xs text-muted-foreground">Debug Tools</h4>
-                          <Button 
-                      variant="ghost" 
-                            size="sm"
-                      className="text-xs"
-                            onClick={async () => {
-                        try {
-                          const res = await fetch('/api/debug-session');
-                          if (res.ok) {
-                            const data = await res.json();
-                            toast.success("Debug data saved. Check console.");
-                            console.log("Session Debug Data:", data);
-                            // Open the debug data in a new tab
-                            window.open(`/debug/session-debug.json`, '_blank');
-                          } else {
-                            toast.error("Failed to save debug data");
-                          }
-                        } catch (error) {
-                          console.error("Debug error:", error);
-                          toast.error("Error generating debug data");
-                        }
-                      }}
-                    >
-                      Debug Session Data
-                          </Button>
-                        </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <p>waitlisted: {JSON.stringify(currentSession.registrations.waitlisted?.length)}</p>
-                    <p>waitlist: {JSON.stringify(currentSession.registrations.waitlist?.length)}</p>
-                    </div>
-                  </div>
-                    </div>
-                    </div>
+                    </Button>
                   )}
-                  
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Tournament timer component */}
           {isTournament && isActive && (
             <TournamentTimer

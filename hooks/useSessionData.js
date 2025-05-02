@@ -61,10 +61,10 @@ export default function useSessionData() {
   useEffect(() => {
     fetchSessionData(true);
     
-    // Set up polling to refresh data every 5 seconds
+    // Set up polling to refresh data every 10 seconds
     const intervalId = setInterval(() => {
       fetchSessionData(false);
-    }, 5000);
+    }, 10000);
     
     // Clean up interval on unmount
     return () => clearInterval(intervalId);

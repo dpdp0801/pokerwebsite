@@ -80,10 +80,11 @@ export default async function handler(req, res) {
           // Create a date object using the session date as base
           startTimeDate = new Date(date);
           
-          // Set hours and minutes without modifying the timezone
-          startTimeDate.setUTCHours(hours, minutes, 0, 0);
+          // Explicitly use Pacific Time (Los Angeles)
+          // Create the time in the user's local time zone (Pacific Time)
+          startTimeDate.setHours(hours, minutes, 0, 0);
           
-          console.log(`Setting time to ${hours}:${minutes} UTC, result:`, startTimeDate.toISOString());
+          console.log(`Setting time to ${hours}:${minutes} Pacific Time, result:`, startTimeDate.toISOString());
         } catch (error) {
           console.error("Failed to parse start time:", error);
           return res.status(400).json({ 

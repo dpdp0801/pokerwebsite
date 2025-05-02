@@ -352,15 +352,65 @@ export default function PastSessionDetails() {
             
             {/* Finished players section for cash games */}
             {!isTournament && pastSession.registrations.finished && pastSession.registrations.finished.length > 0 && (
-              <PlayerList 
-                players={pastSession.registrations.finished}
-                title="Finished Players"
-                emptyMessage="No finished players"
-                colorClass="bg-blue-100 text-blue-800"
-                isAdmin={isAdmin}
-                isCashGame={true}
-                // No actions for past sessions
-              />
+              <div className="mt-4">
+                <div className="border rounded-md overflow-hidden">
+                  <ul className="divide-y">
+                    {pastSession.registrations.finished.map((player) => (
+                      <li key={player.id} className="p-3 flex items-center justify-between">
+                        {/* Left side - Player info */}
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={player.user?.image} alt={player.user?.name} />
+                            <AvatarFallback className="bg-blue-100 text-blue-800">
+                              {player.user?.firstName || player.user?.lastName 
+                                ? `${player.user.firstName?.[0] || ''}${player.user.lastName?.[0] || ''}`.toUpperCase() 
+                                : getInitials(player.user?.name || '')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-lg font-medium">
+                              {(player.user?.firstName || player.user?.lastName) 
+                                ? `${player.user.firstName || ''} ${player.user.lastName || ''}`.trim() 
+                                : player.user?.name || 'Unknown Player'}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {/* Cash game details */}
+                              {player.buyInTotal > 0 && (
+                                <span className="text-base px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full">
+                                  Buy-in: ${player.buyInTotal}
+                                </span>
+                              )}
+                              {player.cashOut !== null && (
+                                <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                                  Cash-out: ${player.cashOut}
+                                </span>
+                              )}
+                              {player.netProfit !== null && (
+                                <span className={`text-base px-1.5 py-0.5 rounded-full ${
+                                  player.netProfit >= 0 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {player.netProfit >= 0 
+                                    ? `+$${player.netProfit}` 
+                                    : `-$${Math.abs(player.netProfit)}`}
+                                </span>
+                              )}
+                              {/* Display Venmo ID for admins */}
+                              {isAdmin && player.user?.venmoId && (
+                                <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                                  <span className="font-medium">Venmo:</span> 
+                                  <span className="ml-1">{player.user.venmoId}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             )}
             
             {isTournament && pastSession.registrations.eliminated && pastSession.registrations.eliminated.length > 0 && (

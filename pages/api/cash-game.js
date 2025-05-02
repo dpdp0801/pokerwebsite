@@ -62,6 +62,15 @@ export default async function handler(req, res) {
         });
       } 
       else if (action === 'cashout') {
+        // Cash out logic - allow zero as a valid amount
+        // Validate amount
+        if (isNaN(amountNum) || amountNum < 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "Cash-out amount must be a valid number greater than or equal to 0." 
+          });
+        }
+
         // Update the registration with the cash-out amount and calculate profit/loss
         const updatedRegistration = await prisma.registration.update({
           where: { id: registrationId },
