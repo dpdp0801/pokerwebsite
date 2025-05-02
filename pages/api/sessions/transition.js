@@ -6,16 +6,26 @@ import path from 'path';
 
 const prisma = new PrismaClient();
 
-// Get blind structure from JSON file
-async function getBlindStructure() {
+// Get structure data from the consolidated config file
+function getTournamentConfig() {
   try {
-    const dataPath = path.join(process.cwd(), 'data', 'blindStructure.json');
-    const fileData = fs.readFileSync(dataPath, 'utf8');
-    const blindStructure = JSON.parse(fileData);
-    console.log('Using blind structure from JSON file');
-    return blindStructure;
+    const dataDirectory = path.join(process.cwd(), 'data');
+    const configFilePath = path.join(dataDirectory, 'tournamentConfig.json');
+    if (!fs.existsSync(configFilePath)) {
+      console.error(`[API /api/sessions/transition] Config file not found: ${configFilePath}`);
+      return null;
+    }
+    const fileContents = fs.readFileSync(configFilePath, 'utf8');
+    const config = JSON.parse(fileContents);
+    // Basic validation
+    if (!config || typeof config !== 'object' || !config.blindStructure) {
+         console.error('[API /api/sessions/transition] Invalid config file format or missing blindStructure.');
+         return null;
+    }
+    console.log('[API /api/sessions/transition] Using structure from tournamentConfig.json');
+    return config;
   } catch (err) {
-    console.error('Error reading blind structure:', err);
+    console.error('[API /api/sessions/transition] Error reading tournament config:', err);
     return null;
   }
 }
@@ -64,30 +74,21 @@ export default async function handler(req, res) {
 
       // Handle transition from NOT_STARTED to ACTIVE
       if (pokerSession.status === "NOT_STARTED" && status === "ACTIVE") {
-        // Update all registrations - move from upcoming to current buy-in requests
         await prisma.$transaction(async (prisma) => {
-          // For tournaments, set the initial blind level and start time
-          const updateData = {
-            status: status
-          };
+          const updateData = { status: status };
           
-          // For tournaments, find the first non-break level to start with
           if (pokerSession.type === "TOURNAMENT") {
-            let blindStructureData = await getBlindStructure();
+            const tournamentConfig = getTournamentConfig(); // Read the consolidated config
             let firstLevelIndex = 0;
             
-            if (blindStructureData && blindStructureData.levels) {
-              // Find the index of the first non-break level
-              firstLevelIndex = blindStructureData.levels.findIndex(level => !level.isBreak);
-              
-              // If no non-break level found, default to 0
+            // Use the blindStructure from the config
+            if (tournamentConfig?.blindStructure?.levels) {
+              firstLevelIndex = tournamentConfig.blindStructure.levels.findIndex(level => !level.isBreak);
               if (firstLevelIndex < 0) firstLevelIndex = 0;
             }
             
-            // Set the blind level data
             updateData.currentBlindLevel = firstLevelIndex;
-            updateData.levelStartTime = new Date(); // Current time as level start
-            
+            updateData.levelStartTime = new Date(); 
             console.log(`Starting tournament with level index: ${updateData.currentBlindLevel}`);
           }
           
