@@ -259,78 +259,62 @@ export default function PastSessionDetails() {
               
               <div className="border rounded-md overflow-hidden">
                 <ul className="divide-y">
-                  {(() => {
-                    // Get number of payout positions
-                    let payoutPositions = 0;
-                    if (payoutStructure && payoutStructure.tiers && payoutStructure.tiers.length > 0) {
-                      payoutPositions = Math.max(
-                        ...payoutStructure.tiers.map(tier => tier.position)
-                      );
-                    }
-                    
-                    // Create array of payout slots
-                    const payoutSlots = Array.from({ length: payoutPositions }, (_, i) => {
-                      // Position order - 1 is first place
-                      const position = i + 1;
+                  {pastSession.registrations.itm
+                    .sort((a, b) => {
+                      // First, try to sort by place if available
+                      if (a.place && b.place) return a.place - b.place;
+                      // If places aren't available, we can't determine order
+                      return 0;
+                    })
+                    .map((player, idx) => {
+                      // Infer place from order if not stored explicitly
+                      const place = player.place || (idx + 1);
                       
-                      // Find prize amount for this position
-                      let prize = 0;
-                      const tier = payoutStructure?.tiers?.find(t => t.position === position);
-                      if (tier) {
-                        const totalEntries = pastSession.totalEntries || pastSession.entries || 0;
-                        const totalPrize = pastSession.buyIn * totalEntries;
-                        prize = Math.floor(totalPrize * (tier.percentage / 100));
+                      // Calculate prize amount based on payout structure and buy-in
+                      let prizeAmount = null;
+                      if (payoutStructure && payoutStructure.tiers && pastSession.buyIn) {
+                        const tier = payoutStructure.tiers.find(t => t.position === place);
+                        if (tier) {
+                          const totalEntries = pastSession.totalEntries || pastSession.entries || 0;
+                          const totalPrize = pastSession.buyIn * totalEntries;
+                          prizeAmount = Math.floor(totalPrize * (tier.percentage / 100));
+                        }
                       }
                       
-                      // Find player in this position (if exists)
-                      const player = pastSession.registrations.itm.find(p => p.place === position) || 
-                                    (position <= pastSession.registrations.itm.length ? pastSession.registrations.itm[position - 1] : null);
-                      
-                      return {
-                        position,
-                        prize,
-                        player
-                      };
-                    });
-                    
-                    // Filter for actual players
-                    return payoutSlots
-                      .filter(slot => slot.player)
-                      .sort((a, b) => a.position - b.position) // Sort by position so 1st place is at the top
-                      .map((slot) => (
-                        <li key={`place-${slot.position}-${slot.player?.id}`} className="p-3 flex items-center justify-between">
+                      return (
+                        <li key={`place-${place}-${player.id}`} className="p-3 flex items-center justify-between">
                           {/* Left side - Place and player info */}
                           <div className="flex items-center space-x-3">
                             {/* Place number */}
                             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
-                              {slot.position}
+                              {place}
                             </div>
                             
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={slot.player.user?.image} alt={slot.player.user?.name} />
+                              <AvatarImage src={player.user?.image} alt={player.user?.name} />
                               <AvatarFallback className="bg-blue-100 text-blue-800">
-                                {slot.player.user?.firstName || slot.player.user?.lastName 
-                                  ? `${slot.player.user.firstName?.[0] || ''}${slot.player.user.lastName?.[0] || ''}`.toUpperCase() 
-                                  : getInitials(slot.player.user?.name || '')}
+                                {player.user?.firstName || player.user?.lastName 
+                                  ? `${player.user.firstName?.[0] || ''}${player.user.lastName?.[0] || ''}`.toUpperCase() 
+                                  : getInitials(player.user?.name || '')}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="text-sm font-medium">
-                                {(slot.player.user?.firstName || slot.player.user?.lastName) 
-                                  ? `${slot.player.user.firstName || ''} ${slot.player.user.lastName || ''}`.trim() 
-                                  : slot.player.user?.name || 'Unknown Player'}
+                                {(player.user?.firstName || player.user?.lastName) 
+                                  ? `${player.user.firstName || ''} ${player.user.lastName || ''}`.trim() 
+                                  : player.user?.name || 'Unknown Player'}
                               </p>
                               <div className="flex flex-col gap-1">
-                                {slot.player.rebuys > 0 && (
+                                {player.rebuys > 0 && (
                                   <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                                    {slot.player.rebuys} {slot.player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
+                                    {player.rebuys} {player.rebuys === 1 ? 'buy-in' : 'buy-ins'}
                                   </span>
                                 )}
                                 {/* Display Venmo ID for admins */}
-                                {isAdmin && slot.player.user?.venmoId && (
+                                {isAdmin && player.user?.venmoId && (
                                   <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
                                     <span className="font-medium">Venmo:</span> 
-                                    <span className="ml-1">{slot.player.user.venmoId}</span>
+                                    <span className="ml-1">{player.user.venmoId}</span>
                                   </span>
                                 )}
                               </div>
@@ -339,11 +323,11 @@ export default function PastSessionDetails() {
                           
                           {/* Right side - Prize amount */}
                           <div className="text-sm font-medium text-green-600">
-                            ${(slot.player.prize !== undefined && slot.player.prize !== null) ? slot.player.prize : slot.prize}
+                            ${player.prize || prizeAmount || 0}
                           </div>
                         </li>
-                      ));
-                  })()}
+                      );
+                    })}
                 </ul>
               </div>
             </div>
