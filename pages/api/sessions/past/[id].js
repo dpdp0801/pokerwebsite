@@ -25,44 +25,65 @@ export default async function handler(req, res) {
     // GET - Get details of a specific past session
     if (req.method === 'GET') {
       try {
+        // First fetch the session itself
+        const pokerSession = await prisma.pokerSession.findUnique({
+          where: { id }
+        });
+        
+        if (!pokerSession) {
+          return res.status(404).json({ 
+            success: false, 
+            exists: false,
+            message: 'Session not found' 
+          });
+        }
+        
         // Get relevant player registrations with user data
-        const [currentPlayers, waitlistPlayers, itmPlayers, eliminatedPlayers, noShowPlayers] = await Promise.all([
+        const [currentPlayers, waitlistPlayers, itmPlayers, eliminatedPlayers, noShowPlayers, finishedPlayers] = await Promise.all([
           prisma.registration.findMany({
             where: { 
-              sessionId: session.id,
-              playerStatus: 'ACTIVE'
+              sessionId: id,
+              status: 'ACTIVE'
             },
             include: { user: true },
             orderBy: { createdAt: 'asc' }
           }),
           prisma.registration.findMany({
             where: { 
-              sessionId: session.id,
-              playerStatus: 'WAITLIST'
+              sessionId: id,
+              status: 'WAITLIST'
             },
             include: { user: true },
             orderBy: { createdAt: 'asc' }
           }),
           prisma.registration.findMany({
             where: { 
-              sessionId: session.id,
-              playerStatus: 'ITM'
+              sessionId: id,
+              status: 'ITM'
             },
             include: { user: true },
             orderBy: { place: 'asc' }
           }),
           prisma.registration.findMany({
             where: { 
-              sessionId: session.id,
-              playerStatus: 'ELIMINATED'
+              sessionId: id,
+              status: 'ELIMINATED'
             },
             include: { user: true },
             orderBy: { createdAt: 'asc' }
           }),
           prisma.registration.findMany({
             where: { 
-              sessionId: session.id,
-              playerStatus: 'NO_SHOW'
+              sessionId: id,
+              status: 'NO_SHOW'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          }),
+          prisma.registration.findMany({
+            where: { 
+              sessionId: id,
+              status: 'FINISHED'
             },
             include: { user: true },
             orderBy: { createdAt: 'asc' }
@@ -70,11 +91,11 @@ export default async function handler(req, res) {
         ]);
         
         // For tournaments, calculate total entries based on rebuys
-        let totalEntries = session.registeredPlayers || 0;
-        if (session.type === 'TOURNAMENT') {
+        let totalEntries = pokerSession.registeredPlayers || 0;
+        if (pokerSession.type === 'TOURNAMENT') {
           const rebuys = await prisma.registration.aggregate({
             where: {
-              sessionId: session.id,
+              sessionId: id,
               rebuys: {
                 gt: 0
               }
@@ -89,25 +110,12 @@ export default async function handler(req, res) {
           }
         }
         
-        // For cash games, get finished players
-        let finishedPlayers = [];
-        if (session.type === 'CASH_GAME') {
-          finishedPlayers = await prisma.registration.findMany({
-            where: { 
-              sessionId: session.id,
-              playerStatus: 'FINISHED'
-            },
-            include: { user: true },
-            orderBy: { createdAt: 'asc' }
-          });
-        }
-        
         // Make sure time is preserved properly
-        const startTime = session.startTime ? new Date(session.startTime).toISOString() : null;
+        const startTime = pokerSession.startTime ? new Date(pokerSession.startTime).toISOString() : null;
         
         // Format session data for client
         const formattedSession = {
-          ...session,
+          ...pokerSession,
           startTime: startTime,
           totalEntries,
           registrations: {

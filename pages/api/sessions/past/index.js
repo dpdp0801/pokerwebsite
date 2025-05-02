@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     try {
       // Get all past sessions (completed or cancelled)
-      const sessions = await prisma.session.findMany({
+      const sessions = await prisma.pokerSession.findMany({
         where: {
           OR: [
             { status: 'COMPLETED' },

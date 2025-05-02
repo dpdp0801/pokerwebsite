@@ -328,7 +328,7 @@ export default function Status() {
               onClick={() => {
                 if (inputValue && parseInt(inputValue) > 0) {
                   setBuyInAmount(inputValue);
-                  submitBuyIn();
+                  setTimeout(() => submitBuyIn(), 0);
                 } else {
                   toast({
                     title: "Error",
@@ -408,7 +408,7 @@ export default function Status() {
               onClick={() => {
                 if (inputValue && parseInt(inputValue) > 0) {
                   setCashOutAmount(inputValue);
-                  submitCashOut();
+                  setTimeout(() => submitCashOut(), 0);
                 } else {
                   toast({
                     title: "Error",
@@ -426,6 +426,12 @@ export default function Status() {
       </Dialog>
     );
   };
+
+  // Make sure the component registers "Finished" players for cash games
+  let finishedPlayers = [];
+  if (isCashGame && currentSession.registrations) {
+    finishedPlayers = currentSession.registrations.finished || [];
+  }
 
   return (
     <div className="container py-12 max-w-3xl">
@@ -810,9 +816,9 @@ export default function Status() {
               />
             
               {/* Finished players section - show for cash games */}
-              {isCashGame && currentSession.registrations.finished && (
+              {isCashGame && (
                 <PlayerList
-                  players={currentSession.registrations.finished}
+                  players={finishedPlayers}
                   title="Finished Players"
                   emptyMessage="No finished players yet"
                   colorClass="bg-blue-100 text-blue-800"
