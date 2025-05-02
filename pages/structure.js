@@ -6,10 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const BLIND_STRUCTURE = {
   name: "Standard Structure",
   description: "Standard tournament blind structure with 20-minute levels",
-  startingStack: 10000,
+  startingStack: 300,
   levels: [
-    { level: 1, duration: 20, smallBlind: 1, bigBlind: 2, ante: 2, isBreak: false, displayLevel: 1 },
-    { level: 2, duration: 20, smallBlind: 1, bigBlind: 3, ante: 3, isBreak: false, displayLevel: 2 },
+    { level: 1, duration: 1, smallBlind: 1, bigBlind: 2, ante: 2, isBreak: false, displayLevel: 1 },
+    { level: 2, duration: 1, smallBlind: 1, bigBlind: 3, ante: 3, isBreak: false, displayLevel: 2 },
     { level: 3, duration: 20, smallBlind: 2, bigBlind: 4, ante: 4, isBreak: false, displayLevel: 3 },
     { level: 4, duration: 20, smallBlind: 3, bigBlind: 6, ante: 6, isBreak: false, displayLevel: 4 },
     { level: 5, duration: 10, isBreak: true, displayLevel: "B1", specialDescription: "Chip up 1s" },
