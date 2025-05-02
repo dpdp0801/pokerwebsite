@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       const updatedSession = await tx.pokerSession.update({
         where: { id: registration.sessionId },
         data: {
-          totalEntries: {
+          entries: {
             increment: 1
           }
         }
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     
     console.log("Rebuy transaction completed successfully:", {
       registrationRebuys: result.registration.rebuys,
-      sessionTotalEntries: result.session.totalEntries
+      sessionTotalEntries: result.session.entries
     });
     
     return res.status(200).json({

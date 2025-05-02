@@ -463,7 +463,7 @@ export default function Status() {
             {isTournament && (
               <>
                 <div>
-                  <p className="text-2xl font-medium">{currentSession.totalEntries || 0}</p>
+                  <p className="text-2xl font-medium">{currentSession.entries || 0}</p>
                   <p className="text-xl text-muted-foreground">Total Entries</p>
                 </div>
                 

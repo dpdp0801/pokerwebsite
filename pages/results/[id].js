@@ -84,7 +84,7 @@ export default function PastSessionDetails() {
           // Fetch payout structure if it's a tournament
           if (sessionData.session.type === 'TOURNAMENT') {
             try {
-              const payoutResponse = await fetch(`/api/payout-structures/get-by-entries?entries=${sessionData.session.totalEntries || 0}`);
+              const payoutResponse = await fetch(`/api/payout-structures/get-by-entries?entries=${sessionData.session.entries || 0}`);
               if (payoutResponse.ok) {
                 const payoutData = await payoutResponse.json();
                 if (payoutData.success) {
@@ -243,7 +243,7 @@ export default function PastSessionDetails() {
           <div className="grid grid-cols-1 gap-4 mb-6 text-center">
             {isTournament ? (
               <div>
-                <p className="text-2xl font-medium">{pastSession.totalEntries || pastSession.registrations?.itm?.length || 0} entries</p>
+                <p className="text-2xl font-medium">{pastSession.entries || pastSession.registrations?.itm?.length || 0} entries</p>
               </div>
             ) : (
               <div>
