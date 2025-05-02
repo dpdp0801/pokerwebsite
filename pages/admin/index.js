@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { formatDate as formatUtilDate, formatTimeOnly as formatUtilTime } from "@/lib/tournament-utils";
 
 // Error boundary component
 class ErrorBoundary extends Component {
@@ -602,28 +603,15 @@ export default function AdminDashboard() {
     setEditSessionData(prev => ({ ...prev, [name]: value }));
   };
   
-  // Format date for display
-  const formatSessionDate = (dateString) => {
-    try {
-      // Assuming session.date is also stored as UTC midnight
-      // Use parseISO to correctly interpret the UTC string
-      return format(parseISO(dateString), "MMM d, yyyy");
-    } catch (e) {
-      console.error("Error formatting session date:", dateString, e);
-      return "Invalid date";
-    }
+  // Format date for display using the utility
+  const formatSessionDate = (dateInput) => {
+    return formatUtilDate(dateInput); // Use the imported utility
   };
   
-  // Format time for display
-  const formatSessionTime = (timeString) => {
-      if (!timeString) return "TBD";
-      try {
-          // Use parseISO to correctly interpret the UTC string
-          return format(parseISO(timeString), "h:mm a");
-      } catch (e) {
-          console.error("Error formatting session time:", timeString, e);
-          return "Invalid time";
-      }
+  // Format time for display using the utility
+  const formatSessionTime = (session) => {
+      // Use the utility, passing both timeString and startTime
+      return formatUtilTime(session?.startTime, session?.timeString);
   };
   
   // Get status badge color
@@ -782,7 +770,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-medium text-lg">{session.title || 'Untitled Session'}</div>
                             <div className="text-sm text-gray-500 mt-1">
-                              {formatSessionDate(session.date)} at {formatSessionTime(session.startTime)}
+                              {formatSessionDate(session.date)} at {formatSessionTime(session)}
                             </div>
                             <div className="flex items-center mt-1">
                               <Badge className={getStatusBadge(session.status)}>

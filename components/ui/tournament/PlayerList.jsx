@@ -123,10 +123,13 @@ export default function PlayerList({
                     {actions.map((action, index) => (
                       <Button 
                         key={index}
-                        type="button"
+                        type="button" 
                         size="sm"
                         variant={action.variant || "outline"}
-                        onClick={() => action.onClick(registration)}
+                        onClick={(e) => { 
+                            e.preventDefault(); // Prevent any default behavior
+                            action.onClick(registration);
+                        }}
                         title={action.title}
                         disabled={action.disabled}
                         className="text-base"
@@ -137,10 +140,13 @@ export default function PlayerList({
                     ))}
                     {removePlayer && (
                       <Button 
-                        type="button"
+                        type="button" 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => removePlayer(registration.id)}
+                        onClick={(e) => {
+                            e.preventDefault(); // Prevent any default behavior
+                            removePlayer(registration.id);
+                        }}
                         title="Remove player"
                       >
                         <Trash2 className="h-5 w-5 text-red-500" />

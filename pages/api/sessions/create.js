@@ -108,6 +108,7 @@ export default async function handler(req, res) {
         type: type.toUpperCase(),
         date: dateOnly,
         startTime: startTimeDate,
+        timeString: time,
         location: location || '385 S Catalina Ave, Apt 315',
         status: 'NOT_STARTED',
         maxPlayers: parseInt(maxPlayers, 10),
@@ -131,7 +132,8 @@ export default async function handler(req, res) {
       try {
         console.log("Creating session with values:");
         console.log("Date (for sorting):", sessionData.date.toISOString());
-        console.log("StartTime:", sessionData.startTime.toISOString());
+        console.log("StartTime (UTC):", sessionData.startTime.toISOString());
+        console.log("TimeString (raw input):", sessionData.timeString);
         
         const createdSession = await prisma.pokerSession.create({
           data: {
@@ -140,6 +142,7 @@ export default async function handler(req, res) {
             type: sessionData.type,
             date: sessionData.date,
             startTime: sessionData.startTime,
+            timeString: sessionData.timeString,
             location: sessionData.location,
             status: sessionData.status,
             maxPlayers: sessionData.maxPlayers,

@@ -42,8 +42,9 @@ model PokerSession {
   title       String
   description String?
   type        String        // "TOURNAMENT" or "CASH_GAME"
-  date        DateTime
-  startTime   DateTime
+  date        DateTime      // For sorting/display, set to UTC midnight of start day
+  startTime   DateTime      // Actual start time, stored in UTC
+  timeString  String?       // Original HH:MM time string for reliable display
   endTime     DateTime?
   location    String
   buyIn       Int
