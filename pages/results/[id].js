@@ -432,7 +432,7 @@ export default function PastSessionDetails() {
               />
             )}
             
-            {pastSession.registrations.waitlist && pastSession.registrations.waitlist.length > 0 && (
+            {isTournament && pastSession.registrations.waitlist && pastSession.registrations.waitlist.length > 0 && (
               <PlayerList 
                 players={pastSession.registrations.waitlist}
                 title="Waitlist"
@@ -463,6 +463,36 @@ export default function PastSessionDetails() {
                 isAdmin={isAdmin}
                 // No actions for past sessions
               />
+            )}
+            
+            {/* Show Finished players in Participants section for cash games */}
+            {!isTournament && pastSession.registrations.finished && pastSession.registrations.finished.length > 0 && (
+              <div className="mt-4">
+                <h4 className="font-medium text-md mb-2">Finished Players</h4>
+                <div className="border rounded-md overflow-hidden">
+                  <ul className="divide-y">
+                    {pastSession.registrations.finished.map((player) => (
+                      <li key={`participant-${player.id}`} className="p-3 flex items-center space-x-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={player.user?.image} alt={player.user?.name} />
+                          <AvatarFallback className="bg-blue-100 text-blue-800">
+                            {player.user?.firstName || player.user?.lastName 
+                              ? `${player.user.firstName?.[0] || ''}${player.user.lastName?.[0] || ''}`.toUpperCase() 
+                              : getInitials(player.user?.name || '')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {(player.user?.firstName || player.user?.lastName) 
+                              ? `${player.user.firstName || ''} ${player.user.lastName || ''}`.trim() 
+                              : player.user?.name || 'Unknown Player'}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             )}
           </div>
           

@@ -315,51 +315,44 @@ export default function Status() {
     );
   };
 
-  // Simple Buy-in Dialog
+  // Very simple Buy-in Dialog
   const BuyInDialog = () => {
-    // Create a ref for the input element
-    const inputRef = useRef(null);
+    if (!buyInDialogOpen) return null;
     
-    // Focus the input when dialog opens
-    useEffect(() => {
-      if (buyInDialogOpen && inputRef.current) {
-        // Set a small timeout to ensure DOM is ready
-        setTimeout(() => {
-          inputRef.current.focus();
-        }, 50);
-      }
-    }, [buyInDialogOpen]);
-
-    return buyInDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded-md w-96 max-w-full" onClick={(e) => e.stopPropagation()}>
+    return (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={() => setBuyInDialogOpen(false)}
+      >
+        <div 
+          className="bg-white p-6 rounded-md shadow-lg w-96"
+          onClick={e => e.stopPropagation()}
+        >
           <h3 className="text-lg font-medium mb-4">Add Buy-In</h3>
           
           <div className="mb-6">
-            <label htmlFor="buyInAmount" className="block text-sm font-medium mb-2">
-              Amount
-            </label>
+            <label className="block text-sm font-medium mb-2">Amount</label>
             <input
-              id="buyInAmount"
-              ref={inputRef}
               type="number"
-              min="0"
-              value={buyInAmount}
-              onChange={(e) => setBuyInAmount(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter amount"
+              value={buyInAmount}
+              onChange={e => setBuyInAmount(e.target.value)}
+              autoFocus
             />
           </div>
           
           <div className="flex justify-end space-x-3">
             <button 
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium"
+              type="button"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
               onClick={() => setBuyInDialogOpen(false)}
             >
               Cancel
             </button>
             <button 
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium"
+              type="button"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
               onClick={submitBuyIn}
             >
               Submit
@@ -367,27 +360,22 @@ export default function Status() {
           </div>
         </div>
       </div>
-    ) : null;
+    );
   };
 
-  // Simple Cash-out Dialog
+  // Very simple Cash-out Dialog
   const CashOutDialog = () => {
-    // Create a ref for the input element
-    const inputRef = useRef(null);
+    if (!cashOutDialogOpen) return null;
     
-    // Focus the input when dialog opens
-    useEffect(() => {
-      if (cashOutDialogOpen && inputRef.current) {
-        // Set a small timeout to ensure DOM is ready
-        setTimeout(() => {
-          inputRef.current.focus();
-        }, 50);
-      }
-    }, [cashOutDialogOpen]);
-    
-    return cashOutDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded-md w-96 max-w-full" onClick={(e) => e.stopPropagation()}>
+    return (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={() => setCashOutDialogOpen(false)}
+      >
+        <div 
+          className="bg-white p-6 rounded-md shadow-lg w-96"
+          onClick={e => e.stopPropagation()}
+        >
           <h3 className="text-lg font-medium mb-4">Process Cash-Out</h3>
           
           {selectedPlayer && (
@@ -397,30 +385,28 @@ export default function Status() {
           )}
           
           <div className="mb-6">
-            <label htmlFor="cashOutAmount" className="block text-sm font-medium mb-2">
-              Cash-Out Amount
-            </label>
+            <label className="block text-sm font-medium mb-2">Cash-Out Amount</label>
             <input
-              id="cashOutAmount"
-              ref={inputRef}
               type="number"
-              min="0"
-              value={cashOutAmount}
-              onChange={(e) => setCashOutAmount(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter amount"
+              value={cashOutAmount}
+              onChange={e => setCashOutAmount(e.target.value)}
+              autoFocus
             />
           </div>
           
           <div className="flex justify-end space-x-3">
             <button 
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium"
+              type="button"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
               onClick={() => setCashOutDialogOpen(false)}
             >
               Cancel
             </button>
             <button 
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium"
+              type="button"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
               onClick={submitCashOut}
             >
               Submit
@@ -428,7 +414,7 @@ export default function Status() {
           </div>
         </div>
       </div>
-    ) : null;
+    );
   };
 
   // Make sure the component registers "Finished" players for cash games
