@@ -604,14 +604,14 @@ export default function AdminDashboard() {
   };
   
   // Format date for display using the utility
-  const formatSessionDate = (dateInput) => {
-    return formatUtilDate(dateInput); // Use the imported utility
+  const formatSessionDate = (dateString) => {
+    return formatUtilDate(dateString); // Pass the YYYY-MM-DD string directly
   };
   
   // Format time for display using the utility
-  const formatSessionTime = (session) => {
-      // Use the utility, passing only startTime
-      return formatUtilTime(session?.startTime);
+  const formatSessionTime = (timeString) => {
+      // Pass the HH:MM string directly
+      return formatUtilTime(timeString);
   };
   
   // Get status badge color
@@ -770,7 +770,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-medium text-lg">{session.title || 'Untitled Session'}</div>
                             <div className="text-sm text-gray-500 mt-1">
-                              {formatSessionDate(session.date)} at {formatSessionTime(session)}
+                              {formatSessionDate(session.date)} at {formatSessionTime(session.startTime)}
                             </div>
                             <div className="flex items-center mt-1">
                               <Badge className={getStatusBadge(session.status)}>

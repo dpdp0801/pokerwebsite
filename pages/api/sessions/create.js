@@ -1,11 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-utils';
-import { zonedTimeToUtc } from 'date-fns-tz';
 
 // Initialize Prisma client outside of the handler function to reuse connections
 const prisma = new PrismaClient();
 const PACIFIC_TIMEZONE = 'America/Los_Angeles';
+
+// Helper to get offset in milliseconds for a specific timezone at a specific date
+// Returns offset such that UTC = local + offset
+// E.g., PDT (UTC-7) -> offset = -7 * 60 * 60 * 1000
+// Note: This is complex to get perfect, relies on server environment supporting the timezone
+function getOffsetMilliseconds(timeZone, date = new Date()) {
+    try {
+        const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+        const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
+        return utcDate.getTime() - tzDate.getTime();
+    } catch (e) {
+        console.error(`Error getting offset for timezone ${timeZone}:`, e);
+        // Fallback to a standard offset (e.g., -7 hours for PDT) if Intl fails?
+        // For simplicity, return 0 offset on error, which might lead to wrong time.
+        return 0; 
+    }
+}
 
 export default async function handler(req, res) {
   console.log("API route /api/sessions/create called");
@@ -55,35 +71,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Combine date and time strings into a single string for parsing
-      const dateTimeString = `${date} ${time}`;
-      let startTimeDate;
-
-      try {
-        // Interpret the combined string AS Pacific Time and get the corresponding UTC Date object
-        startTimeDate = zonedTimeToUtc(dateTimeString, PACIFIC_TIMEZONE);
-
-        if (isNaN(startTimeDate.getTime())) {
-             throw new Error('Invalid date or time resulted in NaN.');
-        }
-        
-        console.log(`Interpreted ${dateTimeString} in ${PACIFIC_TIMEZONE} as UTC timestamp:`, 
-                     startTimeDate.toISOString());
-      } catch (error) {
-        console.error(`Error parsing date/time string [${dateTimeString}] with timezone:`, error);
-        return res.status(400).json({ 
-          success: false, 
-          message: `Invalid date or time format. Use YYYY-MM-DD and HH:MM. Error: ${error.message}` 
-        });
-      }
-      
-      // Set the 'date' field to the start of the day (midnight) IN THE PACIFIC TIMEZONE,
-      // then convert that instant to UTC for storage.
-      const dateOnlyPacific = zonedTimeToUtc(`${date} 00:00:00`, PACIFIC_TIMEZONE);
-            
-      console.log(`Setting date field (for sorting/display) to Pacific midnight:`, 
-                   dateOnlyPacific.toISOString());
-
       // Validate specific fields based on type
       if (type.toUpperCase() === 'TOURNAMENT' && !buyIn) {
         return res.status(400).json({ 
@@ -105,8 +92,8 @@ export default async function handler(req, res) {
           : `$${smallBlind}/$${bigBlind} 9-max NLH Cash Game`,
         description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
-        date: dateOnlyPacific,
-        startTime: startTimeDate,
+        date: date,
+        startTime: time,
         location: location || '385 S Catalina Ave, Apt 315',
         status: 'NOT_STARTED',
         maxPlayers: parseInt(maxPlayers, 10),
@@ -124,15 +111,11 @@ export default async function handler(req, res) {
         sessionData.description = `$${smallBlind}/$${bigBlind} blinds, 9-max cash game`;
       }
 
-      console.log("Prepared session data for database:", {
-        ...sessionData,
-        dateISO: sessionData.date.toISOString(),
-        startTimeISO: sessionData.startTime.toISOString()
-      });
+      console.log("Prepared session data for database:", sessionData);
 
       // Create the session in the database
       try {
-        console.log("Creating session with UTC values equivalent to Pacific Time input.");
+        console.log("Creating session with string date/time values.");
         
         const createdSession = await prisma.pokerSession.create({
           data: {

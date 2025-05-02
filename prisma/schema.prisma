@@ -42,9 +42,9 @@ model PokerSession {
   title       String
   description String?
   type        String        // "TOURNAMENT" or "CASH_GAME"
-  date        DateTime      // For sorting/display, set to Pacific midnight (stored as UTC)
-  startTime   DateTime      // Actual start time, stored as UTC corresponding to Pacific Time input
-  endTime     DateTime?
+  date        String        // Store date as YYYY-MM-DD string
+  startTime   String        // Store time as HH:MM string
+  endTime     DateTime?     // Keep endTime as DateTime for completion tracking?
   location    String
   buyIn       Int
   minBuyIn    Int?          // Only for cash games
