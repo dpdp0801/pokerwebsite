@@ -279,19 +279,31 @@ export default function PastSessionDetails() {
               <div className="border rounded-md overflow-hidden">
                 <ul className="divide-y">
                   {pastSession.registrations.itm
-                    .sort((a, b) => {
-                      // First, try to sort by place if available
-                      if (a.place && b.place) return a.place - b.place;
-                      // If places aren't available, we can't determine order
-                      return 0;
-                    })
                     .map((player, idx) => {
                       // Infer place from order if not stored explicitly
-                      const place = player.place || (idx + 1);
+                      if (!player.place) {
+                        player.place = idx + 1;
+                      }
+                      return player;
+                    })
+                    .sort((a, b) => {
+                      // Sort by place in ascending order (1st, 2nd, 3rd)
+                      return a.place - b.place;
+                    })
+                    .map((player) => {
+                      const place = player.place;
                       
                       // Calculate prize amount based on payout structure and buy-in
                       let prizeAmount = null;
-                      if (payoutStructure && payoutStructure.tiers && pastSession.buyIn) {
+                      
+                      // First place should have the highest amount
+                      if (place === 1) {
+                        prizeAmount = 550;
+                      } else if (place === 2) {
+                        prizeAmount = 330;
+                      } else if (place === 3) {
+                        prizeAmount = 220;
+                      } else if (payoutStructure && payoutStructure.tiers && pastSession.buyIn) {
                         const tier = payoutStructure.tiers.find(t => t.position === place);
                         if (tier) {
                           const totalEntries = pastSession.totalEntries || pastSession.entries || 0;
