@@ -246,7 +246,10 @@ export default function PastSessionDetails() {
             </span>
           </CardTitle>
           <CardDescription className="text-center">
-            {formatDate(pastSession.date)} at {pastSession.startTime ? new Date(pastSession.startTime).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'}) : 'TBD'}
+            {formatDate(pastSession.date)}
+            {pastSession.startTime && (
+              <> at {new Date(pastSession.startTime).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}</>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -268,7 +271,7 @@ export default function PastSessionDetails() {
             )}
           </div>
           
-          {/* In The Money Section */}
+          {/* In The Money Section for Tournaments */}
           {isTournament && pastSession.registrations.itm && pastSession.registrations.itm.length > 0 && (
             <div className="mt-6">
               <h3 className="font-medium text-lg mb-3">In The Money</h3>
@@ -350,7 +353,71 @@ export default function PastSessionDetails() {
             </div>
           )}
           
-          {/* Participants lists */}
+          {/* Finished players section for cash games */}
+          {!isTournament && pastSession.registrations.finished && pastSession.registrations.finished.length > 0 && (
+            <div className="mt-6">
+              <h3 className="font-medium text-lg mb-3">Results</h3>
+              <div className="border rounded-md overflow-hidden">
+                <ul className="divide-y">
+                  {pastSession.registrations.finished.map((player) => (
+                    <li key={player.id} className="p-3 flex items-center justify-between">
+                      {/* Left side - Player info */}
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={player.user?.image} alt={player.user?.name} />
+                          <AvatarFallback className="bg-blue-100 text-blue-800">
+                            {player.user?.firstName || player.user?.lastName 
+                              ? `${player.user.firstName?.[0] || ''}${player.user.lastName?.[0] || ''}`.toUpperCase() 
+                              : getInitials(player.user?.name || '')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-lg font-medium">
+                            {(player.user?.firstName || player.user?.lastName) 
+                              ? `${player.user.firstName || ''} ${player.user.lastName || ''}`.trim() 
+                              : player.user?.name || 'Unknown Player'}
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {/* Cash game details */}
+                            {player.buyInTotal > 0 && (
+                              <span className="text-base px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full">
+                                Buy-in: ${player.buyInTotal}
+                              </span>
+                            )}
+                            {player.cashOut !== null && (
+                              <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
+                                Cash-out: ${player.cashOut}
+                              </span>
+                            )}
+                            {player.netProfit !== null && (
+                              <span className={`text-base px-1.5 py-0.5 rounded-full ${
+                                player.netProfit >= 0 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {player.netProfit >= 0 
+                                  ? `+$${player.netProfit}` 
+                                  : `-$${Math.abs(player.netProfit)}`}
+                              </span>
+                            )}
+                            {/* Display Venmo ID for admins */}
+                            {isAdmin && player.user?.venmoId && (
+                              <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
+                                <span className="font-medium">Venmo:</span> 
+                                <span className="ml-1">{player.user.venmoId}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          {/* Other Participants lists */}
           <div className="border-t pt-4 mt-6">
             <h3 className="font-medium text-lg mb-3">Participants</h3>
             
@@ -374,69 +441,6 @@ export default function PastSessionDetails() {
                 isAdmin={isAdmin}
                 // No actions for past sessions
               />
-            )}
-            
-            {/* Finished players section for cash games */}
-            {!isTournament && pastSession.registrations.finished && pastSession.registrations.finished.length > 0 && (
-              <div className="mt-4">
-                <div className="border rounded-md overflow-hidden">
-                  <ul className="divide-y">
-                    {pastSession.registrations.finished.map((player) => (
-                      <li key={player.id} className="p-3 flex items-center justify-between">
-                        {/* Left side - Player info */}
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={player.user?.image} alt={player.user?.name} />
-                            <AvatarFallback className="bg-blue-100 text-blue-800">
-                              {player.user?.firstName || player.user?.lastName 
-                                ? `${player.user.firstName?.[0] || ''}${player.user.lastName?.[0] || ''}`.toUpperCase() 
-                                : getInitials(player.user?.name || '')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-lg font-medium">
-                              {(player.user?.firstName || player.user?.lastName) 
-                                ? `${player.user.firstName || ''} ${player.user.lastName || ''}`.trim() 
-                                : player.user?.name || 'Unknown Player'}
-                            </p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {/* Cash game details */}
-                              {player.buyInTotal > 0 && (
-                                <span className="text-base px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full">
-                                  Buy-in: ${player.buyInTotal}
-                                </span>
-                              )}
-                              {player.cashOut !== null && (
-                                <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
-                                  Cash-out: ${player.cashOut}
-                                </span>
-                              )}
-                              {player.netProfit !== null && (
-                                <span className={`text-base px-1.5 py-0.5 rounded-full ${
-                                  player.netProfit >= 0 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {player.netProfit >= 0 
-                                    ? `+$${player.netProfit}` 
-                                    : `-$${Math.abs(player.netProfit)}`}
-                                </span>
-                              )}
-                              {/* Display Venmo ID for admins */}
-                              {isAdmin && player.user?.venmoId && (
-                                <span className="text-base px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
-                                  <span className="font-medium">Venmo:</span> 
-                                  <span className="ml-1">{player.user.venmoId}</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
             )}
             
             {isTournament && pastSession.registrations.eliminated && pastSession.registrations.eliminated.length > 0 && (

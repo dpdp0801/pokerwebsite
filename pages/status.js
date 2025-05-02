@@ -330,43 +330,44 @@ export default function Status() {
       }
     }, [buyInDialogOpen]);
 
-    return (
-      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add Buy-In</DialogTitle>
-            <DialogDescription>
-              Enter the buy-in amount for the player.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="buyInAmount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="buyInAmount"
-                ref={inputRef}
-                type="number"
-                min="0"
-                value={buyInAmount}
-                onChange={(e) => setBuyInAmount(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter amount"
-              />
-            </div>
+    return buyInDialogOpen ? (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-md w-96 max-w-full" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-lg font-medium mb-4">Add Buy-In</h3>
+          
+          <div className="mb-6">
+            <label htmlFor="buyInAmount" className="block text-sm font-medium mb-2">
+              Amount
+            </label>
+            <input
+              id="buyInAmount"
+              ref={inputRef}
+              type="number"
+              min="0"
+              value={buyInAmount}
+              onChange={(e) => setBuyInAmount(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter amount"
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBuyInDialogOpen(false)}>
+          
+          <div className="flex justify-end space-x-3">
+            <button 
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium"
+              onClick={() => setBuyInDialogOpen(false)}
+            >
               Cancel
-            </Button>
-            <Button onClick={submitBuyIn} disabled={sessionUpdating}>
-              {sessionUpdating ? "Processing..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
+            </button>
+            <button 
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium"
+              onClick={submitBuyIn}
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
   };
 
   // Simple Cash-out Dialog
@@ -384,48 +385,50 @@ export default function Status() {
       }
     }, [cashOutDialogOpen]);
     
-    return (
-      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Process Cash-Out</DialogTitle>
-            <DialogDescription>
-              Enter the cash-out amount for the player.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {selectedPlayer && (
-              <div className="text-sm px-4">
-                <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
-              </div>
-            )}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="cashOutAmount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="cashOutAmount"
-                ref={inputRef}
-                type="number"
-                min="0"
-                value={cashOutAmount}
-                onChange={(e) => setCashOutAmount(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter amount"
-              />
+    return cashOutDialogOpen ? (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-md w-96 max-w-full" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-lg font-medium mb-4">Process Cash-Out</h3>
+          
+          {selectedPlayer && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
+              <p className="font-medium">Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
             </div>
+          )}
+          
+          <div className="mb-6">
+            <label htmlFor="cashOutAmount" className="block text-sm font-medium mb-2">
+              Cash-Out Amount
+            </label>
+            <input
+              id="cashOutAmount"
+              ref={inputRef}
+              type="number"
+              min="0"
+              value={cashOutAmount}
+              onChange={(e) => setCashOutAmount(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter amount"
+            />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCashOutDialogOpen(false)}>
+          
+          <div className="flex justify-end space-x-3">
+            <button 
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium"
+              onClick={() => setCashOutDialogOpen(false)}
+            >
               Cancel
-            </Button>
-            <Button onClick={submitCashOut} disabled={sessionUpdating}>
-              {sessionUpdating ? "Processing..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
+            </button>
+            <button 
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium"
+              onClick={submitCashOut}
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
   };
 
   // Make sure the component registers "Finished" players for cash games
