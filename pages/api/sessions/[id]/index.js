@@ -7,8 +7,10 @@ const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   const { id: sessionId } = req.query;
+  console.log(`[${req.method}] /api/sessions/${sessionId} called`);
 
   if (!sessionId) {
+    console.log('Session ID missing from query');
     return res.status(400).json({ message: 'Session ID is required' });
   }
 
@@ -17,15 +19,13 @@ export default async function handler(req, res) {
   // if (!session) { ... }
 
   if (req.method === 'GET') {
-    // --- Logic from pages/api/session-status.js --- 
-    // --- Merged with logic from pages/api/blinds/current.js for blind info ---
+    console.log(`Fetching session details for ID: ${sessionId}`);
     try {
       const sessionData = await prisma.pokerSession.findUnique({
         where: { id: sessionId },
         include: {
           registrations: {
             where: {
-              // Only include players relevant to status (not CANCELLED)
               NOT: { status: 'CANCELLED' }
             },
             include: {
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
                   firstName: true,
                   lastName: true,
                   image: true,
-                  venmoId: true, // Include Venmo ID
+                  venmoId: true,
                 },
               },
             },
@@ -48,10 +48,12 @@ export default async function handler(req, res) {
       });
 
       if (!sessionData) {
+        console.log(`Session not found for ID: ${sessionId}`);
         return res.status(404).json({ exists: false, message: 'Session not found' });
       }
+      console.log(`Session data found for ID: ${sessionId}`);
 
-      // Process registrations into categories
+      // Process registrations
       const registrations = {
         current: [],
         eliminated: [],
@@ -68,7 +70,7 @@ export default async function handler(req, res) {
       sessionData.registrations.forEach((reg) => {
         switch (reg.playerStatus) {
           case 'CURRENT':
-          case 'REGISTERED': // Treat REGISTERED as CURRENT for display purposes if session started?
+          case 'REGISTERED': 
             registrations.current.push(reg);
             currentPlayersCount++;
             break;
@@ -82,9 +84,8 @@ export default async function handler(req, res) {
             break;
           case 'ITM':
             registrations.itm.push(reg);
-            // ITM count is managed separately on the session
             break;
-          case 'FINISHED': // For Cash Games
+          case 'FINISHED':
              registrations.finished.push(reg);
              finishedPlayersCount++;
              break;
@@ -92,17 +93,16 @@ export default async function handler(req, res) {
             break;
         }
       });
-      
-      // Sort ITM players if needed (e.g., by updatedAt time for finish order)
       registrations.itm.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      console.log(`Processed ${sessionData.registrations.length} registrations for session ${sessionId}`);
 
-      // --- Blind structure logic --- 
+      // Blind structure logic
       let blindInfo = {};
       if (sessionData.type === 'TOURNAMENT') {
-          const blindStructure = getBlindStructure(); // From consolidated file
+          console.log(`Fetching blind structure from file for tournament session ${sessionId}`);
+          const blindStructure = getBlindStructure();
           if (!blindStructure) {
-              // Handle case where structure file is missing - maybe return error or default
-              console.error('Blind structure file not found!');
+              console.error('Blind structure file (tournamentConfig.json) not found!');
               blindInfo = { levels: [], currentLevelIndex: 0, currentLevel: null };
           } else {
              const sortedLevels = [...blindStructure.levels].sort((a, b) => a.level - b.level);
@@ -117,29 +117,34 @@ export default async function handler(req, res) {
                  currentLevelIndex,
                  currentLevel,
              };
+             console.log(`Blind info prepared for session ${sessionId}, current level index: ${currentLevelIndex}`);
           }
+      } else {
+          console.log(`Session ${sessionId} is a cash game, skipping blind structure file.`);
       }
-
-      return res.status(200).json({
+      
+      const responsePayload = {
         exists: true,
         session: {
           ...sessionData,
-          registrations: registrations, // Processed registrations
+          registrations: registrations, 
           currentPlayersCount,
           eliminatedPlayersCount,
           waitlistedPlayersCount,
-          itmPlayersCount, // Use the count from the session model
-          finishedPlayersCount, // For cash games
+          itmPlayersCount,
+          finishedPlayersCount,
         },
-        blindInfo: { // Include blind info directly
+        blindInfo: {
            ...blindInfo,
-           levelStartTime: sessionData.levelStartTime || null, // From session DB
+           levelStartTime: sessionData.levelStartTime || null,
            sessionStatus: sessionData.status || 'NOT_STARTED'
         }
-      });
+      };
+      console.log(`Returning successful payload for session ${sessionId}`);
+      return res.status(200).json(responsePayload);
 
     } catch (error) {
-      console.error(`Error fetching session status for ${sessionId}:`, error);
+      console.error(`[GET /api/sessions/${sessionId}] Error fetching session status:`, error);
       return res.status(500).json({ exists: false, message: 'Internal server error', error: error.message });
     }
 
@@ -196,4 +201,4 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
   }
-} 
+}

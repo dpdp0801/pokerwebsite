@@ -3,10 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
+  console.log(`[${req.method}] /api/sessions called`); // Log entry
   if (req.method === 'GET') {
     // Find the first session that is ACTIVE or NOT_STARTED
     // This assumes there is only one such session relevant for the /status page
     try {
+      console.log('Searching for ACTIVE or NOT_STARTED session...');
       const currentSession = await prisma.pokerSession.findFirst({
         where: {
           OR: [
@@ -26,15 +28,15 @@ export default async function handler(req, res) {
       });
 
       if (currentSession) {
-        console.log(`Found relevant session for /status: ${currentSession.id} (Status: ${currentSession.status})`);
+        console.log(`[GET /api/sessions] Found relevant session for /status: ${currentSession.id} (Status: ${currentSession.status})`);
         return res.status(200).json({ sessionId: currentSession.id });
       } else {
-        console.log('No ACTIVE or NOT_STARTED session found for /status');
+        console.log('[GET /api/sessions] No ACTIVE or NOT_STARTED session found for /status');
         // Return success but with null ID if none found
         return res.status(200).json({ sessionId: null });
       }
     } catch (error) {
-      console.error('Error finding current session:', error);
+      console.error('[GET /api/sessions] Error finding current session:', error);
       return res.status(500).json({ message: 'Internal server error' });
     }
   } else if (req.method === 'POST') {
