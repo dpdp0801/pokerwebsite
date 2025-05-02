@@ -81,7 +81,9 @@ export default async function handler(req, res) {
           startTimeDate = new Date(date);
           
           // Set hours and minutes without modifying the timezone
-          startTimeDate.setHours(hours, minutes, 0, 0);
+          startTimeDate.setUTCHours(hours, minutes, 0, 0);
+          
+          console.log(`Setting time to ${hours}:${minutes} UTC, result:`, startTimeDate.toISOString());
         } catch (error) {
           console.error("Failed to parse start time:", error);
           return res.status(400).json({ 
@@ -150,6 +152,12 @@ export default async function handler(req, res) {
 
       // Create the session in the database
       try {
+        // Debug the values we're about to save
+        console.log("Creating session with these values:");
+        console.log("Date:", sessionData.date);
+        console.log("StartTime:", startTimeDate);
+        console.log("StartTime ISO:", startTimeDate.toISOString());
+        
         const createdSession = await prisma.pokerSession.create({
           data: {
             title: sessionData.title,

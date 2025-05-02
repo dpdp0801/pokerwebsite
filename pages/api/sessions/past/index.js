@@ -52,7 +52,7 @@ export default async function handler(req, res) {
             }
           },
           orderBy: {
-            place: 'asc'
+            createdAt: 'asc'
           }
         });
         

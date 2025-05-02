@@ -62,7 +62,7 @@ export default async function handler(req, res) {
               status: 'ITM'
             },
             include: { user: true },
-            orderBy: { place: 'asc' }
+            orderBy: { createdAt: 'asc' }
           }),
           prisma.registration.findMany({
             where: { 

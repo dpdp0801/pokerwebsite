@@ -1,153 +1,110 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-utils";
-import prisma from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
-  if (req.method !== "PUT") {
-    return res.status(405).json({ message: "Method not allowed" });
+  console.log("API route /api/player-status called with method:", req.method);
+  
+  // Only allow POST or PUT methods
+  if (req.method !== 'POST' && req.method !== 'PUT') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
-
+  
+  // Check authentication
+  const session = await getServerSession(req, res, authOptions);
+  
+  if (!session) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  
+  // Admin-only endpoint
+  if (!session.user.isAdmin) {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+  
   try {
-    // Ensure the user is authorized as an admin
-    const session = await getServerSession(req, res, authOptions);
-    if (!session) {
-      return res.status(401).json({ message: "Not authenticated" });
+    // Extract request data
+    const { registrationId, status, newStatus } = req.body;
+    
+    // Use either status (new API) or newStatus (old API)
+    const statusToUse = status || newStatus;
+    
+    if (!registrationId || !statusToUse) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing required parameters: registrationId and status are required' 
+      });
     }
     
-    // Check for admin role in multiple possible locations
-    const isAdmin = 
-      session.user?.isAdmin === true || 
-      session.role === "ADMIN" || 
-      session.user?.role === "ADMIN";
+    console.log(`Processing status update: Registration ${registrationId} to ${statusToUse}`);
     
-    if (!isAdmin) {
-      console.log("Unauthorized access attempt:", session);
-      return res.status(401).json({ message: "Unauthorized - Admin access required" });
-    }
-
-    const { registrationId, newStatus, playerStatus, isRebuy = false } = req.body;
-
-    // For rebuys, we only need registrationId
-    if (!registrationId || (!newStatus && !isRebuy)) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    console.log(`Updating player status: ${registrationId} to ${newStatus}, playerStatus: ${playerStatus} (isRebuy: ${isRebuy})`);
-
-    // Fetch the registration to update
+    // Find the registration
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
-      include: { session: true, user: true }
+      include: { session: true }
     });
-
-    if (!registration) {
-      return res.status(404).json({ message: "Registration not found" });
-    }
-
-    console.log(`Current status: ${registration.status}, User: ${registration.user?.name}`);
-
-    const currentStatus = registration.status;
-    const sessionId = registration.sessionId;
-
-    // Standardize status values
-    let normalizedNewStatus = newStatus;
-    let normalizedCurrentStatus = currentStatus;
-
-    // Handle WAITLIST vs WAITLISTED 
-    if (newStatus === 'WAITLIST') normalizedNewStatus = 'WAITLISTED';
-    if (currentStatus === 'WAITLIST') normalizedCurrentStatus = 'WAITLISTED';
-
-    console.log(`Normalized: Current ${normalizedCurrentStatus} → New ${normalizedNewStatus}`);
-
-    // Update player counts based on status change
-    let sessionUpdateData = {};
     
-    // Handle rebuy case separately
-    if (isRebuy) {
-      console.log(`Processing rebuy for ${registration.user?.name}`);
-      
-      // Increment the rebuys/entries count
-      try {
-        // Update the player's rebuy count
-        await prisma.registration.update({
-          where: { id: registrationId },
-          data: {
-            rebuys: {
-              increment: 1
-            }
-          }
-        });
-        
-        console.log(`Successfully incremented rebuys for registration ${registrationId}`);
-        
-        // Update session entries count
-        await prisma.pokerSession.update({
-          where: { id: sessionId },
-          data: {
-            entries: { 
-              increment: 1 
-            }
-          }
-        });
-        
-        console.log(`Successfully incremented session entries count for session ${sessionId}`);
-        
-        return res.status(200).json({ 
-          success: true, 
-          message: "Buy-in count incremented successfully",
-          newRebuyCount: (registration.rebuys || 0) + 1
-        });
-      } catch (error) {
-        console.error("Error updating session entries:", error);
-        return res.status(500).json({ message: "Error updating entries", error: error.message });
-      }
-    } else {
-      // Only process status changes if there's an actual change
-      if (normalizedCurrentStatus !== normalizedNewStatus) {
-        console.log(`Changing status from ${normalizedCurrentStatus} to ${normalizedNewStatus}`);
-        
-        try {
-          // Update the registration status directly, no counters to update since they don't exist
-          await prisma.registration.update({
-            where: { id: registrationId },
-            data: { 
-              status: normalizedNewStatus,
-              // Ensure playerStatus is set correctly, with special handling for waitlisted
-              playerStatus: normalizedNewStatus === "WAITLISTED" 
-                ? "WAITLISTED"
-                : (playerStatus || normalizedNewStatus)
-            }
-          });
-          
-          console.log(`Updated registration ${registrationId} - Status: ${normalizedNewStatus}, PlayerStatus: ${normalizedNewStatus === "WAITLISTED" ? "WAITLISTED" : (playerStatus || normalizedNewStatus)}`);
-          
-          // If moving from non-current to current in a tournament, increment entries
-          if (normalizedNewStatus === "CURRENT" && 
-              (normalizedCurrentStatus === "WAITLISTED" || normalizedCurrentStatus === "REGISTERED") &&
-              registration.session.type === "TOURNAMENT") {
-            
-            await prisma.pokerSession.update({
-              where: { id: sessionId },
-              data: {
-                entries: { increment: 1 }
-              }
-            });
-          }
-        } catch (error) {
-          console.error("Error updating registration status:", error);
-          return res.status(500).json({ message: "Error updating status", error: error.message });
-        }
-      } else {
-        console.log(`Status unchanged: ${normalizedCurrentStatus}`);
-      }
+    if (!registration) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Registration not found' 
+      });
     }
-
-    console.log("Status update completed successfully");
-
-    // Fetch the updated session data to return (doesn't include the registration changes immediately)
-    return res.status(200).json({ success: true, message: "Status updated successfully" });
+    
+    console.log(`Found registration: ${registrationId}, current status: ${registration.status}, current playerStatus: ${registration.playerStatus}`);
+    
+    // Map status values based on common patterns
+    let dbStatus, dbPlayerStatus;
+    
+    switch (statusToUse.toUpperCase()) {
+      case 'WAITLIST':
+        dbStatus = 'WAITLISTED';
+        dbPlayerStatus = 'WAITLIST';
+        break;
+      case 'WAITLISTED':
+        dbStatus = 'WAITLISTED';
+        dbPlayerStatus = 'WAITLIST';
+        break;
+      case 'ACTIVE':
+        dbStatus = 'CONFIRMED';
+        dbPlayerStatus = 'CURRENT';
+        break;
+      case 'FINISHED':
+        dbStatus = 'CONFIRMED';
+        dbPlayerStatus = 'FINISHED';
+        break;
+      default:
+        dbStatus = statusToUse.toUpperCase();
+        dbPlayerStatus = statusToUse.toUpperCase();
+    }
+    
+    console.log(`Mapped status values: dbStatus=${dbStatus}, dbPlayerStatus=${dbPlayerStatus}`);
+    
+    // Update the registration
+    const updatedReg = await prisma.registration.update({
+      where: { id: registrationId },
+      data: {
+        status: dbStatus,
+        playerStatus: dbPlayerStatus
+      }
+    });
+    
+    console.log(`Updated registration: ${updatedReg.id}, new status: ${updatedReg.status}, new playerStatus: ${updatedReg.playerStatus}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: `Player status updated to ${statusToUse}`,
+      registration: updatedReg
+    });
+    
   } catch (error) {
-    console.error("Error updating player status:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    console.error('Error updating player status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error updating player status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 } 
