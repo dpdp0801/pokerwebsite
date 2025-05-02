@@ -61,11 +61,11 @@ export default async function handler(req, res) {
     switch (statusToUse.toUpperCase()) {
       case 'WAITLIST':
         dbStatus = 'WAITLISTED';
-        dbPlayerStatus = 'WAITLIST';
+        dbPlayerStatus = 'WAITLISTED';
         break;
       case 'WAITLISTED':
         dbStatus = 'WAITLISTED';
-        dbPlayerStatus = 'WAITLIST';
+        dbPlayerStatus = 'WAITLISTED';
         break;
       case 'ACTIVE':
         dbStatus = 'CONFIRMED';
