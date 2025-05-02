@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/lib/hooks/use-toast";
+import { formatDate, formatTimeOnly } from "@/lib/tournament-utils"; // Use utils
 
 export default function Home() {
   const { data: session } = useSession();
@@ -37,20 +38,41 @@ export default function Home() {
   });
   
   useEffect(() => {
-    // Make the API call to check session status
     const checkSessionStatus = async () => {
+      setIsLoading(true);
+      setSessionExists(false);
+      setSessionData(null);
       try {
-        setIsLoading(true);
-        console.log("Fetching session status from API");
-        const response = await fetch('/api/session-status');
-        const data = await response.json();
-        
-        console.log("Session data received:", data);
-        setSessionExists(data.exists);
-        setSessionData(data.exists ? data.session : null);
+        // 1. Find the current session ID
+        console.log("[Home] Fetching current session ID from /api/sessions");
+        const findResponse = await fetch('/api/sessions');
+        if (!findResponse.ok) {
+          throw new Error(`Finding session failed: ${findResponse.statusText}`);
+        }
+        const findData = await findResponse.json();
+        const currentSessionId = findData.sessionId;
+
+        if (currentSessionId) {
+          console.log(`[Home] Found session ID: ${currentSessionId}. Fetching details...`);
+          // 2. Fetch details for that session ID
+          const detailResponse = await fetch(`/api/sessions/${currentSessionId}`);
+          if (!detailResponse.ok) {
+            throw new Error(`Fetching session details failed: ${detailResponse.statusText}`);
+          }
+          const detailData = await detailResponse.json();
+          console.log("[Home] Session details received:", detailData);
+          if (detailData.exists) {
+             setSessionExists(true);
+             // Extract session details and pass to formatters
+             setSessionData(detailData.session); 
+          } else {
+             console.log("[Home] Session details indicated session doesn't exist.");
+          }
+        } else {
+          console.log("[Home] No active/upcoming session found.");
+        }
       } catch (error) {
-        console.error('Error checking session status:', error);
-        // If there's an error, assume no session exists
+        console.error('[Home] Error checking session status:', error);
         setSessionExists(false);
         setSessionData(null);
       } finally {
@@ -61,34 +83,12 @@ export default function Home() {
     checkSessionStatus();
   }, []);
 
-  // Format date from ISO string
+  // Formatters now use the utility functions directly
   const formatEventDate = (dateString) => {
-    if (!dateString) return '';
-    
-    // Convert to local timezone (browser's timezone)
-    const date = new Date(dateString);
-    
-    // Format the date
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric'
-    });
+      return formatDate(dateString); // Use imported util
   };
-
-  // Format time from ISO string
-  const formatEventTime = (dateString) => {
-    if (!dateString) return '';
-    
-    // Convert to local timezone (browser's timezone)
-    const date = new Date(dateString);
-    
-    // Format the time
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
+  const formatEventTime = (timeString) => {
+      return formatTimeOnly(timeString); // Use imported util
   };
 
   const handleRegisterClick = () => {
