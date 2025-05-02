@@ -6,9 +6,9 @@ CREATE TABLE "User" (
     "name" TEXT,
     "email" TEXT NOT NULL,
     "image" TEXT,
-    "emailVerified" DATETIME,
+    "emailVerified" TIMESTAMP(3) WITH TIME ZONE,
     "role" TEXT NOT NULL DEFAULT 'PLAYER',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "venmoId" TEXT
 );
 
@@ -18,22 +18,22 @@ CREATE TABLE "PokerSession" (
     "title" TEXT NOT NULL,
     "description" TEXT,
     "type" TEXT NOT NULL,
-    "date" DATETIME NOT NULL,
-    "startTime" DATETIME NOT NULL,
-    "endTime" DATETIME,
+    "date" TEXT NOT NULL,
+    "startTime" TEXT NOT NULL,
+    "endTime" TIMESTAMP(3) WITH TIME ZONE,
     "location" TEXT NOT NULL,
     "buyIn" INTEGER NOT NULL,
     "minBuyIn" INTEGER,
     "maxBuyIn" INTEGER,
-    "smallBlind" REAL,
-    "bigBlind" REAL,
+    "smallBlind" DOUBLE PRECISION,
+    "bigBlind" DOUBLE PRECISION,
     "maxPlayers" INTEGER,
     "status" TEXT NOT NULL DEFAULT 'NOT_STARTED',
     "entries" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     "currentBlindLevel" INTEGER,
-    "levelStartTime" DATETIME,
+    "levelStartTime" TIMESTAMP(3) WITH TIME ZONE,
     "registrationClosed" BOOLEAN NOT NULL DEFAULT false,
     "itmPlayersCount" INTEGER NOT NULL DEFAULT 0
 );
@@ -51,8 +51,8 @@ CREATE TABLE "Registration" (
     "isRebuy" BOOLEAN NOT NULL DEFAULT false,
     "rebuys" INTEGER NOT NULL DEFAULT 0,
     "wasRegistered" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     "buyInTotal" INTEGER NOT NULL DEFAULT 0,
     "cashOut" INTEGER,
     "netProfit" INTEGER,
@@ -71,8 +71,8 @@ CREATE TABLE "GameResult" (
     "addOns" INTEGER NOT NULL DEFAULT 0,
     "winnings" INTEGER NOT NULL DEFAULT 0,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     CONSTRAINT "GameResult_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "GameResult_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "PokerSession" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -88,8 +88,8 @@ CREATE TABLE "BlindLevel" (
     "isBreak" BOOLEAN NOT NULL DEFAULT false,
     "breakName" TEXT,
     "specialAction" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     "structureId" TEXT NOT NULL,
     CONSTRAINT "BlindLevel_structureId_fkey" FOREIGN KEY ("structureId") REFERENCES "BlindStructure" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -101,8 +101,8 @@ CREATE TABLE "BlindStructure" (
     "description" TEXT,
     "startingStack" INTEGER NOT NULL,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL
 );
 
 -- CreateTable
@@ -111,18 +111,18 @@ CREATE TABLE "PayoutStructure" (
     "name" TEXT NOT NULL,
     "minEntries" INTEGER NOT NULL,
     "maxEntries" INTEGER NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "PayoutTier" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "position" INTEGER NOT NULL,
-    "percentage" REAL NOT NULL,
+    "percentage" DOUBLE PRECISION NOT NULL,
     "payoutStructureId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     CONSTRAINT "PayoutTier_payoutStructureId_fkey" FOREIGN KEY ("payoutStructureId") REFERENCES "PayoutStructure" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -148,7 +148,7 @@ CREATE TABLE "Session" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "sessionToken" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "expires" DATETIME NOT NULL,
+    "expires" TIMESTAMP(3) WITH TIME ZONE NOT NULL,
     CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -156,7 +156,7 @@ CREATE TABLE "Session" (
 CREATE TABLE "VerificationToken" (
     "identifier" TEXT NOT NULL,
     "token" TEXT NOT NULL,
-    "expires" DATETIME NOT NULL
+    "expires" TIMESTAMP(3) WITH TIME ZONE NOT NULL
 );
 
 -- CreateIndex
@@ -179,3 +179,20 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
+
+-- Add trigger for updatedAt columns (PostgreSQL specific)
+-- This handles the @updatedAt directive behavior
+CREATE OR REPLACE FUNCTION update_updated_at_column() RETURNS TRIGGER AS $$
+BEGIN
+    NEW."updatedAt" = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_pokersession_updated_at BEFORE UPDATE ON "PokerSession" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_registration_updated_at BEFORE UPDATE ON "Registration" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_gameresult_updated_at BEFORE UPDATE ON "GameResult" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_blindlevel_updated_at BEFORE UPDATE ON "BlindLevel" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_blindstructure_updated_at BEFORE UPDATE ON "BlindStructure" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_payoutstructure_updated_at BEFORE UPDATE ON "PayoutStructure" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_payouttier_updated_at BEFORE UPDATE ON "PayoutTier" FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
