@@ -761,33 +761,7 @@ export default function Status() {
                 ] : []}
               />
             
-              {isTournament && currentSession.registrations.eliminated && (
-              <PlayerList 
-                players={currentSession.registrations.eliminated}
-                  title="Eliminated"
-                  emptyMessage="No eliminated players yet"
-                colorClass="bg-red-100 text-red-800"
-                  isAdmin={isAdmin}
-                  isCashGame={isCashGame}
-                  removePlayer={isAdmin ? removePlayer : null}
-                  actions={isAdmin ? [
-                    {
-                      label: "Return",
-                      variant: "outline",
-                      title: "Return player to active players",
-                      onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
-                    },
-                    {
-                      label: "ITM",
-                    variant: "default",
-                      title: "Mark player as In The Money",
-                      onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
-                    }
-                  ] : []}
-                />
-              )}
-              
-              {/* Finished players section */}
+              {/* Finished players section - show for cash games */}
               {isCashGame && currentSession.registrations.finished && (
                 <PlayerList
                   players={currentSession.registrations.finished}
@@ -812,6 +786,32 @@ export default function Status() {
                     }
                   ] : []}
                 />
+              )}
+              
+              {isTournament && currentSession.registrations.eliminated && (
+              <PlayerList 
+                players={currentSession.registrations.eliminated}
+                title="Eliminated"
+                emptyMessage="No eliminated players yet"
+                colorClass="bg-red-100 text-red-800"
+                isAdmin={isAdmin}
+                isCashGame={isCashGame}
+                removePlayer={isAdmin ? removePlayer : null}
+                actions={isAdmin ? [
+                  {
+                    label: "Return",
+                    variant: "outline",
+                    title: "Return player to active players",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'ACTIVE')
+                  },
+                  {
+                    label: "ITM",
+                    variant: "default",
+                    title: "Mark player as In The Money",
+                    onClick: (registration) => updatePlayerStatus(registration.id, 'ITM')
+                  }
+                ] : []}
+              />
               )}
           </div>
           

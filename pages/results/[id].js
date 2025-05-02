@@ -241,9 +241,13 @@ export default function PastSessionDetails() {
           
           {/* Session statistics overview */}
           <div className="grid grid-cols-1 gap-4 mb-6 text-center">
-            {isTournament && (
+            {isTournament ? (
               <div>
                 <p className="text-2xl font-medium">{pastSession.totalEntries || pastSession.registrations?.itm?.length || 0} entries</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-2xl font-medium">{pastSession.registrations?.finished?.length || 0} players</p>
               </div>
             )}
           </div>
@@ -324,7 +328,7 @@ export default function PastSessionDetails() {
           <div className="border-t pt-4 mt-6">
             <h3 className="font-medium text-lg mb-3">Participants</h3>
             
-            {pastSession.registrations.current && pastSession.registrations.current.length > 0 && (
+            {isTournament && pastSession.registrations.current && pastSession.registrations.current.length > 0 && (
               <PlayerList 
                 players={pastSession.registrations.current}
                 title="Active Players"
@@ -342,6 +346,19 @@ export default function PastSessionDetails() {
                 emptyMessage="No waitlisted players"
                 colorClass="bg-yellow-100 text-yellow-800"
                 isAdmin={isAdmin}
+                // No actions for past sessions
+              />
+            )}
+            
+            {/* Finished players section for cash games */}
+            {!isTournament && pastSession.registrations.finished && pastSession.registrations.finished.length > 0 && (
+              <PlayerList 
+                players={pastSession.registrations.finished}
+                title="Finished Players"
+                emptyMessage="No finished players"
+                colorClass="bg-blue-100 text-blue-800"
+                isAdmin={isAdmin}
+                isCashGame={true}
                 // No actions for past sessions
               />
             )}
