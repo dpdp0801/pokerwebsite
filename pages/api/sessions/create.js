@@ -1,9 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-utils';
+import { zonedTimeToUtc } from 'date-fns-tz';
 
 // Initialize Prisma client outside of the handler function to reuse connections
 const prisma = new PrismaClient();
+const PACIFIC_TIMEZONE = 'America/Los_Angeles';
 
 export default async function handler(req, res) {
   console.log("API route /api/sessions/create called");
@@ -53,37 +55,34 @@ export default async function handler(req, res) {
         });
       }
 
-      // Convert date and time strings to the final startTime Date object
+      // Combine date and time strings into a single string for parsing
+      const dateTimeString = `${date} ${time}`;
       let startTimeDate;
+
       try {
-        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
-        const [hours, minutes] = time.split(':').map(n => parseInt(n, 10));
-        
-        // Create a Date object representing the UTC date and time
-        startTimeDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+        // Interpret the combined string AS Pacific Time and get the corresponding UTC Date object
+        startTimeDate = zonedTimeToUtc(dateTimeString, PACIFIC_TIMEZONE);
 
         if (isNaN(startTimeDate.getTime())) {
              throw new Error('Invalid date or time resulted in NaN.');
         }
         
-        console.log(`Parsed date ${date} and time ${time} into UTC startTimeDate:`, 
-                     startTimeDate.toISOString(), // ISO string is always UTC (Z)
-                     "getTime() value:", startTimeDate.getTime());
+        console.log(`Interpreted ${dateTimeString} in ${PACIFIC_TIMEZONE} as UTC timestamp:`, 
+                     startTimeDate.toISOString());
       } catch (error) {
-        console.error("Error parsing date/time into UTC:", error);
+        console.error(`Error parsing date/time string [${dateTimeString}] with timezone:`, error);
         return res.status(400).json({ 
           success: false, 
           message: `Invalid date or time format. Use YYYY-MM-DD and HH:MM. Error: ${error.message}` 
         });
       }
       
-      // Set the 'date' field (used for sorting/display) to the start of the day in UTC.
-      const dateOnly = new Date(startTimeDate.toISOString()); // Create from UTC string
-      dateOnly.setUTCHours(0, 0, 0, 0); // Set hours to 0 in UTC
-      
-      console.log("Setting date field (for sorting/display) to UTC midnight:", 
-                   dateOnly.toISOString(),
-                   "getTime() value:", dateOnly.getTime());
+      // Set the 'date' field to the start of the day (midnight) IN THE PACIFIC TIMEZONE,
+      // then convert that instant to UTC for storage.
+      const dateOnlyPacific = zonedTimeToUtc(`${date} 00:00:00`, PACIFIC_TIMEZONE);
+            
+      console.log(`Setting date field (for sorting/display) to Pacific midnight:`, 
+                   dateOnlyPacific.toISOString());
 
       // Validate specific fields based on type
       if (type.toUpperCase() === 'TOURNAMENT' && !buyIn) {
@@ -106,7 +105,7 @@ export default async function handler(req, res) {
           : `$${smallBlind}/$${bigBlind} 9-max NLH Cash Game`,
         description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
-        date: dateOnly,
+        date: dateOnlyPacific,
         startTime: startTimeDate,
         timeString: time,
         location: location || '385 S Catalina Ave, Apt 315',
@@ -126,14 +125,15 @@ export default async function handler(req, res) {
         sessionData.description = `$${smallBlind}/$${bigBlind} blinds, 9-max cash game`;
       }
 
-      console.log("Prepared session data for database:", sessionData);
+      console.log("Prepared session data for database:", {
+        ...sessionData,
+        dateISO: sessionData.date.toISOString(),
+        startTimeISO: sessionData.startTime.toISOString()
+      });
 
       // Create the session in the database
       try {
-        console.log("Creating session with values:");
-        console.log("Date (for sorting):", sessionData.date.toISOString());
-        console.log("StartTime (UTC):", sessionData.startTime.toISOString());
-        console.log("TimeString (raw input):", sessionData.timeString);
+        console.log("Creating session with UTC values equivalent to Pacific Time input.");
         
         const createdSession = await prisma.pokerSession.create({
           data: {
