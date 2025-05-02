@@ -25,59 +25,103 @@ export default async function handler(req, res) {
     // GET - Get details of a specific past session
     if (req.method === 'GET') {
       try {
-        // Fetch the session with all registrations
-        const pastSession = await prisma.pokerSession.findUnique({
-          where: { 
-            id,
-            status: 'COMPLETED' // Ensure it's a completed session
-          },
-          include: {
-            registrations: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    firstName: true,
-                    lastName: true,
-                    image: true,
-                    venmoId: true
-                  }
-                }
-              }
-            }
-          }
-        });
+        // Get relevant player registrations with user data
+        const [currentPlayers, waitlistPlayers, itmPlayers, eliminatedPlayers, noShowPlayers] = await Promise.all([
+          prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'ACTIVE'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          }),
+          prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'WAITLIST'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          }),
+          prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'ITM'
+            },
+            include: { user: true },
+            orderBy: { place: 'asc' }
+          }),
+          prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'ELIMINATED'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          }),
+          prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'NO_SHOW'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          })
+        ]);
         
-        if (!pastSession) {
-          return res.status(404).json({ success: false, message: 'Past session not found' });
+        // For tournaments, calculate total entries based on rebuys
+        let totalEntries = session.registeredPlayers || 0;
+        if (session.type === 'TOURNAMENT') {
+          const rebuys = await prisma.registration.aggregate({
+            where: {
+              sessionId: session.id,
+              rebuys: {
+                gt: 0
+              }
+            },
+            _sum: {
+              rebuys: true
+            }
+          });
+          
+          if (rebuys._sum.rebuys) {
+            totalEntries += rebuys._sum.rebuys;
+          }
         }
         
-        // Organize player registrations by status
-        const current = pastSession.registrations.filter(r => r.status === 'ACTIVE');
-        const waitlist = pastSession.registrations.filter(r => r.status === 'WAITLIST');
-        const eliminated = pastSession.registrations.filter(r => r.status === 'ELIMINATED');
-        const itm = pastSession.registrations.filter(r => r.status === 'ITM');
-        const noShow = pastSession.registrations.filter(r => r.status === 'NO_SHOW');
+        // For cash games, get finished players
+        let finishedPlayers = [];
+        if (session.type === 'CASH_GAME') {
+          finishedPlayers = await prisma.registration.findMany({
+            where: { 
+              sessionId: session.id,
+              playerStatus: 'FINISHED'
+            },
+            include: { user: true },
+            orderBy: { createdAt: 'asc' }
+          });
+        }
         
-        // Format the session data similar to the status page
+        // Make sure time is preserved properly
+        const startTime = session.startTime ? new Date(session.startTime).toISOString() : null;
+        
+        // Format session data for client
         const formattedSession = {
-          ...pastSession,
+          ...session,
+          startTime: startTime,
+          totalEntries,
           registrations: {
-            current,
-            waitlist,
-            eliminated,
-            itm,
-            noShow
-          },
-          currentPlayersCount: current.length,
-          waitlistedPlayersCount: waitlist.length,
-          eliminatedPlayersCount: eliminated.length,
-          totalEntries: pastSession.registrations.reduce((sum, reg) => sum + (reg.rebuys || 0) + 1, 0)
+            current: currentPlayers,
+            waitlist: waitlistPlayers,
+            itm: itmPlayers,
+            eliminated: eliminatedPlayers,
+            noShow: noShowPlayers,
+            finished: finishedPlayers
+          }
         };
         
-        return res.status(200).json({ 
-          success: true, 
+        return res.status(200).json({
+          success: true,
           exists: true,
           session: formattedSession
         });

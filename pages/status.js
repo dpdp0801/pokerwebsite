@@ -293,10 +293,15 @@ export default function Status() {
                 pattern="[0-9]*"
                 inputMode="numeric"
                 value={buyInAmount}
-                onBlur={(e) => setBuyInAmount(e.target.value)}
-                onChange={(e) => {
-                  // Only accept numbers
+                onBlur={(e) => {
                   if (/^\d*$/.test(e.target.value)) {
+                    setBuyInAmount(e.target.value);
+                  }
+                }}
+                onChange={(e) => {
+                  // Only accept numbers without immediately updating state
+                  if (/^\d*$/.test(e.target.value)) {
+                    e.preventDefault();
                     setBuyInAmount(e.target.value);
                   }
                 }}
@@ -343,10 +348,15 @@ export default function Status() {
                 pattern="[0-9]*"
                 inputMode="numeric"
                 value={cashOutAmount}
-                onBlur={(e) => setCashOutAmount(e.target.value)}
-                onChange={(e) => {
-                  // Only accept numbers
+                onBlur={(e) => {
                   if (/^\d*$/.test(e.target.value)) {
+                    setCashOutAmount(e.target.value);
+                  }
+                }}
+                onChange={(e) => {
+                  // Only accept numbers without immediately updating state
+                  if (/^\d*$/.test(e.target.value)) {
+                    e.preventDefault();
                     setCashOutAmount(e.target.value);
                   }
                 }}
@@ -413,29 +423,29 @@ export default function Status() {
           <div className="grid grid-cols-2 gap-4 mb-6 text-center">
             <div>
               <div className="flex items-center justify-center gap-1">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xl font-medium">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <p className="text-2xl font-medium">
                   {currentSession.currentPlayersCount}/{currentSession.maxPlayers}
                 </p>
               </div>
-              <p className="text-muted-foreground">{isActive ? "Current Players" : "Registered Players"}</p>
+              <p className="text-xl text-muted-foreground">{isActive ? "Current Players" : "Registered Players"}</p>
             </div>
             
             <div>
-              <p className="text-xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
-              <p className="text-muted-foreground">Waitlisted</p>
+              <p className="text-2xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
+              <p className="text-xl text-muted-foreground">Waitlisted</p>
             </div>
             
             {isTournament && (
               <>
                 <div>
-                  <p className="text-xl font-medium">{currentSession.totalEntries || 0}</p>
-                  <p className="text-muted-foreground">Total Entries</p>
+                  <p className="text-2xl font-medium">{currentSession.totalEntries || 0}</p>
+                  <p className="text-xl text-muted-foreground">Total Entries</p>
                 </div>
                 
                 <div>
-                  <p className="text-xl font-medium">{currentSession.eliminatedPlayersCount || 0}</p>
-                  <p className="text-muted-foreground">Eliminated</p>
+                  <p className="text-2xl font-medium">{currentSession.eliminatedPlayersCount || 0}</p>
+                  <p className="text-xl text-muted-foreground">Eliminated</p>
                 </div>
               </>
             )}

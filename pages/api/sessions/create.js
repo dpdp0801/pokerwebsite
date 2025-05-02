@@ -37,12 +37,13 @@ export default async function handler(req, res) {
         smallBlind,
         bigBlind,
         minBuyIn,
-        location
+        location,
+        startTime
       } = req.body;
 
       console.log("Received session data:", {
         type, date, time, buyIn, maxPlayers,
-        smallBlind, bigBlind, minBuyIn, location
+        smallBlind, bigBlind, minBuyIn, location, startTime
       });
 
       // Convert date and time strings to Date objects
@@ -66,6 +67,28 @@ export default async function handler(req, res) {
           success: false, 
           message: "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time." 
         });
+      }
+
+      // Validate and prepare start time if provided
+      let startTimeDate = null;
+      if (startTime) {
+        // Parse the time value in a timezone-safe way
+        try {
+          // startTime should be in format "HH:MM" (24-hour)
+          const [hours, minutes] = startTime.split(':').map(Number);
+          
+          // Create a date object using the session date as base
+          startTimeDate = new Date(date);
+          
+          // Set hours and minutes without modifying the timezone
+          startTimeDate.setHours(hours, minutes, 0, 0);
+        } catch (error) {
+          console.error("Failed to parse start time:", error);
+          return res.status(400).json({ 
+            success: false, 
+            message: "Invalid start time format. Use HH:MM (24-hour format)." 
+          });
+        }
       }
 
       // Make sure we have required fields
@@ -99,7 +122,7 @@ export default async function handler(req, res) {
         description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
         date: sessionDate,
-        startTime: sessionDate,
+        startTime: startTimeDate,
         location: location || '385 S Catalina Ave, Apt 315', // Use provided location or default
         status: 'NOT_STARTED',
         maxPlayers: parseInt(maxPlayers, 10),
