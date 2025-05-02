@@ -330,51 +330,43 @@ export default function Status() {
       }
     }, [buyInDialogOpen]);
 
-    return buyInDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-           onClick={(e) => {
-             // Prevent closing when clicking inside the dialog
-             if (e.target !== e.currentTarget) return;
-             setBuyInDialogOpen(false);
-           }}>
-        <div className="bg-white p-4 rounded-md w-80 max-w-full" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-lg font-medium mb-2">Add Buy-In</h3>
-          
-          <div className="mb-4">
-            <input
-              ref={inputRef}
-              type="number"
-              min="0"
-              value={buyInAmount}
-              onChange={(e) => setBuyInAmount(e.target.value)}
-              className="w-full border border-gray-300 rounded p-2"
-              placeholder="Enter amount"
-              // Prevent default behavior for up/down arrow keys
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                  e.preventDefault();
-                }
-              }}
-            />
+    return (
+      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Buy-In</DialogTitle>
+            <DialogDescription>
+              Enter the buy-in amount for the player.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="buyInAmount" className="text-right">
+                Amount
+              </Label>
+              <Input
+                id="buyInAmount"
+                ref={inputRef}
+                type="number"
+                min="0"
+                value={buyInAmount}
+                onChange={(e) => setBuyInAmount(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter amount"
+              />
+            </div>
           </div>
-          
-          <div className="flex justify-end space-x-2">
-            <button 
-              className="px-3 py-1 border border-gray-300 rounded"
-              onClick={() => setBuyInDialogOpen(false)}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBuyInDialogOpen(false)}>
               Cancel
-            </button>
-            <button 
-              className="px-3 py-1 bg-blue-600 text-white rounded"
-              onClick={submitBuyIn}
-            >
-              Submit
-            </button>
-          </div>
-        </div>
-      </div>
-    ) : null;
+            </Button>
+            <Button onClick={submitBuyIn} disabled={sessionUpdating}>
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   // Simple Cash-out Dialog
@@ -392,57 +384,48 @@ export default function Status() {
       }
     }, [cashOutDialogOpen]);
     
-    return cashOutDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-           onClick={(e) => {
-             // Prevent closing when clicking inside the dialog
-             if (e.target !== e.currentTarget) return;
-             setCashOutDialogOpen(false);
-           }}>
-        <div className="bg-white p-4 rounded-md w-80 max-w-full" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-lg font-medium mb-2">Process Cash-Out</h3>
-          
-          <div className="mb-4">
-            <input
-              ref={inputRef}
-              type="number"
-              min="0"
-              value={cashOutAmount}
-              onChange={(e) => setCashOutAmount(e.target.value)}
-              className="w-full border border-gray-300 rounded p-2"
-              placeholder="Enter amount"
-              // Prevent default behavior for up/down arrow keys
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                  e.preventDefault();
-                }
-              }}
-            />
-          </div>
-          
-          {selectedPlayer && (
-            <div className="text-sm mb-4">
-              <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
+    return (
+      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Process Cash-Out</DialogTitle>
+            <DialogDescription>
+              Enter the cash-out amount for the player.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedPlayer && (
+              <div className="text-sm px-4">
+                <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cashOutAmount" className="text-right">
+                Amount
+              </Label>
+              <Input
+                id="cashOutAmount"
+                ref={inputRef}
+                type="number"
+                min="0"
+                value={cashOutAmount}
+                onChange={(e) => setCashOutAmount(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter amount"
+              />
             </div>
-          )}
-          
-          <div className="flex justify-end space-x-2">
-            <button 
-              className="px-3 py-1 border border-gray-300 rounded"
-              onClick={() => setCashOutDialogOpen(false)}
-            >
-              Cancel
-            </button>
-            <button 
-              className="px-3 py-1 bg-blue-600 text-white rounded"
-              onClick={submitCashOut}
-            >
-              Submit
-            </button>
           </div>
-        </div>
-      </div>
-    ) : null;
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCashOutDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submitCashOut} disabled={sessionUpdating}>
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   // Make sure the component registers "Finished" players for cash games

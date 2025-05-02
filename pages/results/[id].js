@@ -44,6 +44,22 @@ const getInitials = (name) => {
   return initials;
 };
 
+// Helper function to calculate prize money based on position, entry count, and buy-in
+const calculatePrizeForPlace = (place, entries, buyIn) => {
+  // Default payout percentages if no payout structure is available
+  const defaultPayouts = {
+    1: { percentage: 50 }, // 1st place gets 50%
+    2: { percentage: 30 }, // 2nd place gets 30% 
+    3: { percentage: 20 }  // 3rd place gets 20%
+  };
+  
+  const tier = defaultPayouts[place];
+  if (!tier) return 0;
+  
+  const totalPrize = buyIn * entries;
+  return totalPrize * (tier.percentage / 100);
+};
+
 export default function PastSessionDetails() {
   const { data: session, status } = useSession();
   const [pastSession, setPastSession] = useState(null);
@@ -230,7 +246,7 @@ export default function PastSessionDetails() {
             </span>
           </CardTitle>
           <CardDescription className="text-center">
-            {formatDate(pastSession.date)} at {formatTimeOnly(pastSession.startTime)}
+            {formatDate(pastSession.date)} at {pastSession.startTime ? new Date(pastSession.startTime).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'}) : 'TBD'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -323,7 +339,8 @@ export default function PastSessionDetails() {
                           
                           {/* Right side - Prize amount */}
                           <div className="text-sm font-medium text-green-600">
-                            ${player.prize || prizeAmount || 0}
+                            ${player.prize || prizeAmount || (pastSession.buyIn && pastSession.entries && place <= 3 ? 
+                              Math.floor(calculatePrizeForPlace(place, pastSession.entries, pastSession.buyIn)) : 0)}
                           </div>
                         </li>
                       );
