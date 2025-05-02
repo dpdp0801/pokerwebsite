@@ -18,20 +18,33 @@ export default function useTournamentTimer(
 
   // Start timer for blind levels
   useEffect(() => {
+    // *** Add checks for sessionData existence ***
+    if (!sessionData || !sessionData.exists || !sessionData.session) {
+        // If no valid session data, clear any existing interval and do nothing
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            setTimerInterval(null);
+        }
+        setTimer({ minutes: 0, seconds: 0 }); // Reset timer display
+        return; 
+    }
+    
     // Reset advance tracker when the level index changes externally
-    if (sessionData?.session?.currentBlindLevel !== currentLevelIndexRef.current) {
+    // Now safe to access currentBlindLevel because of the check above
+    if (sessionData.session.currentBlindLevel !== currentLevelIndexRef.current) {
       console.log(`[Timer] Level index changed externally (${currentLevelIndexRef.current} -> ${sessionData.session.currentBlindLevel}). Resetting advance tracker.`);
       hasAdvancedLevelRef.current = false;
       currentLevelIndexRef.current = sessionData.session.currentBlindLevel;
     }
-
-    if (blindStructureData?.currentLevel && sessionData.exists && sessionData.session.status === 'ACTIVE') {
+    
+    // Proceed only if session is ACTIVE and we have blind structure info
+    if (blindStructureData?.currentLevel && sessionData.session.status === 'ACTIVE') {
       // Clear any existing interval before setting up a new one
       if (timerInterval) {
         clearInterval(timerInterval);
         setTimerInterval(null); // Ensure state is updated
       }
-
+      
       const currentLevelIndex = sessionData.session.currentBlindLevel ?? 0;
       currentLevelIndexRef.current = currentLevelIndex; // Store current level
 
@@ -46,29 +59,24 @@ export default function useTournamentTimer(
       let remainingSeconds = totalSeconds - elapsedSeconds;
 
       // --- Initial Check --- 
-      // If timer is already zero or past, AND we haven't tried advancing this level yet
       if (remainingSeconds <= 0 && isAdmin && !hasAdvancedLevelRef.current) {
         console.log(`[Timer] Initial time is already <= 0 for level ${currentLevelIndex}. Attempting advance.`);
         hasAdvancedLevelRef.current = true; // Mark as attempted
-        // Use setTimeout to avoid potential state update issues within useEffect
         setTimeout(async () => {
           try {
             setBlindsLoading(true);
             await updateBlindLevel(currentLevelIndex + 1);
-            // Resetting hasAdvancedLevelRef happens when level index changes
           } catch (error) {
             console.error("[Timer] Error advancing level on initial load:", error);
-            hasAdvancedLevelRef.current = false; // Allow retry on error
+            hasAdvancedLevelRef.current = false; 
           } finally {
             setBlindsLoading(false);
           }
-        }, 50); // Short delay
-        // Set timer to 0:00 and don't start interval
+        }, 50); 
         setTimer({ minutes: 0, seconds: 0 });
-        return; // Exit effect early
+        return; 
       }
       
-      // Ensure remaining seconds isn't negative for timer start
       remainingSeconds = Math.max(0, remainingSeconds);
       const initialMinutes = Math.floor(remainingSeconds / 60);
       const initialSeconds = remainingSeconds % 60;
@@ -82,8 +90,6 @@ export default function useTournamentTimer(
           let newSeconds = prevTimer.seconds;
 
           if (newMinutes === 0 && newSeconds === 0) {
-            // Already at zero, clear interval and do nothing else here
-            // The advance logic is handled below after state update
             clearInterval(interval);
             setTimerInterval(null);
             return prevTimer; 
@@ -95,30 +101,26 @@ export default function useTournamentTimer(
             newMinutes--;
           }
           
-          // Check if timer is finished *after* decrementing
           if (newMinutes <= 0 && newSeconds <= 0) {
             newMinutes = 0;
             newSeconds = 0;
-            clearInterval(interval); // Stop the interval
+            clearInterval(interval); 
             setTimerInterval(null);
 
-            // Use a flag to ensure advance is called only once when timer hits zero
             if (isAdmin && !hasAdvancedLevelRef.current && !blindsLoading) {
-              console.log(`[Timer] Interval timer hit 0 for level ${currentLevelIndexRef.current}. Attempting advance.`);
-              hasAdvancedLevelRef.current = true; // Mark that we are attempting advance for this level
-              // Use setTimeout to ensure state update completes before API call
-              setTimeout(async () => {
-                try {
-                  setBlindsLoading(true);
-                  await updateBlindLevel((currentLevelIndexRef.current || 0) + 1);
-                  // Resetting hasAdvancedLevelRef happens when level index changes
-                } catch (error) {
-                  console.error("[Timer] Error advancing level from interval:", error);
-                  hasAdvancedLevelRef.current = false; // Allow retry on error
-                } finally {
-                  setBlindsLoading(false);
-                }
-              }, 50); // Short delay
+               console.log(`[Timer] Interval timer hit 0 for level ${currentLevelIndexRef.current}. Attempting advance.`);
+               hasAdvancedLevelRef.current = true; 
+               setTimeout(async () => {
+                 try {
+                   setBlindsLoading(true);
+                   await updateBlindLevel((currentLevelIndexRef.current || 0) + 1);
+                 } catch (error) {
+                   console.error("[Timer] Error advancing level from interval:", error);
+                   hasAdvancedLevelRef.current = false; 
+                 } finally {
+                   setBlindsLoading(false);
+                 }
+               }, 50); 
             }
           }
           return { minutes: newMinutes, seconds: newSeconds };
@@ -132,7 +134,14 @@ export default function useTournamentTimer(
           clearInterval(interval);
         }
       };
-    }
+    } else { 
+      // If session not ACTIVE or no blind data, ensure timer is cleared/reset
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+      setTimer({ minutes: 0, seconds: 0 });
+    } 
   }, [blindStructureData, sessionData, isAdmin, updateBlindLevel]);
 
   return { timer, formatTimer, blindsLoading, setBlindsLoading };
