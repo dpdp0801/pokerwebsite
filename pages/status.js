@@ -147,14 +147,6 @@ export default function Status() {
         
   const [isUpdating, setIsUpdating] = useState(false);
   
-  // If active tournament, fetch blind structure and payout structure
-  useEffect(() => {
-    if (sessionData.exists && sessionData.session.type === 'TOURNAMENT' && sessionData.session.status === 'ACTIVE') {
-      fetchBlindStructureIfNeeded(sessionData.session.id, sessionData.session.currentBlindLevel);
-      fetchPayoutStructureIfNeeded(sessionData.session.totalEntries || sessionData.session.registeredPlayers);
-    }
-  }, [sessionData]);
-
   // If active tournament, fetch payout structure based on entry count
   useEffect(() => {
     const sessionExists = sessionData?.exists;
