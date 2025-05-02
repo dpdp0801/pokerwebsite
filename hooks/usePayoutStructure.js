@@ -38,16 +38,21 @@ export default function usePayoutStructure() {
   }, [fetchAllStructures]);
 
   const findStructureForCount = useCallback((entryCount) => {
-    if (!initialLoadComplete) return;
+    if (!initialLoadComplete || !Array.isArray(allStructures)) {
+      console.log(`[usePayoutStructure] Cannot find structure yet. InitialLoad: ${initialLoadComplete}, AllStructures is Array: ${Array.isArray(allStructures)}`);
+      return;
+    }
     
-    console.log(`[usePayoutStructure] Finding structure for entry count: ${entryCount}`);
+    console.log(`[usePayoutStructure] Finding structure for entry count: ${entryCount} within ${allStructures.length} total structures.`);
     const structure = allStructures.find(
       (s) => entryCount >= s.minEntries && entryCount <= s.maxEntries
     );
 
     if (structure) {
+      console.log(`[usePayoutStructure] Found matching structure: ${structure.name}`);
       setPayoutStructure(structure);
     } else {
+      console.log(`[usePayoutStructure] No structure found for ${entryCount} entries.`);
       setPayoutStructure(null);
     }
     setLastFetchedCount(entryCount);
@@ -56,7 +61,10 @@ export default function usePayoutStructure() {
   const fetchPayoutStructureIfNeeded = useCallback((playerCount) => {
     const entryCount = playerCount ?? 0;
     if (entryCount !== lastFetchedCount) {
+      console.log(`[usePayoutStructure] Player count changed (${lastFetchedCount} -> ${entryCount}). Running findStructureForCount.`);
       findStructureForCount(entryCount);
+    } else {
+      // console.log(`[usePayoutStructure] Player count (${entryCount}) hasn't changed. Skipping find.`);
     }
   }, [lastFetchedCount, findStructureForCount]);
 

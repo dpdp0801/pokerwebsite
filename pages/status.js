@@ -151,6 +151,17 @@ export default function Status() {
     }
   }, [sessionData]);
 
+  // Log the state right before rendering
+  console.log('[Status Page Render] Loading:', sessionLoading);
+  console.log('[Status Page Render] Session Exists:', sessionData?.exists);
+  // Log blind info received from useSessionData hook
+  console.log('[Status Page Render] Raw sessionData.blindInfo:', sessionData?.blindInfo);
+  // Log the derived structure data passed to Timer
+  console.log('[Status Page Render] Derived blindStructureData for Timer:', blindStructureData);
+  console.log('[Status Page Render] Displayed Level Index:', displayedLevelIndex);
+  // Log payout structure from its hook
+  console.log('[Status Page Render] Payout Structure:', payoutStructure);
+
   // Loading state
   if (sessionLoading) {
     return (
