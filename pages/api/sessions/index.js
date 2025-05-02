@@ -28,8 +28,19 @@ export default async function handler(req, res) {
       });
 
       if (currentSession) {
-        console.log(`[GET /api/sessions] Found relevant session for /status: ${currentSession.id} (Status: ${currentSession.status})`);
-        return res.status(200).json({ sessionId: currentSession.id });
+        // ** Add a check to verify the session still exists **
+        const stillExists = await prisma.pokerSession.findUnique({
+             where: { id: currentSession.id },
+             select: { id: true } // Just need to confirm existence
+        });
+        
+        if (stillExists) {
+             console.log(`[GET /api/sessions] Found and verified session: ${currentSession.id} (Status: ${currentSession.status})`);
+             return res.status(200).json({ sessionId: currentSession.id });
+        } else {
+             console.warn(`[GET /api/sessions] Session ${currentSession.id} found by findFirst but NOT by findUnique. Returning null.`);
+             return res.status(200).json({ sessionId: null });
+        }
       } else {
         console.log('[GET /api/sessions] No ACTIVE or NOT_STARTED session found for /status');
         // Return success but with null ID if none found
