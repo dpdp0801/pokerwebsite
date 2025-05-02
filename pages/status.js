@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -277,12 +277,31 @@ export default function Status() {
 
   // Simple Buy-in Dialog
   const BuyInDialog = () => {
+    // Create a ref for the input element
+    const inputRef = useRef(null);
+    
+    // Focus the input when dialog opens
+    useEffect(() => {
+      if (buyInDialogOpen && inputRef.current) {
+        // Set a small timeout to ensure DOM is ready
+        setTimeout(() => {
+          inputRef.current.focus();
+        }, 50);
+      }
+    }, [buyInDialogOpen]);
+
     return buyInDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+           onClick={(e) => {
+             // Prevent closing when clicking inside the dialog
+             if (e.target !== e.currentTarget) return;
+             setBuyInDialogOpen(false);
+           }}>
         <div className="bg-white p-4 rounded-md w-80 max-w-full">
           <h3 className="text-lg font-medium mb-2">Add Buy-In</h3>
           
           <input
+            ref={inputRef}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -290,6 +309,12 @@ export default function Status() {
             onChange={(e) => setBuyInAmount(e.target.value.replace(/[^0-9]/g, ''))}
             className="w-full border border-gray-300 rounded p-2 mb-4"
             placeholder="Enter amount"
+            // Prevent default behavior for up/down arrow keys
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
           />
           
           <div className="flex justify-end space-x-2">
@@ -302,7 +327,6 @@ export default function Status() {
             <button 
               className="px-3 py-1 bg-blue-600 text-white rounded"
               onClick={() => {
-                setBuyInDialogOpen(false);
                 submitBuyIn();
               }}
             >
@@ -316,12 +340,31 @@ export default function Status() {
 
   // Simple Cash-out Dialog
   const CashOutDialog = () => {
+    // Create a ref for the input element
+    const inputRef = useRef(null);
+    
+    // Focus the input when dialog opens
+    useEffect(() => {
+      if (cashOutDialogOpen && inputRef.current) {
+        // Set a small timeout to ensure DOM is ready
+        setTimeout(() => {
+          inputRef.current.focus();
+        }, 50);
+      }
+    }, [cashOutDialogOpen]);
+    
     return cashOutDialogOpen ? (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+           onClick={(e) => {
+             // Prevent closing when clicking inside the dialog
+             if (e.target !== e.currentTarget) return;
+             setCashOutDialogOpen(false);
+           }}>
         <div className="bg-white p-4 rounded-md w-80 max-w-full">
           <h3 className="text-lg font-medium mb-2">Process Cash-Out</h3>
           
           <input
+            ref={inputRef}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -329,6 +372,12 @@ export default function Status() {
             onChange={(e) => setCashOutAmount(e.target.value.replace(/[^0-9]/g, ''))}
             className="w-full border border-gray-300 rounded p-2 mb-4"
             placeholder="Enter amount"
+            // Prevent default behavior for up/down arrow keys
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
           />
           
           {selectedPlayer && (
@@ -347,7 +396,6 @@ export default function Status() {
             <button 
               className="px-3 py-1 bg-blue-600 text-white rounded"
               onClick={() => {
-                setCashOutDialogOpen(false);
                 submitCashOut();
               }}
             >
