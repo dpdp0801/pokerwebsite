@@ -111,12 +111,37 @@ export default async function handler(req, res) {
         }
         
         // Make sure time is preserved properly
-        const startTime = pokerSession.startTime ? new Date(pokerSession.startTime).toISOString() : null;
+        let startTime = null;
+        try {
+          if (pokerSession.startTime) {
+            const dateObj = new Date(pokerSession.startTime);
+            // Check if date is valid before calling toISOString()
+            if (!isNaN(dateObj.getTime())) {
+              startTime = dateObj.toISOString();
+            }
+          }
+        } catch (e) {
+          console.error(`Invalid date format for session ${id}: ${pokerSession.startTime}`);
+        }
+        
+        // Safely format date value
+        let formattedDate = pokerSession.date;
+        try {
+          if (pokerSession.date) {
+            const dateObj = new Date(pokerSession.date);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toISOString().split('T')[0]; // Just keep YYYY-MM-DD
+            }
+          }
+        } catch (e) {
+          console.error(`Invalid date format for session ${id}: ${pokerSession.date}`);
+        }
         
         // Format session data for client
         const formattedSession = {
           ...pokerSession,
           startTime: startTime,
+          date: formattedDate,
           totalEntries,
           registrations: {
             current: currentPlayers,

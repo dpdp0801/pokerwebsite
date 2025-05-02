@@ -88,13 +88,37 @@ export default async function handler(req, res) {
           finishedPlayersCount = finished;
         }
         
-        // Make sure time is preserved properly
-        const startTime = session.startTime ? new Date(session.startTime).toISOString() : null;
+        // Safely format date values
+        let formattedDate = null;
+        try {
+          if (session.date) {
+            const dateObj = new Date(session.date);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toISOString().split('T')[0]; // Just keep YYYY-MM-DD
+            }
+          }
+        } catch (e) {
+          console.error(`Invalid date format for session ${session.id}: ${session.date}`);
+        }
+        
+        // Safely format time values
+        let startTime = null;
+        try {
+          if (session.startTime) {
+            const dateObj = new Date(session.startTime);
+            // Check if date is valid before calling toISOString()
+            if (!isNaN(dateObj.getTime())) {
+              startTime = dateObj.toISOString();
+            }
+          }
+        } catch (e) {
+          console.error(`Invalid date format for session ${session.id}: ${session.startTime}`);
+        }
         
         return {
           id: session.id,
           title: session.title,
-          date: session.date,
+          date: formattedDate || session.date,
           startTime: startTime,
           type: session.type,
           buyIn: session.buyIn,
