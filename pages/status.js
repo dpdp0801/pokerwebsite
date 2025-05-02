@@ -275,8 +275,21 @@ export default function Status() {
 
   // Buy-in Dialog Component
   const BuyInDialog = () => {
+    // Use local state for input value
+    const [inputValue, setInputValue] = useState('');
+    
+    // Set input value when dialog opens
+    useEffect(() => {
+      if (buyInDialogOpen) {
+        setInputValue('');
+      }
+    }, [buyInDialogOpen]);
+    
     return (
-      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
+      <Dialog open={buyInDialogOpen} onOpenChange={(open) => {
+        setBuyInDialogOpen(open);
+        if (!open) setInputValue('');
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Buy-In</DialogTitle>
@@ -292,17 +305,12 @@ export default function Status() {
                 type="text"
                 pattern="[0-9]*"
                 inputMode="numeric"
-                value={buyInAmount}
-                onBlur={(e) => {
-                  if (/^\d*$/.test(e.target.value)) {
-                    setBuyInAmount(e.target.value);
-                  }
-                }}
+                value={inputValue}
                 onChange={(e) => {
-                  // Only accept numbers without immediately updating state
-                  if (/^\d*$/.test(e.target.value)) {
-                    e.preventDefault();
-                    setBuyInAmount(e.target.value);
+                  // Only accept numbers
+                  const newValue = e.target.value;
+                  if (/^\d*$/.test(newValue)) {
+                    setInputValue(newValue);
                   }
                 }}
                 placeholder="100"
@@ -317,7 +325,18 @@ export default function Status() {
               Cancel
             </Button>
             <Button
-              onClick={submitBuyIn}
+              onClick={() => {
+                if (inputValue && parseInt(inputValue) > 0) {
+                  setBuyInAmount(inputValue);
+                  submitBuyIn();
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Please enter a valid buy-in amount",
+                    variant: "destructive",
+                  });
+                }
+              }}
               disabled={sessionUpdating}
             >
               {sessionUpdating ? "Processing..." : "Confirm Buy-In"}
@@ -330,8 +349,21 @@ export default function Status() {
 
   // Cash-out Dialog Component
   const CashOutDialog = () => {
+    // Use local state for input value
+    const [inputValue, setInputValue] = useState('');
+    
+    // Set input value when dialog opens
+    useEffect(() => {
+      if (cashOutDialogOpen) {
+        setInputValue('');
+      }
+    }, [cashOutDialogOpen]);
+    
     return (
-      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
+      <Dialog open={cashOutDialogOpen} onOpenChange={(open) => {
+        setCashOutDialogOpen(open);
+        if (!open) setInputValue('');
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Process Cash-Out</DialogTitle>
@@ -347,17 +379,12 @@ export default function Status() {
                 type="text"
                 pattern="[0-9]*"
                 inputMode="numeric"
-                value={cashOutAmount}
-                onBlur={(e) => {
-                  if (/^\d*$/.test(e.target.value)) {
-                    setCashOutAmount(e.target.value);
-                  }
-                }}
+                value={inputValue}
                 onChange={(e) => {
-                  // Only accept numbers without immediately updating state
-                  if (/^\d*$/.test(e.target.value)) {
-                    e.preventDefault();
-                    setCashOutAmount(e.target.value);
+                  // Only accept numbers
+                  const newValue = e.target.value;
+                  if (/^\d*$/.test(newValue)) {
+                    setInputValue(newValue);
                   }
                 }}
                 placeholder="150"
@@ -378,7 +405,18 @@ export default function Status() {
               Cancel
             </Button>
             <Button
-              onClick={submitCashOut}
+              onClick={() => {
+                if (inputValue && parseInt(inputValue) > 0) {
+                  setCashOutAmount(inputValue);
+                  submitCashOut();
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Please enter a valid cash-out amount",
+                    variant: "destructive",
+                  });
+                }
+              }}
               disabled={sessionUpdating}
             >
               {sessionUpdating ? "Processing..." : "Confirm Cash-Out"}

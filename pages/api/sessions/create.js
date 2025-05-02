@@ -89,6 +89,9 @@ export default async function handler(req, res) {
             message: "Invalid start time format. Use HH:MM (24-hour format)." 
           });
         }
+      } else {
+        // If no startTime provided, use the session date as the default
+        startTimeDate = new Date(date);
       }
 
       // Make sure we have required fields
@@ -148,7 +151,21 @@ export default async function handler(req, res) {
       // Create the session in the database
       try {
         const createdSession = await prisma.pokerSession.create({
-          data: sessionData,
+          data: {
+            title: sessionData.title,
+            description: sessionData.description,
+            type: sessionData.type,
+            date: sessionData.date,
+            startTime: startTimeDate, // Always provide a valid startTime
+            location: sessionData.location,
+            status: sessionData.status,
+            maxPlayers: sessionData.maxPlayers,
+            buyIn: sessionData.buyIn,
+            minBuyIn: sessionData.minBuyIn,
+            maxBuyIn: sessionData.maxBuyIn,
+            smallBlind: sessionData.smallBlind,
+            bigBlind: sessionData.bigBlind
+          },
         });
 
         console.log("Session created successfully:", createdSession.id);
