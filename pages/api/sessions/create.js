@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-utils';
-import { zonedTimeToUtc } from 'date-fns-tz/zonedTimeToUtc';
+import { zonedTimeToUtc } from 'date-fns-tz';
 
 // Initialize Prisma client outside of the handler function to reuse connections
 const prisma = new PrismaClient();
