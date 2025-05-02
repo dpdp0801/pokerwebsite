@@ -123,6 +123,7 @@ export default function PlayerList({
                     {actions.map((action, index) => (
                       <Button 
                         key={index}
+                        type="button"
                         size="sm"
                         variant={action.variant || "outline"}
                         onClick={() => action.onClick(registration)}
@@ -136,6 +137,7 @@ export default function PlayerList({
                     ))}
                     {removePlayer && (
                       <Button 
+                        type="button"
                         variant="ghost" 
                         size="icon"
                         onClick={() => removePlayer(registration.id)}

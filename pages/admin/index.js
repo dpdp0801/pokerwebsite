@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { 
   AlertDialog,
@@ -605,10 +605,25 @@ export default function AdminDashboard() {
   // Format date for display
   const formatSessionDate = (dateString) => {
     try {
-      return format(new Date(dateString), "MMM d, yyyy");
+      // Assuming session.date is also stored as UTC midnight
+      // Use parseISO to correctly interpret the UTC string
+      return format(parseISO(dateString), "MMM d, yyyy");
     } catch (e) {
+      console.error("Error formatting session date:", dateString, e);
       return "Invalid date";
     }
+  };
+  
+  // Format time for display
+  const formatSessionTime = (timeString) => {
+      if (!timeString) return "TBD";
+      try {
+          // Use parseISO to correctly interpret the UTC string
+          return format(parseISO(timeString), "h:mm a");
+      } catch (e) {
+          console.error("Error formatting session time:", timeString, e);
+          return "Invalid time";
+      }
   };
   
   // Get status badge color
@@ -767,7 +782,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-medium text-lg">{session.title || 'Untitled Session'}</div>
                             <div className="text-sm text-gray-500 mt-1">
-                              {formatSessionDate(session.date)} at {session.startTime ? format(new Date(session.startTime), "h:mm a") : "TBD"}
+                              {formatSessionDate(session.date)} at {formatSessionTime(session.startTime)}
                             </div>
                             <div className="flex items-center mt-1">
                               <Badge className={getStatusBadge(session.status)}>
