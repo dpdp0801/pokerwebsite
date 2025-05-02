@@ -38,75 +38,55 @@ export default async function handler(req, res) {
         bigBlind,
         minBuyIn,
         location,
-        startTime
       } = req.body;
 
       console.log("Received session data:", {
         type, date, time, buyIn, maxPlayers,
-        smallBlind, bigBlind, minBuyIn, location, startTime
+        smallBlind, bigBlind, minBuyIn, location
       });
 
-      // Convert date and time strings to Date objects
-      let sessionDate;
-      try {
-        // Parse the date
-        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
-        const [hours, minutes] = time.split(':').map(n => parseInt(n, 10));
-        
-        // Create date with the user's exact input without timezone conversion
-        sessionDate = new Date(year, month - 1, day, hours, minutes, 0);
-        
-        console.log("Time parsed:", {
-          date, time,
-          parsed: sessionDate.toISOString(),
-          localString: sessionDate.toString()
-        });
-      } catch (error) {
-        console.error("Error parsing date/time:", error);
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time." 
-        });
-      }
-
-      // Validate and prepare start time if provided
-      let startTimeDate = null;
-      if (startTime) {
-        // Parse the time value in a timezone-safe way
-        try {
-          // startTime should be in format "HH:MM" (24-hour)
-          const [hours, minutes] = startTime.split(':').map(Number);
-          
-          // Create a date object using the session date as base and set hours/minutes directly
-          // Get the date parts from the session date
-          const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
-          
-          // Create a new date with the specific date and time in the local timezone
-          startTimeDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-          
-          console.log(`Set startTime to exact time ${hours}:${minutes} for ${year}-${month}-${day}, result:`, 
-                     startTimeDate.toISOString(), 
-                     "Local time:", startTimeDate.toString());
-        } catch (error) {
-          console.error("Failed to parse start time:", error);
-          return res.status(400).json({ 
-            success: false, 
-            message: "Invalid start time format. Use HH:MM (24-hour format)." 
-          });
-        }
-      } else {
-        // If no startTime provided, use the session date as the default
-        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
-        startTimeDate = new Date(year, month - 1, day);
-      }
-
-      // Make sure we have required fields
+      // Validate required fields
       if (!type || !date || !time || !maxPlayers) {
         return res.status(400).json({ 
           success: false, 
           message: "Missing required fields: type, date, time, and maxPlayers are required."
         });
       }
+
+      // Convert date and time strings to the final startTime Date object
+      let startTimeDate;
+      try {
+        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
+        const [hours, minutes] = time.split(':').map(n => parseInt(n, 10));
+        
+        // Create date object using the specific date and time
+        // This assumes the server's local timezone is appropriate or consistent
+        // If dealing with multiple timezones, use UTC or a library like date-fns-tz
+        startTimeDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+        if (isNaN(startTimeDate.getTime())) {
+             throw new Error('Invalid date or time resulted in NaN.');
+        }
+        
+        console.log(`Parsed date ${date} and time ${time} into startTimeDate:`, 
+                     startTimeDate.toISOString(), 
+                     "Local string:", startTimeDate.toString());
+      } catch (error) {
+        console.error("Error parsing date/time:", error);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid date or time format. Use YYYY-MM-DD and HH:MM. Error: ${error.message}` 
+        });
+      }
+      
+      // Set the 'date' field (used for sorting/display) to the start of the day 
+      // in the *same timezone* as the startTimeDate for consistency.
+      const dateOnly = new Date(startTimeDate);
+      dateOnly.setHours(0, 0, 0, 0);
+      
+      console.log("Setting date field (for sorting/display) to:", 
+                   dateOnly.toISOString(),
+                   "Local string:", dateOnly.toString());
 
       // Validate specific fields based on type
       if (type.toUpperCase() === 'TOURNAMENT' && !buyIn) {
@@ -115,7 +95,6 @@ export default async function handler(req, res) {
           message: "buyIn is required for tournament sessions."
         });
       }
-
       if (type.toUpperCase() === 'CASH_GAME' && (!smallBlind || !bigBlind || !minBuyIn)) {
         return res.status(400).json({ 
           success: false, 
@@ -130,9 +109,9 @@ export default async function handler(req, res) {
           : `$${smallBlind}/$${bigBlind} 9-max NLH Cash Game`,
         description: `9-max ${type.toUpperCase() === 'TOURNAMENT' ? 'tournament' : 'cash game'}`,
         type: type.toUpperCase(),
-        date: sessionDate,
+        date: dateOnly,
         startTime: startTimeDate,
-        location: location || '385 S Catalina Ave, Apt 315', // Use provided location or default
+        location: location || '385 S Catalina Ave, Apt 315',
         status: 'NOT_STARTED',
         maxPlayers: parseInt(maxPlayers, 10),
       };
@@ -141,14 +120,11 @@ export default async function handler(req, res) {
       if (type.toUpperCase() === 'TOURNAMENT') {
         sessionData.buyIn = parseInt(buyIn, 10);
       } else {
-        // Cash game specific fields - now we can store them directly in DB columns
         sessionData.buyIn = parseInt(minBuyIn, 10);
         sessionData.minBuyIn = parseInt(minBuyIn, 10);
-        sessionData.maxBuyIn = parseInt(minBuyIn, 10) * 2; // Default max buy-in to 2x min
+        sessionData.maxBuyIn = parseInt(minBuyIn, 10) * 2;
         sessionData.smallBlind = parseFloat(smallBlind);
         sessionData.bigBlind = parseFloat(bigBlind);
-        
-        // Still include blinds in description for backward compatibility
         sessionData.description = `$${smallBlind}/$${bigBlind} blinds, 9-max cash game`;
       }
 
@@ -156,11 +132,9 @@ export default async function handler(req, res) {
 
       // Create the session in the database
       try {
-        // Debug the values we're about to save
-        console.log("Creating session with these values:");
-        console.log("Date:", sessionData.date);
-        console.log("StartTime:", startTimeDate);
-        console.log("StartTime ISO:", startTimeDate.toISOString());
+        console.log("Creating session with values:");
+        console.log("Date (for sorting):", sessionData.date.toISOString());
+        console.log("StartTime:", sessionData.startTime.toISOString());
         
         const createdSession = await prisma.pokerSession.create({
           data: {
@@ -168,7 +142,7 @@ export default async function handler(req, res) {
             description: sessionData.description,
             type: sessionData.type,
             date: sessionData.date,
-            startTime: startTimeDate, // Always provide a valid startTime
+            startTime: sessionData.startTime,
             location: sessionData.location,
             status: sessionData.status,
             maxPlayers: sessionData.maxPlayers,

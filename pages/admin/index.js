@@ -740,9 +740,8 @@ export default function AdminDashboard() {
         <h1 className="text-4xl font-bold mb-8">Admin Dashboard</h1>
         
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
-            <TabsTrigger value="buyins">Buy-ins</TabsTrigger>
             <TabsTrigger value="accounts">Accounts</TabsTrigger>
           </TabsList>
           
@@ -834,112 +833,6 @@ export default function AdminDashboard() {
                         )}
                         <div className="text-xs text-gray-500 mt-2">
                           Location: {session.location || "TBD"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Buy-ins tab */}
-          <TabsContent value="buyins">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Buy-in Requests</CardTitle>
-                  <div className="flex space-x-2">
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[150px]">
-                        <SelectValue placeholder="Filter status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                        <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
-                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Search players"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-[200px]"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {filteredBuyInRequests.length === 0 ? (
-                  <p className="text-center py-4">
-                    {buyInRequests.length === 0 
-                      ? "No buy-in requests yet." 
-                      : "No buy-in requests match your filters."}
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredBuyInRequests.map(buyIn => (
-                      <div key={buyIn.id} className="p-4 border rounded-md shadow-sm">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-medium">
-                              {buyIn.user?.name || 'Unknown User'} 
-                              <span className="text-gray-500 text-sm ml-2">
-                                ({buyIn.user?.email})
-                              </span>
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <Badge className={getBuyInStatusBadge(buyIn.status)}>
-                                {buyIn.status}
-                              </Badge>
-                              <Badge className={`${getBuyInStatusBadge(buyIn.paymentStatus)} ml-2`} variant="outline">
-                                {buyIn.paymentStatus}
-                              </Badge>
-                              <span className="text-sm text-gray-500 ml-2">
-                                {formatCurrency(buyIn.buyInAmount)}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Session: {buyIn.session?.title || 'Unknown Session'}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Requested: {formatDate(buyIn.createdAt)}
-                            </div>
-                            {buyIn.paymentCode && (
-                              <div className="text-xs font-mono bg-gray-100 p-1 rounded mt-1">
-                                Code: {buyIn.paymentCode}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex space-x-2">
-                            {buyIn.paymentStatus === "UNPAID" && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleUpdateBuyInStatus(buyIn.id, "PAID")}
-                              >
-                                Mark Paid
-                              </Button>
-                            )}
-                            {buyIn.status === "WAITLISTED" && (
-                              <Button 
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUpdateBuyInStatus(buyIn.id, "CONFIRMED")}
-                              >
-                                Confirm
-                              </Button>
-                            )}
-                            {buyIn.status !== "CANCELLED" && (
-                              <Button 
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleUpdateBuyInStatus(buyIn.id, "CANCELLED")}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </div>
                         </div>
                       </div>
                     ))}

@@ -43,9 +43,9 @@ export default function useBlindStructure(sessionData, fetchSessionData) {
       }
       
       // Trigger a refetch of the main session data which includes the updated blind info
-      await fetchSessionData(); // This function now needs the sessionId
-      // TODO: Modify fetchSessionData in useSessionData hook to accept sessionId
-      console.warn("Need to update fetchSessionData to accept sessionId");
+      // await fetchSessionData(); // This function now needs the sessionId
+      // TODO: Modify fetchSessionData in useSessionData hook to accept sessionId - DONE
+      // console.warn("Need to update fetchSessionData to accept sessionId");
       await fetchSessionData(sessionId); // Assuming fetchSessionData is updated
       
       toast({

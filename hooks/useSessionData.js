@@ -4,87 +4,96 @@ export default function useSessionData() {
   const [sessionData, setSessionData] = useState({ exists: false, session: null, blindInfo: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
 
-  const fetchSessionData = useCallback(async () => {
-    // Don't refetch if already loading
-    // if (loading) return;
+  // Function to fetch details for a specific session ID
+  const fetchSessionDetails = useCallback(async (sessionId) => {
+    if (!sessionId) {
+      setSessionData({ exists: false, session: null, blindInfo: null });
+      setError(null); // Clear previous errors
+      setLoading(false);
+      return;
+    }
     
+    console.log(`Fetching details for session: ${sessionId}`);
     setLoading(true);
     setError(null);
-    
     try {
-      // Use the new consolidated session endpoint
-      // Assuming you might pass an ID later, but for now fetches the single active/relevant session
-      // If you need to fetch a specific session by ID (e.g., from URL), you'll need to pass the ID here
-      // const response = await fetch(`/api/sessions/${sessionId}`); // Example if ID is needed
-      
-      // Let's check if there is *any* active or not started session
-      // This might need adjustment based on how you identify the "current" session
-      const response = await fetch('/api/sessions'); // Need to implement GET /api/sessions to find the one to show
-      
-      // ---- TEMPORARY HACK: Until GET /api/sessions is implemented properly ----
-      // For now, let's hardcode fetching the session ID used previously if we can guess it
-      // We need a reliable way to know *which* session to fetch status for.
-      // Maybe we look for the *first* session with status ACTIVE or NOT_STARTED?
-      // This is complex. Let's assume for now the status page will ONLY work if there's
-      // an active session with a KNOWN ID passed via props or context.
-      // We need to refactor how the Status page gets the session ID.
-      
-      // ---- REVERTING to a placeholder ----
-      // We'll need to update the Status page to provide the session ID
-      // For now, this hook can't fetch without an ID. We'll pass null.
-      
-      // ---- Let's assume the status page gets the ID and passes it ----
-      // The hook should accept the ID as an argument
-      /*
-      async function fetchSessionData(sessionId) { // Modified signature
-          if (!sessionId) {
-              setSessionData({ exists: false, session: null, blindInfo: null });
-              setLoading(false);
-              return;
-          }
-          setLoading(true);
-          setError(null);
-          try {
-             const response = await fetch(`/api/sessions/${sessionId}`);
-             if (!response.ok) {
-                 if (response.status === 404) {
-                     setSessionData({ exists: false, session: null, blindInfo: null });
-                 } else {
-                     throw new Error(`HTTP error! status: ${response.status}`);
-                 }
-             } else {
-                 const data = await response.json();
-                 setSessionData(data); // data should match structure { exists: true, session: {...}, blindInfo: {...} }
-             }
-          } catch (e) {
-              console.error("Failed to fetch session data:", e);
-              setError(e.message);
-              setSessionData({ exists: false, session: null, blindInfo: null });
-          } finally {
-              setLoading(false);
-          }
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.warn(`Session ${sessionId} not found.`);
+          setSessionData({ exists: false, session: null, blindInfo: null });
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+      } else {
+        const data = await response.json();
+        // Ensure data structure matches expectations
+        if (data && data.exists && data.session && data.blindInfo) {
+             setSessionData(data);
+        } else {
+             console.error('Received invalid session data structure:', data);
+             throw new Error('Invalid data structure received from API.');
+        }
       }
-      */
-      // For now, we will just return a non-existent session state
-      // TODO: Refactor Status page to pass Session ID to this hook
-      setSessionData({ exists: false, session: null, blindInfo: null });
-      console.warn('useSessionData hook needs sessionId to function correctly after API consolidation.');
-      
     } catch (e) {
-      console.error("Failed to fetch session data:", e);
+      console.error("Failed to fetch session details:", e);
       setError(e.message);
       setSessionData({ exists: false, session: null, blindInfo: null });
     } finally {
       setLoading(false);
     }
-  }, []); // Removed loading dependency
+  }, []); // Dependencies managed via useCallback
 
-  // Initial fetch
+  // Function to find the current active/not-started session ID
+  const findCurrentSessionId = useCallback(async () => {
+    console.log('Finding current session ID...');
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/sessions'); // Hits GET /api/sessions/index.js
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data && data.sessionId) {
+        console.log(`Found session ID: ${data.sessionId}`);
+        setCurrentSessionId(data.sessionId);
+        await fetchSessionDetails(data.sessionId);
+      } else {
+        console.log('No current session ID found.');
+        setCurrentSessionId(null);
+        setSessionData({ exists: false, session: null, blindInfo: null });
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error("Failed to find current session ID:", e);
+      setError(e.message);
+      setCurrentSessionId(null);
+      setSessionData({ exists: false, session: null, blindInfo: null });
+      setLoading(false);
+    }
+  }, [fetchSessionDetails]);
+
+  // Initial fetch to find the current session ID
   useEffect(() => {
-    // fetchSessionData(); // Cannot fetch without ID
-    setLoading(false); // Indicate loading is finished (as we can't fetch)
-  }, [fetchSessionData]);
+    findCurrentSessionId();
+  }, [findCurrentSessionId]);
+
+  // Exposed fetch function (can be used for manual refresh)
+  // Now accepts an optional ID for targeted refresh
+  const fetchSessionData = useCallback(async (sessionIdToRefresh = null) => {
+      const idToUse = sessionIdToRefresh || currentSessionId;
+      if (idToUse) {
+         await fetchSessionDetails(idToUse);
+      } else {
+         // If no ID known, try finding it again
+         await findCurrentSessionId();
+      }
+  }, [currentSessionId, fetchSessionDetails, findCurrentSessionId]);
 
   return { sessionData, loading, error, fetchSessionData };
 } 

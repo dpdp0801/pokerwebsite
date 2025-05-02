@@ -2,7 +2,7 @@
   "blindStructure": {
     "name": "Standard Structure",
     "description": "Standard tournament blind structure",
-    "startingStack": 10000,
+    "startingStack": 300,
     "isDefault": true,
     "levels": [
       { "level": 1, "duration": 1, "smallBlind": 1, "bigBlind": 2, "ante": 2, "isBreak": false },
