@@ -1,9 +1,31 @@
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-utils';
-import { getBlindStructure } from '@/lib/structures';
+import fs from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
+
+function readTournamentConfig() {
+    const dataDirectory = path.join(process.cwd(), 'data');
+    const configFilePath = path.join(dataDirectory, 'tournamentConfig.json');
+    try {
+        if (!fs.existsSync(configFilePath)) {
+          console.error(`[API /api/sessions/id] Config file not found: ${configFilePath}`);
+          return null; 
+        }
+        const fileContents = fs.readFileSync(configFilePath, 'utf8');
+        const config = JSON.parse(fileContents);
+        if (!config || typeof config !== 'object' || !config.blindStructure || !config.payoutStructures) {
+             console.error('[API /api/sessions/id] Invalid config file format.');
+             return null;
+        }
+        return config;
+    } catch (error) {
+        console.error(`[API /api/sessions/id] Error reading/parsing config file:`, error);
+        return null;
+    }
+}
 
 export default async function handler(req, res) {
   const { id: sessionId } = req.query;
@@ -21,6 +43,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     console.log(`Fetching session details for ID: ${sessionId}`);
     try {
+      const tournamentConfig = readTournamentConfig();
+      
       const sessionData = await prisma.pokerSession.findUnique({
         where: { id: sessionId },
         include: {
@@ -99,10 +123,10 @@ export default async function handler(req, res) {
       // Blind structure logic
       let blindInfo = {};
       if (sessionData.type === 'TOURNAMENT') {
-          console.log(`Fetching blind structure from file for tournament session ${sessionId}`);
-          const blindStructure = getBlindStructure();
+          console.log(`Processing blind structure from config for tournament session ${sessionId}`);
+          const blindStructure = tournamentConfig?.blindStructure; 
           if (!blindStructure) {
-              console.error('Blind structure file (tournamentConfig.json) not found!');
+              console.error('Blind structure data missing from tournamentConfig.json!');
               blindInfo = { levels: [], currentLevelIndex: 0, currentLevel: null };
           } else {
              const sortedLevels = [...blindStructure.levels].sort((a, b) => a.level - b.level);
