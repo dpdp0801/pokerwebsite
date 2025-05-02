@@ -77,14 +77,16 @@ export default async function handler(req, res) {
           // startTime should be in format "HH:MM" (24-hour)
           const [hours, minutes] = startTime.split(':').map(Number);
           
-          // Create a date object using the session date as base
-          startTimeDate = new Date(date);
+          // Create a date object using the session date as base and set hours/minutes directly
+          // Get the date parts from the session date
+          const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
           
-          // Explicitly use Pacific Time (Los Angeles)
-          // Create the time in the user's local time zone (Pacific Time)
-          startTimeDate.setHours(hours, minutes, 0, 0);
+          // Create a new date with the specific date and time in the local timezone
+          startTimeDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
           
-          console.log(`Setting time to ${hours}:${minutes} Pacific Time, result:`, startTimeDate.toISOString());
+          console.log(`Set startTime to exact time ${hours}:${minutes} for ${year}-${month}-${day}, result:`, 
+                     startTimeDate.toISOString(), 
+                     "Local time:", startTimeDate.toString());
         } catch (error) {
           console.error("Failed to parse start time:", error);
           return res.status(400).json({ 
@@ -94,7 +96,8 @@ export default async function handler(req, res) {
         }
       } else {
         // If no startTime provided, use the session date as the default
-        startTimeDate = new Date(date);
+        const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
+        startTimeDate = new Date(year, month - 1, day);
       }
 
       // Make sure we have required fields

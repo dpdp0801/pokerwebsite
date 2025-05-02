@@ -226,11 +226,11 @@ export default function Status() {
   // Handler for submitting a cash-out
   const submitCashOut = async () => {
     if (!cashOutAmount || cashOutAmount <= 0) {
-      toast({
-        title: "Error",
+        toast({
+          title: "Error",
         description: "Please enter a valid cash-out amount",
-        variant: "destructive",
-      });
+          variant: "destructive",
+        });
       return;
     }
     
@@ -275,163 +275,88 @@ export default function Status() {
     );
   };
 
-  // Buy-in Dialog Component with simpler approach
+  // Simple Buy-in Dialog
   const BuyInDialog = () => {
-    // Use local state for input value
-    const [inputValue, setInputValue] = useState('');
-    
-    // Set input value when dialog opens
-    useEffect(() => {
-      if (buyInDialogOpen) {
-        setInputValue('');
-      }
-    }, [buyInDialogOpen]);
-    
-    return (
-      <Dialog open={buyInDialogOpen} onOpenChange={(open) => {
-        setBuyInDialogOpen(open);
-        if (!open) setInputValue('');
-      }}>
-        <DialogContent className="p-4">
-          <DialogHeader>
-            <DialogTitle>Add Buy-In</DialogTitle>
-            <DialogDescription>
-              {selectedPlayer ? `Enter buy-in amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter buy-in amount'}
-            </DialogDescription>
-          </DialogHeader>
+    return buyInDialogOpen ? (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-4 rounded-md w-80 max-w-full">
+          <h3 className="text-lg font-medium mb-2">Add Buy-In</h3>
           
-          {/* Simple HTML input */}
-          <div className="my-4">
-            <label htmlFor="simpleInput" className="block mb-2 font-medium text-base">Buy-In Amount ($):</label>
-            <input
-              id="simpleInput"
-              type="text"
-              pattern="[0-9]*"
-              inputMode="numeric"
-              value={inputValue}
-              onChange={(e) => {
-                // Only accept numbers
-                const newValue = e.target.value;
-                if (/^\d*$/.test(newValue)) {
-                  setInputValue(newValue);
-                }
-              }}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="100"
-            />
-          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={buyInAmount}
+            onChange={(e) => setBuyInAmount(e.target.value.replace(/[^0-9]/g, ''))}
+            className="w-full border border-gray-300 rounded p-2 mb-4"
+            placeholder="Enter amount"
+          />
           
-          <DialogFooter>
-            <Button
-              variant="outline"
+          <div className="flex justify-end space-x-2">
+            <button 
+              className="px-3 py-1 border border-gray-300 rounded"
               onClick={() => setBuyInDialogOpen(false)}
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button 
+              className="px-3 py-1 bg-blue-600 text-white rounded"
               onClick={() => {
-                if (inputValue && parseInt(inputValue) >= 0) {
-                  setBuyInAmount(inputValue);
-                  setTimeout(() => submitBuyIn(), 0);
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Please enter a valid buy-in amount",
-                    variant: "destructive",
-                  });
-                }
+                setBuyInDialogOpen(false);
+                submitBuyIn();
               }}
-              disabled={sessionUpdating}
             >
-              {sessionUpdating ? "Processing..." : "Confirm Buy-In"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
   };
 
-  // Cash-out Dialog Component with simpler approach
+  // Simple Cash-out Dialog
   const CashOutDialog = () => {
-    // Use local state for input value
-    const [inputValue, setInputValue] = useState('');
-    
-    // Set input value when dialog opens
-    useEffect(() => {
-      if (cashOutDialogOpen) {
-        setInputValue('');
-      }
-    }, [cashOutDialogOpen]);
-    
-    return (
-      <Dialog open={cashOutDialogOpen} onOpenChange={(open) => {
-        setCashOutDialogOpen(open);
-        if (!open) setInputValue('');
-      }}>
-        <DialogContent className="p-4">
-          <DialogHeader>
-            <DialogTitle>Process Cash-Out</DialogTitle>
-            <DialogDescription>
-              {selectedPlayer ? `Enter cash-out amount for ${selectedPlayer.user.firstName || selectedPlayer.user.name}` : 'Enter cash-out amount'}
-            </DialogDescription>
-          </DialogHeader>
+    return cashOutDialogOpen ? (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-4 rounded-md w-80 max-w-full">
+          <h3 className="text-lg font-medium mb-2">Process Cash-Out</h3>
           
-          {/* Simple HTML input */}
-          <div className="my-4">
-            <label htmlFor="simpleInputCashOut" className="block mb-2 font-medium text-base">Cash-Out Amount ($):</label>
-            <input
-              id="simpleInputCashOut"
-              type="text"
-              pattern="[0-9]*"
-              inputMode="numeric"
-              value={inputValue}
-              onChange={(e) => {
-                // Only accept numbers
-                const newValue = e.target.value;
-                if (/^\d*$/.test(newValue)) {
-                  setInputValue(newValue);
-                }
-              }}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="150"
-            />
-          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={cashOutAmount}
+            onChange={(e) => setCashOutAmount(e.target.value.replace(/[^0-9]/g, ''))}
+            className="w-full border border-gray-300 rounded p-2 mb-4"
+            placeholder="Enter amount"
+          />
           
           {selectedPlayer && (
-            <div className="text-sm rounded bg-muted p-2 mb-4">
-              <p className="font-medium">Player Summary</p>
+            <div className="text-sm mb-4">
               <p>Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
             </div>
           )}
           
-          <DialogFooter>
-            <Button
-              variant="outline"
+          <div className="flex justify-end space-x-2">
+            <button 
+              className="px-3 py-1 border border-gray-300 rounded"
               onClick={() => setCashOutDialogOpen(false)}
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button 
+              className="px-3 py-1 bg-blue-600 text-white rounded"
               onClick={() => {
-                if (inputValue && parseInt(inputValue) >= 0) {
-                  setCashOutAmount(inputValue);
-                  setTimeout(() => submitCashOut(), 0);
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Please enter a valid cash-out amount",
-                    variant: "destructive",
-                  });
-                }
+                setCashOutDialogOpen(false);
+                submitCashOut();
               }}
-              disabled={sessionUpdating}
             >
-              {sessionUpdating ? "Processing..." : "Confirm Cash-Out"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
   };
 
   // Make sure the component registers "Finished" players for cash games
@@ -482,11 +407,11 @@ export default function Status() {
               <p className="text-xl text-muted-foreground">{isActive ? "Current Players" : "Registered Players"}</p>
             </div>
             
-            <div>
+                <div>
               <p className="text-2xl font-medium">{currentSession.waitlistedPlayersCount || 0}</p>
               <p className="text-xl text-muted-foreground">Waitlisted</p>
-            </div>
-            
+                </div>
+                
             {isTournament && (
               <>
                 <div>
@@ -510,7 +435,7 @@ export default function Status() {
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-2">
                   {/* Close Registration Button */}
                   {!currentSession.registrationClosed && (
-                    <Button 
+              <Button 
                       onClick={() => {
                         if (window.confirm("Are you sure you want to close registration? This will prevent new registrations.")) {
                           stopRegistration(currentSession.id);
@@ -521,7 +446,7 @@ export default function Status() {
                       className="w-full bg-red-50 hover:bg-red-100 border-red-200"
                     >
                       Close Registration
-                    </Button>
+              </Button>
                   )}
                 </div>
               </div>
@@ -609,8 +534,8 @@ export default function Status() {
                             {/* Place number */}
                             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
                               {slot.position}
-                </div>
-                            
+                  </div>
+                  
                             {slot.player ? (
                               <>
                                 <Avatar className="h-8 w-8">
@@ -640,16 +565,16 @@ export default function Status() {
                                         <span className="ml-1">{slot.player.user.venmoId}</span>
                                       </span>
                                     )}
-                                  </div>
                     </div>
-                  </>
-                ) : (
+                    </div>
+                </>
+              ) : (
                               <div className="text-muted-foreground text-sm ml-2">
                                 {slot.position === 1
                                   ? "1st Place (Winner)"
                                   : `${slot.position}${getOrdinalSuffix(slot.position)} Place`} 
-                    </div>
-                  )}
+            </div>
+          )}
                 </div>
                           
                           {/* Right side - Prize and action buttons */}
@@ -657,7 +582,7 @@ export default function Status() {
                             {/* Prize amount */}
                             <div className="mr-2 text-sm font-medium text-green-600">
                               ${slot.prize}
-                            </div>
+                </div>
                             
                             {/* Return button (only for filled slots) */}
                             {isAdmin && slot.player && (
@@ -670,11 +595,11 @@ export default function Status() {
                                 Return
                               </Button>
                             )}
-                          </div>
+                    </div>
                         </li>
                       ))}
                     </ul>
-                  </div>
+                    </div>
                 );
               })()}
             </div>
