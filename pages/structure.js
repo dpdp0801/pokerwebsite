@@ -1,54 +1,70 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getBlindStructure, getPayoutStructures } from '@/lib/structures'; // Import the functions
+import { format } from "date-fns"; // Keep format if needed for other things, remove parseISO if not used
+import fs from 'fs'; // Import fs for file reading
+import path from 'path'; // Import path for file path
 
 // This function runs at build time
 export async function getStaticProps() {
-  const blindStructureData = getBlindStructure();
-  const payoutStructuresData = getPayoutStructures();
+  let blindStructureData = null;
+  let payoutStructuresData = [];
 
-  // Assign display levels
-  let regularLevelCount = 0;
-  let breakCount = 0;
-  const processedLevels = blindStructureData.levels.map(level => {
-    if (level.isBreak) {
-      breakCount++;
-      let specialDescription = '';
-      if (level.specialAction) {
-        if (level.specialAction.includes('CHIP_UP_1S')) {
-          specialDescription += 'Chip up 1s\n';
+  try {
+    const dataDirectory = path.join(process.cwd(), 'data');
+    const configFilePath = path.join(dataDirectory, 'tournamentConfig.json');
+    
+    if (fs.existsSync(configFilePath)) {
+        const fileContents = fs.readFileSync(configFilePath, 'utf8');
+        const config = JSON.parse(fileContents);
+        // Basic validation
+        if (config && typeof config === 'object' && config.blindStructure && config.payoutStructures) {
+             blindStructureData = config.blindStructure;
+             payoutStructuresData = config.payoutStructures;
+        } else {
+            console.error("[StructurePage/getStaticProps] Invalid config file format.");
         }
-        if (level.specialAction.includes('CHIP_UP_5S')) {
-          specialDescription += 'Chip up 5s\n';
-        }
-        if (level.specialAction.includes('REG_CLOSE')) {
-          specialDescription += 'Registration Closes\n';
-        }
-      } else {
-        if (breakCount === 1) {
-          specialDescription = 'Chip up 1s';
-        } else if (breakCount === 2) {
-          specialDescription = 'Chip up 5s\nRegistration Closes';
-        }
-      }
-      return { 
-        ...level, 
-        displayLevel: level.breakName || 'Break',
-        specialDescription
-      };
     } else {
-      regularLevelCount++;
-      return { 
-        ...level, 
-        displayLevel: regularLevelCount,
-        specialDescription: ''
-      };
+        console.error(`[StructurePage/getStaticProps] Config file not found: ${configFilePath}`);
     }
-  });
+  } catch (error) {
+      console.error(`[StructurePage/getStaticProps] Error reading/parsing config file:`, error);
+      // Keep data as null/empty array on error
+  }
+
+  // Ensure blindStructureData is not null before processing levels
+  let processedLevels = [];
+  if (blindStructureData && Array.isArray(blindStructureData.levels)) {
+      let regularLevelCount = 0;
+      let breakCount = 0;
+      processedLevels = blindStructureData.levels.map(level => {
+        if (level.isBreak) {
+          breakCount++;
+          let specialDescription = '';
+          if (level.specialAction) {
+            if (level.specialAction.includes('CHIP_UP_1S')) { specialDescription += 'Chip up 1s\n'; }
+            if (level.specialAction.includes('CHIP_UP_5S')) { specialDescription += 'Chip up 5s\n'; }
+            if (level.specialAction.includes('REG_CLOSE')) { specialDescription += 'Registration Closes\n'; }
+          } else {
+            // Default break descriptions (adjust if needed)
+            if (breakCount === 1) { specialDescription = 'Chip up 1s'; }
+            else if (breakCount === 2) { specialDescription = 'Chip up 5s\nRegistration Closes'; }
+          }
+          return { ...level, displayLevel: level.breakName || 'Break', specialDescription };
+        } else {
+          regularLevelCount++;
+          return { ...level, displayLevel: regularLevelCount, specialDescription: '' };
+        }
+      });
+  } else {
+       console.error("[StructurePage/getStaticProps] No valid blind structure data found to process levels.");
+       // Ensure blindStructureData passed to props is at least an empty object if it was null
+       if (!blindStructureData) blindStructureData = { levels: [] }; 
+  }
 
   return {
     props: {
-      blindStructure: { ...blindStructureData, levels: processedLevels },
+      // Ensure blindStructure always has a levels array, even if empty
+      blindStructure: { ...(blindStructureData || {}), levels: processedLevels },
       payoutStructures: payoutStructuresData
     },
   };
