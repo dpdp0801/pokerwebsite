@@ -1,4 +1,28 @@
 import { getBlindStructure } from '@/lib/structures';
+import fs from 'fs';
+import path from 'path';
+
+// Function to read tournament config from the data directory
+function readTournamentConfig() {
+  const dataDirectory = path.join(process.cwd(), 'data');
+  const configFilePath = path.join(dataDirectory, 'tournamentConfig.json');
+  try {
+    if (!fs.existsSync(configFilePath)) {
+      console.error(`[API /api/blinds/structure] Config file not found: ${configFilePath}`);
+      return null; 
+    }
+    const fileContents = fs.readFileSync(configFilePath, 'utf8');
+    const config = JSON.parse(fileContents);
+    if (!config || typeof config !== 'object' || !config.blindStructure) {
+      console.error('[API /api/blinds/structure] Invalid config file format - missing blindStructure');
+      return null;
+    }
+    return config;
+  } catch (error) {
+    console.error(`[API /api/blinds/structure] Error reading/parsing config file:`, error);
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   console.log('=== BLINDS STRUCTURE API CALLED ===');
@@ -9,14 +33,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Reading blind structure from file...');
-    const blindStructure = getBlindStructure();
-    console.log('Blind structure read successfully:', blindStructure ? 'yes' : 'no');
-
-    if (!blindStructure) {
-      console.log('No blind structure found');
+    console.log('Reading blind structure from config file...');
+    const config = readTournamentConfig();
+    
+    if (!config || !config.blindStructure) {
+      console.log('No blind structure found in config');
       return res.status(404).json({ message: 'Blind structure not found' });
     }
+    
+    const blindStructure = config.blindStructure;
+    console.log('Blind structure read successfully');
 
     // Log the structure for debugging
     console.log('Structure name:', blindStructure.name);

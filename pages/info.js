@@ -17,16 +17,18 @@ export default function Info() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Initialize debug object at the top level of the function
+      const debug = { 
+        blindStructure: { requestSent: true },
+        payoutStructures: {}
+      };
+      
       try {
         setLoading(true);
         setDebugInfo(null);
         
         // Fetch the blind structure
         console.log('Fetching blind structure data...');
-        const debug = { 
-          blindStructure: { requestSent: true },
-          payoutStructures: {}
-        };
         
         try {
           const response = await fetch('/api/blinds/structure');
@@ -177,6 +179,7 @@ export default function Info() {
       } catch (error) {
         console.error('Error fetching tournament structure data:', error);
         setError(`Failed to load tournament structure: ${error.message}`);
+        // Save debug info regardless of where the error occurred
         setDebugInfo(debug);
         
         // If we encountered an error loading data, redirect to static version
