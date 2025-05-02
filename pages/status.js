@@ -444,6 +444,7 @@ export default function Status() {
           <div className="text-center mb-4">
             <h2 className="text-xl font-bold">{currentSession.title}</h2>
             <p className="text-sm text-muted-foreground">{currentSession.location}</p>
+            <p className="text-sm text-muted-foreground font-medium mt-1">Payment venmo: @David-Park-319</p>
             {currentSession.registrationClosed && (
               <div className="mt-2">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -531,7 +532,7 @@ export default function Status() {
               {(() => {
                 // Ensure payoutStructure is checked for null before accessing tiers
                 if (!payoutStructure) {
-                  return <p className="text-muted-foreground text-sm">Loading payout data...</p>;
+                  return <p className="text-muted-foreground text-sm">Payout information will appear here</p>;
                 }
                 
                 // Get number of payout positions
