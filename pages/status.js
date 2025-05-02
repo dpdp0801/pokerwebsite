@@ -151,6 +151,28 @@ export default function Status() {
     }
   }, [sessionData]);
 
+  // If active tournament, fetch payout structure based on entry count
+  useEffect(() => {
+    const sessionExists = sessionData?.exists;
+    const sessionDetails = sessionData?.session;
+    
+    if (sessionExists && sessionDetails?.type === 'TOURNAMENT' && sessionDetails?.status === 'ACTIVE') {
+      // Calculate entry count, ensuring we handle null/undefined safely
+      const entryCount = sessionDetails.entries ?? 0;
+      console.log(`[Status Page Effect] Conditions met. Calling fetchPayoutStructureIfNeeded with count: ${entryCount}`);
+      fetchPayoutStructureIfNeeded(entryCount);
+    } else {
+       console.log(`[Status Page Effect] Conditions not met. Session Exists: ${sessionExists}, Type: ${sessionDetails?.type}, Status: ${sessionDetails?.status}`);
+    }
+    // Dependencies: Run when session existence, type, status, or entry count changes.
+  }, [
+       sessionData?.exists, 
+       sessionData?.session?.type, 
+       sessionData?.session?.status, 
+       sessionData?.session?.entries, // Use the specific 'entries' field 
+       fetchPayoutStructureIfNeeded // Include the function itself as a dependency
+     ]);
+
   // Log the state right before rendering
   console.log('[Status Page Render] Loading:', sessionLoading);
   console.log('[Status Page Render] Session Exists:', sessionData?.exists);
