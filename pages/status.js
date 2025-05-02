@@ -337,25 +337,26 @@ export default function Status() {
              if (e.target !== e.currentTarget) return;
              setBuyInDialogOpen(false);
            }}>
-        <div className="bg-white p-4 rounded-md w-80 max-w-full">
+        <div className="bg-white p-4 rounded-md w-80 max-w-full" onClick={(e) => e.stopPropagation()}>
           <h3 className="text-lg font-medium mb-2">Add Buy-In</h3>
           
-          <input
-            ref={inputRef}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={buyInAmount}
-            onChange={(e) => setBuyInAmount(e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-full border border-gray-300 rounded p-2 mb-4"
-            placeholder="Enter amount"
-            // Prevent default behavior for up/down arrow keys
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                e.preventDefault();
-              }
-            }}
-          />
+          <div className="mb-4">
+            <input
+              ref={inputRef}
+              type="number"
+              min="0"
+              value={buyInAmount}
+              onChange={(e) => setBuyInAmount(e.target.value)}
+              className="w-full border border-gray-300 rounded p-2"
+              placeholder="Enter amount"
+              // Prevent default behavior for up/down arrow keys
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                }
+              }}
+            />
+          </div>
           
           <div className="flex justify-end space-x-2">
             <button 
@@ -366,9 +367,7 @@ export default function Status() {
             </button>
             <button 
               className="px-3 py-1 bg-blue-600 text-white rounded"
-              onClick={() => {
-                submitBuyIn();
-              }}
+              onClick={submitBuyIn}
             >
               Submit
             </button>
@@ -400,25 +399,26 @@ export default function Status() {
              if (e.target !== e.currentTarget) return;
              setCashOutDialogOpen(false);
            }}>
-        <div className="bg-white p-4 rounded-md w-80 max-w-full">
+        <div className="bg-white p-4 rounded-md w-80 max-w-full" onClick={(e) => e.stopPropagation()}>
           <h3 className="text-lg font-medium mb-2">Process Cash-Out</h3>
           
-          <input
-            ref={inputRef}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={cashOutAmount}
-            onChange={(e) => setCashOutAmount(e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-full border border-gray-300 rounded p-2 mb-4"
-            placeholder="Enter amount"
-            // Prevent default behavior for up/down arrow keys
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                e.preventDefault();
-              }
-            }}
-          />
+          <div className="mb-4">
+            <input
+              ref={inputRef}
+              type="number"
+              min="0"
+              value={cashOutAmount}
+              onChange={(e) => setCashOutAmount(e.target.value)}
+              className="w-full border border-gray-300 rounded p-2"
+              placeholder="Enter amount"
+              // Prevent default behavior for up/down arrow keys
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                }
+              }}
+            />
+          </div>
           
           {selectedPlayer && (
             <div className="text-sm mb-4">
@@ -435,9 +435,7 @@ export default function Status() {
             </button>
             <button 
               className="px-3 py-1 bg-blue-600 text-white rounded"
-              onClick={() => {
-                submitCashOut();
-              }}
+              onClick={submitCashOut}
             >
               Submit
             </button>

@@ -5,8 +5,8 @@
     "startingStack": 300,
     "isDefault": true,
     "levels": [
-      { "level": 1, "duration": 1, "smallBlind": 1, "bigBlind": 2, "ante": 2, "isBreak": false },
-      { "level": 2, "duration": 1, "smallBlind": 2, "bigBlind": 3, "ante": 3, "isBreak": false },
+      { "level": 1, "duration": 21, "smallBlind": 1, "bigBlind": 2, "ante": 2, "isBreak": false },
+      { "level": 2, "duration": 20, "smallBlind": 2, "bigBlind": 3, "ante": 3, "isBreak": false },
       { "level": 3, "duration": 20, "smallBlind": 2, "bigBlind": 4, "ante": 4, "isBreak": false },
       { "level": 4, "duration": 20, "smallBlind": 3, "bigBlind": 6, "ante": 6, "isBreak": false },
       { "level": 5, "duration": 10, "isBreak": true, "breakName": "Break", "specialAction": "CHIP_UP_1S" },
