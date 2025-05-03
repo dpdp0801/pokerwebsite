@@ -321,11 +321,14 @@ export default function Status() {
     
     return (
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        onClick={() => setBuyInDialogOpen(false)}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        onClick={(e) => {
+          e.stopPropagation();
+          setBuyInDialogOpen(false);
+        }}
       >
         <div 
-          className="bg-white p-6 rounded-md shadow-lg w-96"
+          className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm md:w-96"
           onClick={e => e.stopPropagation()}
         >
           <h3 className="text-lg font-medium mb-4">Add Buy-In</h3>
@@ -338,15 +341,17 @@ export default function Status() {
               placeholder="Enter amount"
               value={buyInAmount}
               onChange={e => setBuyInAmount(e.target.value)}
-              autoFocus
+              autoFocus={window.innerWidth > 768}
+              inputMode="numeric"
             />
           </div>
           
           <div className="flex justify-end space-x-3">
             <button 
               type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 touch-manipulation"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 setBuyInDialogOpen(false);
               }}
@@ -355,8 +360,9 @@ export default function Status() {
             </button>
             <button 
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 touch-manipulation"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 submitBuyIn();
               }}
@@ -375,11 +381,14 @@ export default function Status() {
     
     return (
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        onClick={() => setCashOutDialogOpen(false)}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        onClick={(e) => {
+          e.stopPropagation();
+          setCashOutDialogOpen(false);
+        }}
       >
         <div 
-          className="bg-white p-6 rounded-md shadow-lg w-96"
+          className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm md:w-96"
           onClick={e => e.stopPropagation()}
         >
           <h3 className="text-lg font-medium mb-4">Process Cash-Out</h3>
@@ -398,15 +407,17 @@ export default function Status() {
               placeholder="Enter amount"
               value={cashOutAmount}
               onChange={e => setCashOutAmount(e.target.value)}
-              autoFocus
+              autoFocus={window.innerWidth > 768}
+              inputMode="numeric"
             />
           </div>
           
           <div className="flex justify-end space-x-3">
             <button 
               type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 touch-manipulation"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 setCashOutDialogOpen(false);
               }}
@@ -415,8 +426,9 @@ export default function Status() {
             </button>
             <button 
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 touch-manipulation"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 submitCashOut();
               }}
