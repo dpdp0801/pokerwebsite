@@ -327,151 +327,6 @@ export default function Status() {
     setSessionUpdating(false);
   };
 
-  // Add the confirmation dialog component
-  const ConfirmationDialog = () => {
-    if (!confirmOpen) return null;
-    
-    return (
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Action</DialogTitle>
-            <DialogDescription>{confirmMessage}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setConfirmOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                confirmAction && confirmAction();
-                setConfirmOpen(false);
-              }}
-              disabled={sessionUpdating}
-            >
-              {sessionUpdating ? "Processing..." : "Confirm"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  // Replace the custom Buy-in Dialog with proper Dialog component from UI library
-  const BuyInDialog = () => {
-    return (
-      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Buy-In</DialogTitle>
-            <DialogDescription>
-              Enter the buy-in amount for this player.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mb-6">
-            <Label className="block text-sm font-medium mb-2" htmlFor="buyInAmount">Amount</Label>
-            <Input
-              id="buyInAmount"
-              type="number"
-              placeholder="Enter amount"
-              value={buyInAmount}
-              onChange={e => setBuyInAmount(e.target.value)}
-              autoFocus={window.innerWidth > 768}
-              inputMode="numeric"
-              className="w-full"
-            />
-          </div>
-          
-          <DialogFooter className="flex justify-end space-x-3">
-            <Button 
-              type="button"
-              variant="outline"
-              onClick={() => setBuyInDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
-              variant="default"
-              onClick={submitBuyIn}
-              disabled={sessionUpdating}
-            >
-              {sessionUpdating ? "Processing..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  // Replace the custom Cash-out Dialog with proper Dialog component from UI library
-  const CashOutDialog = () => {
-    return (
-      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Process Cash-Out</DialogTitle>
-            <DialogDescription>
-              Enter the cash-out amount for this player.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedPlayer && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
-              <p className="font-medium">Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
-            </div>
-          )}
-          
-          <div className="mb-6">
-            <Label className="block text-sm font-medium mb-2" htmlFor="cashOutAmount">Cash-Out Amount</Label>
-            <Input
-              id="cashOutAmount"
-              type="number"
-              placeholder="Enter amount"
-              value={cashOutAmount}
-              onChange={e => setCashOutAmount(e.target.value)}
-              autoFocus={window.innerWidth > 768}
-              inputMode="numeric"
-              className="w-full"
-            />
-          </div>
-          
-          <DialogFooter className="flex justify-end space-x-3">
-            <Button 
-              type="button"
-              variant="outline"
-              onClick={() => setCashOutDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
-              variant="default"
-              onClick={submitCashOut}
-              disabled={sessionUpdating}
-            >
-              {sessionUpdating ? "Processing..." : "Submit"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  // Prevent the dialogs from causing re-renders when not open
-  const renderedDialogs = useMemo(() => {
-    return (
-      <>
-        <ConfirmationDialog />
-        <BuyInDialog />
-        <CashOutDialog />
-      </>
-    );
-  }, [buyInDialogOpen, cashOutDialogOpen, confirmOpen, buyInAmount, cashOutAmount, selectedPlayer, sessionUpdating]);
-
   // Make sure the component registers "Finished" players for cash games
   let finishedPlayers = [];
   if (isCashGame && currentSession.registrations) {
@@ -899,8 +754,127 @@ export default function Status() {
         </CardContent>
       </Card>
       
-      {/* Render dialogs from the memoized component */}
-      {renderedDialogs}
+      {/* Confirmation Dialog */}
+      {confirmOpen && (
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Action</DialogTitle>
+              <DialogDescription>{confirmMessage}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex space-x-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  confirmAction && confirmAction();
+                  setConfirmOpen(false);
+                }}
+                disabled={sessionUpdating}
+              >
+                {sessionUpdating ? "Processing..." : "Confirm"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Buy-in Dialog */}
+      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Buy-In</DialogTitle>
+            <DialogDescription>
+              Enter the buy-in amount for this player.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mb-6">
+            <Label className="block text-sm font-medium mb-2" htmlFor="buyInAmount">Amount</Label>
+            <Input
+              id="buyInAmount"
+              type="number"
+              placeholder="Enter amount"
+              value={buyInAmount}
+              onChange={e => setBuyInAmount(e.target.value)}
+              autoFocus={typeof window !== 'undefined' && window.innerWidth > 768}
+              inputMode="numeric"
+              className="w-full"
+            />
+          </div>
+          
+          <DialogFooter className="flex justify-end space-x-3">
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => setBuyInDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              variant="default"
+              onClick={submitBuyIn}
+              disabled={sessionUpdating}
+            >
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Cash-out Dialog */}
+      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Process Cash-Out</DialogTitle>
+            <DialogDescription>
+              Enter the cash-out amount for this player.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPlayer && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
+              <p className="font-medium">Total Buy-In: ${selectedPlayer.buyInTotal || 0}</p>
+            </div>
+          )}
+          
+          <div className="mb-6">
+            <Label className="block text-sm font-medium mb-2" htmlFor="cashOutAmount">Cash-Out Amount</Label>
+            <Input
+              id="cashOutAmount"
+              type="number"
+              placeholder="Enter amount"
+              value={cashOutAmount}
+              onChange={e => setCashOutAmount(e.target.value)}
+              autoFocus={typeof window !== 'undefined' && window.innerWidth > 768}
+              inputMode="numeric"
+              className="w-full"
+            />
+          </div>
+          
+          <DialogFooter className="flex justify-end space-x-3">
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => setCashOutDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              variant="default"
+              onClick={submitCashOut}
+              disabled={sessionUpdating}
+            >
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
