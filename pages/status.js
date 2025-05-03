@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import dynamic from 'next/dynamic';
 
 // Custom hooks
 import useSessionData from "@/hooks/useSessionData";
@@ -48,8 +49,20 @@ import { usePlayerService } from "@/lib/services/player-service";
 
 // Components
 import PlayerList from "@/components/ui/tournament/PlayerList";
-import TournamentTimer from "@/components/ui/tournament/TournamentTimer";
-import PayoutStructure from "@/components/ui/tournament/PayoutStructure";
+
+// Use dynamic imports to lazy load components that aren't needed immediately
+const PayoutStructure = dynamic(() => import("@/components/ui/tournament/PayoutStructure"), { 
+  ssr: false,
+  loading: () => <div className="animate-pulse h-32 bg-gray-100 rounded-md"></div>
+});
+
+const TournamentTimer = dynamic(() => import("@/components/ui/tournament/TournamentTimer"), {
+  ssr: false,
+  loading: () => <div className="animate-pulse h-24 bg-gray-100 rounded-md"></div>
+});
+
+// Use memo to prevent unnecessary re-renders of player lists
+const MemoizedPlayerList = memo(PlayerList);
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -95,21 +108,48 @@ export default function Status() {
   const [buyInAmount, setBuyInAmount] = useState('');
   const [cashOutAmount, setCashOutAmount] = useState('');
   const [sessionUpdating, setSessionUpdating] = useState(false);
+  // Performance optimization for mobile
+  const [isMobile, setIsMobile] = useState(false);
   
   const router = useRouter();
+
+  // Detect mobile devices for optimized rendering
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Check for admin role in multiple possible locations
   const isAdminRole = session?.user?.role === "ADMIN";
   
   // Custom hooks for all data and functionality
   const { loading: sessionLoading, sessionData, fetchSessionData } = useSessionData();
+  
+  // Throttle data fetching for mobile devices
+  const throttledFetchData = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      // Use requestIdleCallback for non-critical updates on supported browsers
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => fetchSessionData());
+      } else {
+        // Fallback to setTimeout with a delay for mobile devices
+        setTimeout(fetchSessionData, isMobile ? 300 : 0);
+      }
+    }
+  }, [fetchSessionData, isMobile]);
+
   const { 
     blindStructureData, 
     serverLevelIndex,
     updateBlindLevel
-  } = useBlindStructure(sessionData, fetchSessionData);
+  } = useBlindStructure(sessionData, throttledFetchData);
   
-  // Pass server index and specific session details to timer hook
+  // Simplified timer for mobile devices
   const { 
     timer, 
     formatTimer, 
@@ -144,7 +184,7 @@ export default function Status() {
     handleCashOut,
     stopRegistration, 
     seatFromWaitlist 
-  } = usePlayerService(fetchSessionData);
+  } = usePlayerService(throttledFetchData);
 
   const { toast } = useToast();
         
@@ -175,7 +215,7 @@ export default function Status() {
      ]);
 
   // Only log in development to reduce performance impact
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && !isMobile) {
     console.log('[Status Page Render] Loading:', sessionLoading);
     console.log('[Status Page Render] Session Exists:', sessionData?.exists);
     console.log('[Status Page Render] Raw sessionData.blindInfo:', sessionData?.blindInfo);
@@ -231,21 +271,21 @@ export default function Status() {
   const isNotStarted = currentSession.status === 'NOT_STARTED';
 
   // Handler for buy-in dialog
-  const openBuyInDialog = (player) => {
+  const openBuyInDialog = useCallback((player) => {
     setSelectedPlayer(player);
     setBuyInAmount('');
     setBuyInDialogOpen(true);
-  };
+  }, []);
 
   // Handler for cash-out dialog
-  const openCashOutDialog = (player) => {
+  const openCashOutDialog = useCallback((player) => {
     setSelectedPlayer(player);
     setCashOutAmount('');
     setCashOutDialogOpen(true);
-  };
+  }, []);
 
   // Handler for submitting a buy-in
-  const submitBuyIn = async () => {
+  const submitBuyIn = useCallback(async () => {
     if (!buyInAmount || buyInAmount <= 0) {
       toast({
         title: "Error",
@@ -261,10 +301,10 @@ export default function Status() {
       setBuyInDialogOpen(false);
     }
     setSessionUpdating(false);
-  };
+  }, [buyInAmount, selectedPlayer, handleCashGameBuyIn, toast]);
 
   // Handler for submitting a cash-out
-  const submitCashOut = async () => {
+  const submitCashOut = useCallback(async () => {
     if (!cashOutAmount || cashOutAmount <= 0) {
         toast({
           title: "Error",
@@ -280,7 +320,7 @@ export default function Status() {
       setCashOutDialogOpen(false);
     }
     setSessionUpdating(false);
-  };
+  }, [cashOutAmount, selectedPlayer, handleCashOut, toast]);
 
   // Add the confirmation dialog component
   const ConfirmationDialog = () => {
@@ -315,83 +355,58 @@ export default function Status() {
     );
   };
 
-  // Very simple Buy-in Dialog
+  // Replace the custom Buy-in Dialog with proper Dialog component from UI library
   const BuyInDialog = () => {
-    if (!buyInDialogOpen) return null;
-    
     return (
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        onClick={(e) => {
-          e.stopPropagation();
-          setBuyInDialogOpen(false);
-        }}
-      >
-        <div 
-          className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm md:w-96"
-          onClick={e => e.stopPropagation()}
-        >
-          <h3 className="text-lg font-medium mb-4">Add Buy-In</h3>
-          
+      <Dialog open={buyInDialogOpen} onOpenChange={setBuyInDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Buy-In</DialogTitle>
+          </DialogHeader>
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Amount</label>
-            <input
+            <Label className="block text-sm font-medium mb-2" htmlFor="buyInAmount">Amount</Label>
+            <Input
+              id="buyInAmount"
               type="number"
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter amount"
               value={buyInAmount}
               onChange={e => setBuyInAmount(e.target.value)}
               autoFocus={window.innerWidth > 768}
               inputMode="numeric"
+              className="w-full"
             />
           </div>
           
-          <div className="flex justify-end space-x-3">
-            <button 
+          <DialogFooter className="flex justify-end space-x-3">
+            <Button 
               type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 touch-manipulation"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setBuyInDialogOpen(false);
-              }}
+              variant="outline"
+              onClick={() => setBuyInDialogOpen(false)}
             >
               Cancel
-            </button>
-            <button 
+            </Button>
+            <Button 
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 touch-manipulation"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                submitBuyIn();
-              }}
+              variant="default"
+              onClick={submitBuyIn}
+              disabled={sessionUpdating}
             >
-              Submit
-            </button>
-          </div>
-        </div>
-      </div>
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   };
 
-  // Very simple Cash-out Dialog
+  // Replace the custom Cash-out Dialog with proper Dialog component from UI library
   const CashOutDialog = () => {
-    if (!cashOutDialogOpen) return null;
-    
     return (
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        onClick={(e) => {
-          e.stopPropagation();
-          setCashOutDialogOpen(false);
-        }}
-      >
-        <div 
-          className="bg-white p-6 rounded-md shadow-lg w-full max-w-sm md:w-96"
-          onClick={e => e.stopPropagation()}
-        >
-          <h3 className="text-lg font-medium mb-4">Process Cash-Out</h3>
+      <Dialog open={cashOutDialogOpen} onOpenChange={setCashOutDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Process Cash-Out</DialogTitle>
+          </DialogHeader>
           
           {selectedPlayer && (
             <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
@@ -400,44 +415,38 @@ export default function Status() {
           )}
           
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Cash-Out Amount</label>
-            <input
+            <Label className="block text-sm font-medium mb-2" htmlFor="cashOutAmount">Cash-Out Amount</Label>
+            <Input
+              id="cashOutAmount"
               type="number"
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter amount"
               value={cashOutAmount}
               onChange={e => setCashOutAmount(e.target.value)}
               autoFocus={window.innerWidth > 768}
               inputMode="numeric"
+              className="w-full"
             />
           </div>
           
-          <div className="flex justify-end space-x-3">
-            <button 
+          <DialogFooter className="flex justify-end space-x-3">
+            <Button 
               type="button"
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 touch-manipulation"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setCashOutDialogOpen(false);
-              }}
+              variant="outline"
+              onClick={() => setCashOutDialogOpen(false)}
             >
               Cancel
-            </button>
-            <button 
+            </Button>
+            <Button 
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 touch-manipulation"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                submitCashOut();
-              }}
+              variant="default"
+              onClick={submitCashOut}
+              disabled={sessionUpdating}
             >
-              Submit
-            </button>
-          </div>
-        </div>
-      </div>
+              {sessionUpdating ? "Processing..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -697,7 +706,7 @@ export default function Status() {
           <div className="border-t pt-4 mt-6">
               <h3 className="font-medium text-lg mb-3">Participants</h3>
               
-              <PlayerList 
+              <MemoizedPlayerList 
                 players={currentSession.registrations.current}
                 title="Current Players"
                 emptyMessage="No active players currently at the table"
@@ -782,7 +791,7 @@ export default function Status() {
                 ].filter(Boolean) : []}
               />
               
-                <PlayerList 
+                <MemoizedPlayerList 
                 players={currentSession.registrations.waitlist}
                 title="Waitlist"
                 emptyMessage="No players on the waitlist"
@@ -802,7 +811,7 @@ export default function Status() {
             
               {/* Finished players section - show for cash games */}
               {isCashGame && (
-                <PlayerList
+                <MemoizedPlayerList
                   players={finishedPlayers}
                   title="Finished Players"
                   emptyMessage="No finished players yet"
@@ -828,7 +837,7 @@ export default function Status() {
               )}
               
               {isTournament && currentSession.registrations.eliminated && (
-              <PlayerList 
+              <MemoizedPlayerList 
                 players={currentSession.registrations.eliminated}
                 title="Eliminated"
                 emptyMessage="No eliminated players yet"
