@@ -346,14 +346,20 @@ export default function Status() {
             <button 
               type="button"
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
-              onClick={() => setBuyInDialogOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setBuyInDialogOpen(false);
+              }}
             >
               Cancel
             </button>
             <button 
               type="button"
               className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-              onClick={submitBuyIn}
+              onClick={(e) => {
+                e.stopPropagation();
+                submitBuyIn();
+              }}
             >
               Submit
             </button>
@@ -400,14 +406,20 @@ export default function Status() {
             <button 
               type="button"
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
-              onClick={() => setCashOutDialogOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCashOutDialogOpen(false);
+              }}
             >
               Cancel
             </button>
             <button 
               type="button"
               className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
-              onClick={submitCashOut}
+              onClick={(e) => {
+                e.stopPropagation();
+                submitCashOut();
+              }}
             >
               Submit
             </button>
