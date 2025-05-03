@@ -367,6 +367,9 @@ export default function Status() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add Buy-In</DialogTitle>
+            <DialogDescription>
+              Enter the buy-in amount for this player.
+            </DialogDescription>
           </DialogHeader>
           <div className="mb-6">
             <Label className="block text-sm font-medium mb-2" htmlFor="buyInAmount">Amount</Label>
@@ -411,6 +414,9 @@ export default function Status() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Process Cash-Out</DialogTitle>
+            <DialogDescription>
+              Enter the cash-out amount for this player.
+            </DialogDescription>
           </DialogHeader>
           
           {selectedPlayer && (
@@ -454,6 +460,17 @@ export default function Status() {
       </Dialog>
     );
   };
+
+  // Prevent the dialogs from causing re-renders when not open
+  const renderedDialogs = useMemo(() => {
+    return (
+      <>
+        <ConfirmationDialog />
+        <BuyInDialog />
+        <CashOutDialog />
+      </>
+    );
+  }, [buyInDialogOpen, cashOutDialogOpen, confirmOpen, buyInAmount, cashOutAmount, selectedPlayer, sessionUpdating]);
 
   // Make sure the component registers "Finished" players for cash games
   let finishedPlayers = [];
@@ -882,10 +899,8 @@ export default function Status() {
         </CardContent>
       </Card>
       
-      {/* Add the dialogs */}
-      <ConfirmationDialog />
-      <BuyInDialog />
-      <CashOutDialog />
+      {/* Render dialogs from the memoized component */}
+      {renderedDialogs}
     </div>
   );
 } 
