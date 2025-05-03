@@ -130,18 +130,23 @@ export default function Status() {
   // Custom hooks for all data and functionality
   const { loading: sessionLoading, sessionData, fetchSessionData } = useSessionData();
   
-  // Throttle data fetching for mobile devices
-  const throttledFetchData = useCallback(() => {
+  // Store fetchSessionData in a ref to avoid dependency issues
+  const fetchSessionDataRef = useRef(fetchSessionData);
+  useEffect(() => {
+    fetchSessionDataRef.current = fetchSessionData;
+  }, [fetchSessionData]);
+  
+  // Simplified data fetching without circular dependencies
+  const throttledFetchData = () => {
     if (typeof window !== 'undefined') {
-      // Use requestIdleCallback for non-critical updates on supported browsers
+      const fetchData = fetchSessionDataRef.current;
       if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => fetchSessionData());
+        window.requestIdleCallback(() => fetchData());
       } else {
-        // Fallback to setTimeout with a delay for mobile devices
-        setTimeout(fetchSessionData, isMobile ? 300 : 0);
+        setTimeout(fetchData, isMobile ? 300 : 0);
       }
     }
-  }, [fetchSessionData, isMobile]);
+  };
 
   const { 
     blindStructureData, 
@@ -271,21 +276,21 @@ export default function Status() {
   const isNotStarted = currentSession.status === 'NOT_STARTED';
 
   // Handler for buy-in dialog
-  const openBuyInDialog = useCallback((player) => {
+  const openBuyInDialog = (player) => {
     setSelectedPlayer(player);
     setBuyInAmount('');
     setBuyInDialogOpen(true);
-  }, []);
+  };
 
   // Handler for cash-out dialog
-  const openCashOutDialog = useCallback((player) => {
+  const openCashOutDialog = (player) => {
     setSelectedPlayer(player);
     setCashOutAmount('');
     setCashOutDialogOpen(true);
-  }, []);
+  };
 
   // Handler for submitting a buy-in
-  const submitBuyIn = useCallback(async () => {
+  const submitBuyIn = async () => {
     if (!buyInAmount || buyInAmount <= 0) {
       toast({
         title: "Error",
@@ -301,10 +306,10 @@ export default function Status() {
       setBuyInDialogOpen(false);
     }
     setSessionUpdating(false);
-  }, [buyInAmount, selectedPlayer, handleCashGameBuyIn, toast]);
+  };
 
   // Handler for submitting a cash-out
-  const submitCashOut = useCallback(async () => {
+  const submitCashOut = async () => {
     if (!cashOutAmount || cashOutAmount <= 0) {
         toast({
           title: "Error",
@@ -320,7 +325,7 @@ export default function Status() {
       setCashOutDialogOpen(false);
     }
     setSessionUpdating(false);
-  }, [cashOutAmount, selectedPlayer, handleCashOut, toast]);
+  };
 
   // Add the confirmation dialog component
   const ConfirmationDialog = () => {
